@@ -1,0 +1,12 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#198754" />
+        </shape>
+    </item>
+    <item>
+        <bitmap
+            android:src="@drawable/ic_launcher_foreground_image"
+            android:gravity="fill" />
+    </item>
+</layer-list>

@@ -1,0 +1,231 @@
+pwd=/
+root=./., ./.., ./.user.ini, ./.htaccess, ./.well-known, ./index.php, ./bmlhs, ./dist, ./shared, ./.ftpquota, ./vendor, ./.browserslistrc, ./.bundlewatch.config.json, ./.editorconfig, ./.gitattributes, ./.gitignore, ./.gitpod.yml, ./.lgtm.yml, ./.prettierrc, ./.stylelintignore, ./.stylelintrc.json, ./eslint.config.js, ./LICENSE, ./netlify.toml, ./pdfcheck-bn.png, ./pdfcheck-en.png, ./pdfcheck-zoom.png, ./tsconfig.json, ./tsconfig.types.json, ./vitest.config.ts, ./bmlhs.sql, ./index.html, ./cache
+dir bmlhs=bmlhs/., bmlhs/.., bmlhs/.htaccess, bmlhs/.user.ini, bmlhs/400.php, bmlhs/401.php, bmlhs/403.php, bmlhs/404.php, bmlhs/500.php, bmlhs/503.php, bmlhs/504.php, bmlhs/about.php, bmlhs/academic_calender.php, bmlhs/admission.php, bmlhs/admission_forget_password.php, bmlhs/admission_form_edit.php, bmlhs/admission_login.php, bmlhs/admission_logout.php, bmlhs/admission_navigation.php, bmlhs/admission_reset_password.php, bmlhs/ajax_request.php, bmlhs/ajax_request_teacher_login.php, bmlhs/attendance.php, bmlhs/carousel&verticalnoticeboardpanel.php, bmlhs/contact.php, bmlhs/download_preview.php, bmlhs/events.php, bmlhs/events_single.php, bmlhs/function_footer.php, bmlhs/function_header.php, bmlhs/gallery_album.php, bmlhs/google11ca0aa0662ca9b9.html, bmlhs/header.php, bmlhs/image_gallery.php, bmlhs/index.php, bmlhs/managing_comitee.php, bmlhs/marksheet-content.php, bmlhs/marksheet-pdf.php, bmlhs/meritorious_students.php, bmlhs/navbar&marqueetag.php
+dir bmlhs/database=bmlhs/database/., bmlhs/database/.., bmlhs/database/.htaccess, bmlhs/database/connection.php, bmlhs/database/index.php
+dir bmlhs/config=bmlhs/config/., bmlhs/config/.., bmlhs/config/index.php, bmlhs/config/tcpdf_config.php
+dir bmlhs/includes=bmlhs/includes/., bmlhs/includes/.., bmlhs/includes/committee-card.php, bmlhs/includes/security.php, bmlhs/includes/site.php, bmlhs/includes/staff-card.php
+dir shared=shared/., shared/.., shared/admit-cards-pdf.php, shared/admit-cards-ui.php, shared/certificate-border.php, shared/certificate-sheet.php, shared/certificates-pdf.php, shared/exam-routine-pdf.php, shared/id-cards-pdf.php, shared/id-cards-ui.php, shared/mpdf-bangla.php, shared/public-features.php, shared/results-csv.php, shared/results-pdf.php, shared/schema.php, shared/security.php, shared/student-details-pdf.php, shared/student-profiles-pdf.php, shared/tabulation-sheet.php, shared/cache, shared/pdf-tools, shared/deployment-config.php, shared/school.php, shared/academics.php
+---- bmlhs/database/connection.php (1619 bytes) ----
+<?php
+declare(strict_types=1);
+
+require_once dirname(__DIR__, 2) . '/shared/deployment-config.php';
+
+function schoolMysqli(): mysqli
+{
+    static $mysqli = null;
+    if ($mysqli instanceof mysqli) {
+        return $mysqli;
+    }
+
+    $databaseConfig = deploymentDatabaseSettings();
+    $host = $databaseConfig['host'];
+    $user = $databaseConfig['username'];
+    $password = $databaseConfig['password'];
+    $database = $databaseConfig['name'];
+
+    $mysqli = mysqli_connect($host, $user, $password, $database);
+    if (!$mysqli) {
+        error_log('Database connection failed: ' . mysqli_connect_error());
+        http_response_code(500);
+        exit('Database connection unavailable.');
+    }
+    mysqli_set_charset($mysqli, 'utf8mb4');
+    $GLOBALS['conn'] = $mysqli;
+
+    return $mysqli;
+}
+
+function schoolScriptUsesMysqli(): bool
+{
+    $name = pathinfo(basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), PATHINFO_FILENAME);
+
+    return in_array($name, [
+        'admission',
+        'admission_form_edit',
+        'admission_forget_password',
+        'admission_login',
+        'admission_reset_password',
+        'ajax_request',
+        'ajax_request_teacher_login',
+        'about',
+        'download_preview',
+        'notice',
+        'notice_single',
+        'selectmenu',
+        'stipend_scholarship_students_list',
+        'students',
+        'teacher_staff',
+        'teacher_staff_single',
+        'view_admission',
+        'view_admission_form',
+    ], true);
+}
+
+$conn = null;
+if (schoolScriptUsesMysqli()) {
+    $conn = schoolMysqli();
+}
+
+---- bmlhs/includes/site.php (18965 bytes) ----
+<?php
+declare(strict_types=1);
+
+require_once dirname(__DIR__, 2) . '/shared/school.php';
+require_once dirname(__DIR__, 2) . '/shared/academics.php';
+require_once dirname(__DIR__, 2) . '/shared/schema.php';
+require_once dirname(__DIR__, 2) . '/shared/public-features.php';
+require_once dirname(__DIR__, 2) . '/shared/security.php';
+require_once dirname(__DIR__, 2) . '/shared/deployment-config.php';
+require_once dirname(__DIR__, 2) . '/shared/sms.php';
+
+function publicDatabase(): PDO
+{
+    static $pdo = null;
+    if ($pdo instanceof PDO) {
+        return $pdo;
+    }
+
+    $databaseConfig = deploymentDatabaseSettings();
+    $host = $databaseConfig['host'];
+    $database = $databaseConfig['name'];
+    $username = $databaseConfig['username'];
+    $password = $databaseConfig['password'];
+
+    $pdo = new PDO(
+        "mysql:host={$host};dbname={$database};charset=utf8mb4",
+        $username,
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]
+    );
+
+    try {
+        ensureSchoolSchema($pdo);
+    } catch (PDOException $exception) {
+        error_log($exception->getMessage());
+    }
+
+    return $pdo;
+}
+
+function currentSchool(): array
+{
+    static $settings = null;
+    if ($settings === null) {
+        $settings = schoolSettings(publicDatabase());
+    }
+
+    return $settings;
+}
+
+function schoolLogoUrl(array $settings): string
+{
+    $logo = (string) ($settings['logo'] ?? 'image/school_logo.png');
+    if (preg_match('#^https?://#', $logo) === 1) {
+        return $logo;
+    }
+
+    return $logo;
+}
+
+function publicStaffDesignationLabel(string $designation): string
+{
+    $labels = [
+        'head_teacher' => 'Head Teacher',
+        'assistant_head_teacher' => 'Asst. Head Teacher',
+        'senior_teacher' => 'Senior Teacher',
+        'assistant_teacher' => 'Assistant Teacher',
+        'office_assistant_cum_computer_perator' => 'Office Asst. Cum. Computer Operator',
+        'office_assistant_cum_computer_operator' => 'Office Asst. Cum. Computer Operator',
+        'computer_lab_operator' => 'Computer Lab Operator',
+        'office_assistant' => 'Office Assistant',
+        'security_guard' => 'Security Guard',
+        'night_guard' => 'Night Guard',
+        'cleaner' => 'Cleaner',
+        'nurse_maid' => 'Nurse Maid',
+    ];
+---- shared/deployment-config.php (5090 bytes) ----
+<?php
+
+declare(strict_types=1);
+
+
+
+function deploymentPrivateConfigPath(): string
+
+{
+
+    $configuredPath = getenv('ADMINLTE_PRIVATE_CONFIG');
+
+    if ($configuredPath !== false && trim($configuredPath) !== '') {
+
+        $resolvedPath = realpath($configuredPath);
+
+        if ($resolvedPath === false || !is_file($resolvedPath)) {
+
+            throw new RuntimeException('The configured private deployment config file is unavailable.');
+
+        }
+
+
+
+        return $resolvedPath;
+
+    }
+
+
+
+    $configPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'bmlhs-private-config.php';
+
+    $documentRoot = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''));
+
+    $configDirectory = realpath(dirname($configPath));
+
+    if ($documentRoot !== false && $configDirectory !== false) {
+
+        $root = rtrim(str_replace('\\', '/', $documentRoot), '/');
+
+        $directory = str_replace('\\', '/', $configDirectory);
+
+        if (strcasecmp($directory, $root) === 0 || strncasecmp($directory, $root . '/', strlen($root) + 1) === 0) {
+
+            $configPath = dirname($documentRoot) . DIRECTORY_SEPARATOR . 'bmlhs-private-config.php';
+
+        }
+
+    }
+
+
+
+    return $configPath;
+
+}
+
+
+
+function deploymentPrivateConfig(): array
+
+{
+
+    static $privateConfig = null;
+
+    if (is_array($privateConfig)) {
+
+        return $privateConfig;
+
+    }
+
+
+
+    $configPath = deploymentPrivateConfigPath();
+
+    $documentRoot = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''));
+
+    $resolvedConfig = realpath($configPath);
+
+    if ($resolvedConfig !== false && $documentRoot !== false) {
+

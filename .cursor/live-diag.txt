@@ -1,0 +1,5 @@
+uploaded shared/sms.php
+uploaded shared/audit.php
+diag http=200
+diag=php=8.2.34 private_config_path=/home/rubelami/bmlhs-private-config.php private_config_exists=yes db_host=localhost db_name=rubelami_rubelami db_user=rubelami_rubelami db_pass_set=yes db_ok=rubelami_rubelami schema_ok school=ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়
+home http=200 bytes=136917

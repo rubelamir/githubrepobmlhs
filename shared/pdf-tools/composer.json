@@ -1,0 +1,10 @@
+{
+    "name": "bmlhs/pdf-tools",
+    "description": "PDF libraries for school documents",
+    "require": {
+        "mpdf/mpdf": "^8.2"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

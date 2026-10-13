@@ -1,0 +1,557 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../includes/auth.php';
+?>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>AdminLTE 4 | Form Wizard</title>
+
+    <!--begin::Theme Init (prevents flash of incorrect theme on load, #6043)-->
+    <script>
+      (() => {
+        'use strict';
+        const root = document.documentElement;
+
+        // Applications with their own theming opt out of AdminLTE's color mode
+        // entirely, here as well as in the bundle.
+        if (root.getAttribute('data-lte-color-mode') === 'off') {
+          return;
+        }
+
+        const STORAGE_KEY = 'lte-theme';
+        let stored = null;
+        try {
+          stored = localStorage.getItem(STORAGE_KEY);
+        } catch {
+          // localStorage may be unavailable (private mode, sandboxed iframe).
+        }
+        // Mirror the precedence in color-mode.ts: the visitor's stored choice
+        // wins, then a theme this page declared itself, then the OS preference.
+        const authored = root.getAttribute('data-bs-theme');
+        let resolved = 'light';
+        if (stored === 'dark' || stored === 'light') {
+          resolved = stored;
+        } else if (authored === 'dark' || authored === 'light') {
+          resolved = authored;
+        } else if (globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
+          resolved = 'dark';
+        }
+        root.setAttribute('data-bs-theme', resolved);
+        root.style.colorScheme = resolved;
+        // Flag values computed here, so the bundle does not mistake them for a
+        // theme the page declared and stop following the OS preference.
+        if (resolved !== authored) {
+          root.setAttribute('data-lte-theme-resolved', '');
+        }
+      })();
+    </script>
+    <!--end::Theme Init-->
+
+    <!--begin::Accessibility Meta Tags-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#007bff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
+    <!--end::Accessibility Meta Tags-->
+
+    <!--begin::Primary Meta Tags-->
+    <meta name="title" content="AdminLTE 4 | Form Wizard" />
+    <meta name="author" content="ColorlibHQ" />
+    <meta
+      name="description"
+      content="AdminLTE is a free Bootstrap 5 admin dashboard template with almost 50 example pages, built with vanilla JS and designed with accessibility in mind."
+    />
+    <meta
+      name="keywords"
+      content="bootstrap 5, bootstrap, bootstrap 5 admin dashboard, bootstrap 5 dashboard, bootstrap 5 charts, bootstrap 5 calendar, bootstrap 5 datepicker, bootstrap 5 tables, bootstrap 5 datatable, vanilla js datatable, colorlibhq, colorlibhq dashboard, colorlibhq admin dashboard, accessible admin panel"
+    />
+    <!--end::Primary Meta Tags-->
+
+    <!--begin::Accessibility Features-->
+    <!-- Skip links will be dynamically added by accessibility.js -->
+    <meta name="supported-color-schemes" content="light dark" />
+    <link rel="preload" href="../css/adminlte.css" as="style" />
+    <!--end::Accessibility Features-->
+
+    <!--begin::Fonts-->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css"
+      integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q="
+      crossorigin="anonymous"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <!--end::Fonts-->
+
+    <!--begin::Third Party Plugin(OverlayScrollbars)-->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css"
+      crossorigin="anonymous"
+    />
+    <!--end::Third Party Plugin(OverlayScrollbars)-->
+
+    <!--begin::Third Party Plugin(Bootstrap Icons)-->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+      crossorigin="anonymous"
+    />
+    <!--end::Third Party Plugin(Bootstrap Icons)-->
+
+    <!--begin::Required Plugin(AdminLTE)-->
+    <link rel="stylesheet" href="../css/adminlte.css" />
+    <!--end::Required Plugin(AdminLTE)-->
+
+    <style>
+      .wizard-steps {
+        counter-reset: step;
+        list-style: none;
+        padding: 0;
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+      }
+      .wizard-steps::before {
+        content: '';
+        position: absolute;
+        top: 1rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--bs-border-color);
+        z-index: 0;
+      }
+      .wizard-steps li {
+        position: relative;
+        z-index: 1;
+        background: var(--bs-body-bg);
+        padding: 0 0.75rem;
+        text-align: center;
+        color: var(--bs-secondary-color);
+        font-size: 0.875rem;
+      }
+      .wizard-steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        margin: 0 auto 0.5rem;
+        border-radius: 50%;
+        background: var(--bs-body-tertiary-bg);
+        border: 2px solid var(--bs-border-color);
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+      }
+      .wizard-steps li.active {
+        color: var(--bs-primary);
+        font-weight: 600;
+      }
+      .wizard-steps li.active::before {
+        background: var(--bs-primary);
+        border-color: var(--bs-primary);
+        color: #fff;
+      }
+      .wizard-steps li.completed::before {
+        background: var(--bs-success);
+        border-color: var(--bs-success);
+        color: #fff;
+        content: '\f633';
+        font-family: 'bootstrap-icons';
+      }
+    </style>
+  </head>
+  <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+    <div class="app-wrapper">
+      <?php $basePath = '../'; include __DIR__ . '/../includes/navbar.php'; ?>
+      <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+      <main class="app-main">
+        <div class="app-content-header">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-sm-6">
+                <h1 class="mb-0 fs-3">Form Wizard</h1>
+              </div>
+              <div class="col-sm-6">
+                <nav aria-label="breadcrumb">
+                  <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="#">Home</a></li>
+                    <li class="breadcrumb-item"><a href="#">Forms</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Wizard</li>
+                  </ol>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="app-content">
+          <div class="container-fluid">
+            <div class="row justify-content-center">
+              <div class="col-lg-10 col-xl-8">
+                <div class="card">
+                  <div class="card-body p-4">
+                    <!-- Step indicators -->
+                    <ol class="wizard-steps mb-4" id="wizard-steps">
+                      <li class="active" data-step="0">Account</li>
+                      <li data-step="1">Profile</li>
+                      <li data-step="2">Preferences</li>
+                      <li data-step="3">Review</li>
+                    </ol>
+
+                    <!-- Form -->
+                    <form id="wizard-form" novalidate>
+                      <!-- Step 1 -->
+                      <fieldset class="wizard-step" data-step="0">
+                        <h2 class="h5 mb-3">Create your account</h2>
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-email">Email</label>
+                            <input type="email" class="form-control" id="wz-email" required />
+                            <div class="invalid-feedback">Please enter a valid email.</div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-username"> Username </label>
+                            <input
+                              type="text"
+                              class="form-control"
+                              id="wz-username"
+                              required
+                              minlength="3"
+                            />
+                            <div class="invalid-feedback">
+                              Username must be at least 3 characters.
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-password"> Password </label>
+                            <input
+                              type="password"
+                              class="form-control"
+                              id="wz-password"
+                              required
+                              minlength="8"
+                            />
+                            <div class="invalid-feedback">
+                              Password must be at least 8 characters.
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-password2"> Confirm password </label>
+                            <input
+                              type="password"
+                              class="form-control"
+                              id="wz-password2"
+                              required
+                            />
+                            <div class="invalid-feedback">Passwords must match.</div>
+                          </div>
+                        </div>
+                      </fieldset>
+
+                      <!-- Step 2 -->
+                      <fieldset class="wizard-step d-none" data-step="1">
+                        <h2 class="h5 mb-3">Tell us about yourself</h2>
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-first"> First name </label>
+                            <input type="text" class="form-control" id="wz-first" required />
+                            <div class="invalid-feedback">First name is required.</div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-last"> Last name </label>
+                            <input type="text" class="form-control" id="wz-last" required />
+                            <div class="invalid-feedback">Last name is required.</div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-company"> Company </label>
+                            <input type="text" class="form-control" id="wz-company" />
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="wz-role"> Role </label>
+                            <select class="form-select" id="wz-role" required>
+                              <option value="">Choose&hellip;</option>
+                              <option>Founder / CEO</option>
+                              <option>Engineering</option>
+                              <option>Design</option>
+                              <option>Marketing</option>
+                              <option>Other</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a role.</div>
+                          </div>
+                        </div>
+                      </fieldset>
+
+                      <!-- Step 3 -->
+                      <fieldset class="wizard-step d-none" data-step="2">
+                        <h2 class="h5 mb-3">Notification preferences</h2>
+                        <div class="form-check form-switch mb-2">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="wz-notif-product"
+                            role="switch"
+                            checked
+                          />
+                          <label class="form-check-label" for="wz-notif-product">
+                            Product updates &amp; releases
+                          </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="wz-notif-security"
+                            role="switch"
+                            checked
+                          />
+                          <label class="form-check-label" for="wz-notif-security">
+                            Security alerts
+                          </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="wz-notif-marketing"
+                            role="switch"
+                          />
+                          <label class="form-check-label" for="wz-notif-marketing">
+                            Marketing &amp; tips
+                          </label>
+                        </div>
+                        <label class="form-label" for="wz-frequency"> Digest frequency </label>
+                        <select class="form-select" id="wz-frequency">
+                          <option>Real time</option>
+                          <option selected>Daily</option>
+                          <option>Weekly</option>
+                          <option>Never</option>
+                        </select>
+                      </fieldset>
+
+                      <!-- Step 4 -->
+                      <fieldset class="wizard-step d-none" data-step="3">
+                        <h2 class="h5 mb-3">Review &amp; confirm</h2>
+                        <dl class="row mb-3" id="wz-summary"></dl>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="wz-terms" required />
+                          <label class="form-check-label" for="wz-terms">
+                            I agree to the <a href="#">terms of service</a>.
+                          </label>
+                          <div class="invalid-feedback">You must accept the terms to continue.</div>
+                        </div>
+                      </fieldset>
+
+                      <!-- Navigation -->
+                      <div class="d-flex justify-content-between mt-4">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="wz-prev"
+                          disabled
+                        >
+                          <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+                          Previous
+                        </button>
+                        <button type="button" class="btn btn-primary" id="wz-next">
+                          Next
+                          <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                        </button>
+                        <button type="submit" class="btn btn-success d-none" id="wz-submit">
+                          <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
+                          Submit
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <?php include __DIR__ . '/../includes/footer.php'; ?>
+    </div>
+    <!--begin::Third Party Plugin(OverlayScrollbars)-->
+    <script
+      src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <!--end::Third Party Plugin(OverlayScrollbars)--><!--begin::Required Plugin(popperjs for Bootstrap 5)-->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <!--end::Required Plugin(popperjs for Bootstrap 5)--><!--begin::Required Plugin(Bootstrap 5)-->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <!--end::Required Plugin(Bootstrap 5)--><!--begin::Required Plugin(AdminLTE)-->
+    <script src="../js/adminlte.js"></script>
+    <!--end::Required Plugin(AdminLTE)-->
+    <!--begin::OverlayScrollbars Configure-->
+    <script>
+      const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
+      const Default = {
+        scrollbarTheme: 'os-theme-light',
+        scrollbarAutoHide: 'leave',
+        scrollbarClickScroll: true,
+      };
+      document.addEventListener('DOMContentLoaded', function () {
+        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
+
+        // Disable OverlayScrollbars on mobile devices to prevent touch interference
+        const isMobile = window.innerWidth <= 992;
+
+        if (
+          sidebarWrapper &&
+          OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined &&
+          !isMobile
+        ) {
+          OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
+            scrollbars: {
+              theme: Default.scrollbarTheme,
+              autoHide: Default.scrollbarAutoHide,
+              clickScroll: Default.scrollbarClickScroll,
+            },
+          });
+        }
+      });
+    </script>
+    <!--end::OverlayScrollbars Configure-->
+    <!--begin::Charts follow the colour mode-->
+    <script>
+      // ApexCharts draws light-theme tooltips and axis text unless told otherwise,
+      // which is unreadable in dark mode (#6105). Give it the page's colour mode as
+      // a global default before any chart is created — this runs before the chart
+      // pages' own scripts — and keep every chart that has a `chart.id` in step
+      // when the mode changes (ColorMode, the OS in auto mode, or your own code).
+      (() => {
+        'use strict';
+        const mode = () =>
+          document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+        // `Apex` is ApexCharts' global-options object; it must exist before the library loads.
+        // theme.mode also sets a dark chart background — keep the card's instead.
+        // eslint-disable-next-line unicorn/no-global-object-property-assignment
+        globalThis.Apex ||= {};
+        const apex = globalThis.Apex;
+        apex.theme = { mode: mode() };
+        apex.chart = Object.assign(apex.chart || {}, { background: 'transparent' });
+        new MutationObserver(() => {
+          const next = mode();
+          apex.theme = { mode: next };
+          const instances = apex._chartInstances || [];
+          for (const { chart } of instances) {
+            chart.updateOptions({ theme: { mode: next } }, false, false);
+          }
+        }).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-bs-theme'],
+        });
+      })();
+    </script>
+    <!--end::Charts follow the colour mode-->
+
+    <!--begin::Color Mode Toggle-->
+    <!-- The light/dark/auto switcher ships in adminlte.js as the ColorMode
+     module (since 4.1) — no page script needed. Only the no-flash snippet
+     in <head> stays inline, because it must run before first paint. -->
+    <!--end::Color Mode Toggle-->
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('wizard-form');
+        const steps = form.querySelectorAll('.wizard-step');
+        const indicators = document.querySelectorAll('#wizard-steps li');
+        const prevBtn = document.getElementById('wz-prev');
+        const nextBtn = document.getElementById('wz-next');
+        const submitBtn = document.getElementById('wz-submit');
+        let current = 0;
+
+        const show = (i) => {
+          steps.forEach((s, idx) => s.classList.toggle('d-none', idx !== i));
+          indicators.forEach((li, idx) => {
+            li.classList.toggle('active', idx === i);
+            li.classList.toggle('completed', idx < i);
+          });
+          prevBtn.disabled = i === 0;
+          const last = i === steps.length - 1;
+          nextBtn.classList.toggle('d-none', last);
+          submitBtn.classList.toggle('d-none', !last);
+          if (last) renderSummary();
+        };
+
+        const validateStep = (i) => {
+          const step = steps[i];
+          const fields = step.querySelectorAll('input, select, textarea');
+          let valid = true;
+          fields.forEach((field) => {
+            field.classList.remove('is-invalid');
+            if (!field.checkValidity()) {
+              field.classList.add('is-invalid');
+              valid = false;
+            }
+          });
+          // Password match check on step 0
+          if (i === 0) {
+            const p1 = document.getElementById('wz-password');
+            const p2 = document.getElementById('wz-password2');
+            if (p1.value !== p2.value) {
+              p2.classList.add('is-invalid');
+              valid = false;
+            }
+          }
+          return valid;
+        };
+
+        const renderSummary = () => {
+          const summary = document.getElementById('wz-summary');
+          const get = (id) => document.getElementById(id);
+          const rows = [
+            ['Email', get('wz-email').value],
+            ['Username', get('wz-username').value],
+            ['Name', `${get('wz-first').value} ${get('wz-last').value}`],
+            ['Company', get('wz-company').value || '—'],
+            ['Role', get('wz-role').value || '—'],
+            ['Digest', get('wz-frequency').value],
+          ];
+          summary.innerHTML = rows
+            .map(
+              ([k, v]) =>
+                `<dt class="col-sm-4 text-secondary fw-normal">${k}</dt><dd class="col-sm-8 fw-semibold">${v}</dd>`,
+            )
+            .join('');
+        };
+
+        nextBtn.addEventListener('click', () => {
+          if (!validateStep(current)) return;
+          if (current < steps.length - 1) {
+            current++;
+            show(current);
+          }
+        });
+
+        prevBtn.addEventListener('click', () => {
+          if (current > 0) {
+            current--;
+            show(current);
+          }
+        });
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!validateStep(current)) return;
+          alert('Wizard complete! Form would submit here.');
+        });
+
+        show(0);
+      });
+    </script>
+  </body>
+</html>

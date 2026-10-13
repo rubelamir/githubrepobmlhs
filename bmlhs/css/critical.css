@@ -1,0 +1,68 @@
+:root {
+  --school-forest: #1a4d3e;
+  --school-forest-deep: #0f2f26;
+  --school-forest-mid: #246b54;
+  --school-amber: #c4892a;
+  --school-paper: #f7faf8;
+  --school-ink: #1a2a24;
+  --school-space-4: 0.25rem;
+  --school-space-8: 0.5rem;
+  --school-space-12: 0.75rem;
+  --school-space-16: 1rem;
+  --school-space-24: 1.5rem;
+  --school-space-40: 2.5rem;
+  --school-radius: 0.85rem;
+  --school-shadow-sm: 0 6px 16px rgba(15, 47, 38, 0.08);
+  --school-shadow-md: 0 12px 28px rgba(15, 47, 38, 0.12);
+  --school-shadow-lg: 0 22px 48px rgba(15, 47, 38, 0.16);
+  --school-font-bn: "Noto Sans Bengali", sans-serif;
+}
+
+html.school-loading,
+html.school-loading body {
+  overflow: hidden;
+}
+
+body.school-site {
+  margin: 0;
+  background: var(--school-paper);
+  color: var(--school-ink);
+  font-family: var(--school-font-bn), sans-serif;
+}
+
+.school-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, var(--school-forest-deep) 0%, #123329 55%, var(--school-forest) 100%);
+}
+
+.school-preloader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.school-preloader-card {
+  text-align: center;
+  color: #fff;
+  padding: 0 1.25rem;
+}
+
+.school-preloader-name {
+  margin: 0.4rem 0 0;
+  font-size: 1.15rem;
+}
+
+.school-topbar {
+  background: var(--school-forest-deep);
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+.school-brand-title {
+  margin: 0;
+  color: #fff;
+  line-height: 1.25;
+}
