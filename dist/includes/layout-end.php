@@ -14,6 +14,11 @@ include __DIR__ . '/footer.php';
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
     <script src="<?= h($basePath) ?>js/image-cropper.js"></script>
     <?php endif; ?>
+    <?php if (!empty($pageScriptFiles) && is_array($pageScriptFiles)): ?>
+      <?php foreach ($pageScriptFiles as $scriptFile): ?>
+    <script src="<?= h((string) $scriptFile) ?>"></script>
+      <?php endforeach; ?>
+    <?php endif; ?>
     <?php if (!empty($pageScripts) && is_array($pageScripts)): ?>
       <?php foreach ($pageScripts as $script): ?>
         <script><?= $script ?></script>

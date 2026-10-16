@@ -165,6 +165,44 @@ if (in_array((string) ($_GET['download'] ?? ''), ['csv', 'template'], true)) {
 }
 
 $pageStyles = <<<'CSS'
+.results-mark-sheet .mark-input {
+  min-height: 44px;
+  font-size: 16px;
+  text-align: center;
+  touch-action: manipulation;
+}
+.results-mark-sheet .mark-field { position: relative; min-width: 4.5rem; }
+.results-mark-sheet .mark-input.is-invalid {
+  border-color: #b42318 !important;
+  background-color: #fef3f2 !important;
+  box-shadow: 0 0 0 .2rem rgba(180, 35, 24, 0.12);
+}
+.results-mark-sheet .mark-error {
+  display: none;
+  margin-top: .2rem;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #b42318;
+}
+.results-mark-sheet .mark-error:not([hidden]) { display: flex; align-items: flex-start; gap: .25rem; }
+.results-mark-sheet .mark-error-icon { flex: 0 0 auto; }
+.results-mark-summary {
+  display: none;
+  margin: .75rem 1rem 0;
+  padding: .65rem .8rem;
+  border-radius: .65rem;
+  background: #fef3f2;
+  border: 1px solid #f5c2c0;
+  color: #912018;
+  font-weight: 700;
+  font-size: .9rem;
+}
+.results-mark-summary:not([hidden]) { display: block; }
+.results-mark-sheet .mark-total.is-over {
+  color: #b42318;
+  font-weight: 800;
+}
 .results-print-heading { display: none; }
 @media print {
   @page { margin: 12mm; }
@@ -347,16 +385,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $seenRolls[$roll] = true;
 
                 $marks = [];
-                foreach (['mcq', 'cq', 'practical'] as $component) {
+                foreach (['mcq' => 'MCQ', 'cq' => 'CQ', 'practical' => 'Practical'] as $component => $label) {
                     $rawMark = (string) ($values[$component] ?? '');
                     $enabled = (int) ($subject['has_' . $component] ?? 0) === 1;
-                    if (!$enabled && $rawMark !== '') {
-                        throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এ এই বিষয়ের জন্য চালু নয় এমন ' . strtoupper($component) . ' নম্বর দেওয়া হয়েছে।');
+                    if (!$enabled && trim(asciiDigits($rawMark)) !== '') {
+                        throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এ এই বিষয়ের জন্য চালু নয় এমন ' . $label . ' নম্বর দেওয়া হয়েছে।');
                     }
-                    if ($enabled && $rawMark !== '' && (!is_numeric($rawMark) || !is_finite((float) $rawMark) || (float) $rawMark < 0)) {
-                        throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এর ' . strtoupper($component) . ' নম্বর শূন্য বা তার বেশি numeric value হতে হবে।');
+                    if (!$enabled) {
+                        $marks[$component] = null;
+                        continue;
                     }
-                    $marks[$component] = $rawMark === '' ? null : (float) $rawMark;
+                    $parsed = parseMarkComponentInput($rawMark, $label, $roll);
+                    if (!$parsed['ok']) {
+                        throw new RuntimeException('CSV-এর row ' . $rowNumber . ': ' . (string) $parsed['error']);
+                    }
+                    $marks[$component] = $parsed['value'];
                 }
                 if ($marks['mcq'] === null && $marks['cq'] === null && $marks['practical'] === null) {
                     continue;
@@ -365,7 +408,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     + (float) ($marks['cq'] ?? 0)
                     + (float) ($marks['practical'] ?? 0);
                 if ($fullMarks > 0 && $totalMark > $fullMarks) {
-                    throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এর মোট নম্বর পূর্ণমান ' . $fullMarks . ' অতিক্রম করেছে।');
+                    throw new RuntimeException(
+                        'CSV-এর row ' . $rowNumber . '-এর মোট নম্বর পূর্ণমান '
+                        . formatFullMarksLabel($fullMarks) . ' অতিক্রম করেছে।'
+                    );
                 }
                 $studentId = $studentIdsByRoll[$roll];
                 $importRows[$studentId] = ['roll' => $roll] + $marks;
@@ -387,40 +433,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             : $studentRolls;
         foreach ($targetStudentRolls as $studentId => $roll) {
             $ref = signedRecordRef((int) $studentId, 'student');
-            $mcqRaw = $isImport
-                ? (string) ($importRows[$studentId]['mcq'] ?? '')
-                : trim((string) ($mcqIn[$ref] ?? ''));
-            $cqRaw = $isImport
-                ? (string) ($importRows[$studentId]['cq'] ?? '')
-                : trim((string) ($cqIn[$ref] ?? ''));
-            $practicalRaw = $isImport
-                ? (string) ($importRows[$studentId]['practical'] ?? '')
-                : trim((string) ($practicalIn[$ref] ?? ''));
-            if ($mcqRaw === '' && $cqRaw === '' && $practicalRaw === '') {
+            if ($isImport) {
+                $mcq = $importRows[$studentId]['mcq'] ?? null;
+                $cq = $importRows[$studentId]['cq'] ?? null;
+                $practical = $importRows[$studentId]['practical'] ?? null;
+            } else {
+                $hasMcq = (int) ($subject['has_mcq'] ?? 0) === 1;
+                $hasCq = (int) ($subject['has_cq'] ?? 0) === 1;
+                $hasPractical = (int) ($subject['has_practical'] ?? 0) === 1;
+                $mcqParsed = $hasMcq
+                    ? parseMarkComponentInput((string) ($mcqIn[$ref] ?? ''), 'MCQ', $roll)
+                    : ['ok' => true, 'value' => null, 'error' => null];
+                $cqParsed = $hasCq
+                    ? parseMarkComponentInput((string) ($cqIn[$ref] ?? ''), 'CQ', $roll)
+                    : ['ok' => true, 'value' => null, 'error' => null];
+                $practicalParsed = $hasPractical
+                    ? parseMarkComponentInput((string) ($practicalIn[$ref] ?? ''), 'Practical', $roll)
+                    : ['ok' => true, 'value' => null, 'error' => null];
+                foreach ([$mcqParsed, $cqParsed, $practicalParsed] as $parsed) {
+                    if (!$parsed['ok']) {
+                        throw new RuntimeException((string) $parsed['error']);
+                    }
+                }
+                $mcq = $mcqParsed['value'];
+                $cq = $cqParsed['value'];
+                $practical = $practicalParsed['value'];
+            }
+            if ($mcq === null && $cq === null && $practical === null) {
                 if (!$isImport) {
                     deleteStudentSubjectMark($db, $roll, $classId, $sectionId, $sessionYear, $examId, $subjectId);
                     $cleared++;
                 }
                 continue;
             }
-            foreach (['MCQ' => $mcqRaw, 'CQ' => $cqRaw, 'practical' => $practicalRaw] as $label => $rawMark) {
-              if ($rawMark !== '' && !is_numeric($rawMark)) {
-                throw new RuntimeException($label . ' mark must be numeric.');
-              }
-            }
-            $mcq = $mcqRaw === '' ? null : (float) $mcqRaw;
-            $cq = $cqRaw === '' ? null : (float) $cqRaw;
-            $practical = $practicalRaw === '' ? null : (float) $practicalRaw;
-            foreach (['MCQ' => $mcq, 'CQ' => $cq, 'practical' => $practical] as $label => $mark) {
-              if ($mark !== null && (!is_finite($mark) || $mark < 0)) {
-                throw new RuntimeException($label . ' mark must be zero or greater.');
-              }
-            }
             $totalMark = (float) ($mcq ?? 0) + (float) ($cq ?? 0) + (float) ($practical ?? 0);
             $fullMarks = (float) ($subject['full_marks'] ?? 100);
             if ($fullMarks > 0 && $totalMark > $fullMarks) {
-              $fullMarksLabel = rtrim(rtrim(number_format($fullMarks, 2, '.', ''), '0'), '.');
-              throw new RuntimeException('The total mark cannot exceed ' . $fullMarksLabel . '.');
+              throw new RuntimeException(
+                  'রোল ' . $roll . '-এর মোট নম্বর পূর্ণমান '
+                  . formatFullMarksLabel($fullMarks) . ' অতিক্রম করতে পারে না।'
+              );
             }
             upsertStudentSubjectMark(
                 $db,
@@ -455,11 +507,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$pageScriptFiles = [
+    $basePath . 'js/marks-validation.js?v=' . (int) @filemtime(__DIR__ . '/../js/marks-validation.js'),
+];
+
 $pageScripts = [<<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('beforeprint', () => {
     document.querySelectorAll('.results-mark-sheet .mark-input').forEach((input) => {
-      const printValue = input.nextElementSibling;
+      const cell = input.closest('td');
+      const printValue = cell ? cell.querySelector('.print-mark') : null;
       if (printValue) printValue.textContent = input.value.trim() || '—';
     });
   });
@@ -674,8 +731,12 @@ include __DIR__ . '/../includes/layout-head.php';
             </form>
 
             <?php if ($selectedSubject && $examId > 0 && $students !== []): ?>
+              <?php
+                $subjectFullMarks = (float) ($selectedSubject['full_marks'] ?? 100);
+                $subjectFullMarksLabel = formatFullMarksLabel($subjectFullMarks > 0 ? $subjectFullMarks : 100);
+              ?>
               <?php if ($canEditMarks): ?>
-              <form method="post" class="card stat-card results-mark-sheet">
+              <form method="post" class="card stat-card results-mark-sheet" id="resultsMarkForm" data-full-marks="<?= h((string) $subjectFullMarks) ?>" data-full-label="<?= h($subjectFullMarksLabel) ?>" novalidate>
                 <?= csrfField() ?>
                 <input type="hidden" name="exam" value="<?= (int) $examId ?>">
                 <input type="hidden" name="cls" value="<?= (int) $classId ?>">
@@ -689,7 +750,7 @@ include __DIR__ . '/../includes/layout-head.php';
                   <div>
                     <strong><?= h((string) ($selectedSubject['subject_name_ban'] ?: $selectedSubject['subject_name'])) ?></strong>
                     <div class="small text-secondary">
-                      Full <?= (int) ($selectedSubject['full_marks'] ?? 100) ?>
+                      Full <?= h($subjectFullMarksLabel) ?>
                       <?= (int) $selectedSubject['is_optional'] === 1 ? ' · Optional' : '' ?>
                       · <?= count($students) ?> students
                     </div>
@@ -705,12 +766,15 @@ include __DIR__ . '/../includes/layout-head.php';
                     <a class="btn btn-outline-success" href="<?= h('results.php?' . http_build_query($pdfQuery)) ?>"><i class="bi bi-file-earmark-pdf me-1"></i>PDF ডাউনলোড</a>
                     <button class="btn btn-outline-primary" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i>প্রিন্ট</button>
                     <?php if ($canEditMarks): ?>
-                      <button class="btn btn-success results-save">Save all marks</button>
+                      <button class="btn btn-success results-save" type="submit">Save all marks</button>
                     <?php else: ?>
                       <span class="badge text-bg-secondary align-self-center">View only</span>
                     <?php endif; ?>
                   </div>
                 </div>
+                <?php if ($canEditMarks): ?>
+                <div class="results-mark-summary" id="resultsMarkSummary" hidden role="alert" aria-live="polite"></div>
+                <?php endif; ?>
                 <div class="results-print-heading">
                   <div class="results-print-brand">
                     <?php if ($printLogo !== ''): ?>
@@ -757,15 +821,31 @@ include __DIR__ . '/../includes/layout-head.php';
                             $practical = formatMarkValue($mark['practical'] ?? '');
                             $hasMarks = $mcq !== '' || $cq !== '' || $practical !== '';
                             $total = (float) $mcq + (float) $cq + (float) $practical;
-                            $full = (float) ($selectedSubject['full_marks'] ?? 100);
+                            $full = $subjectFullMarks > 0 ? $subjectFullMarks : 100;
+                            $rollLabel = (string) $student['cls_roll'];
                           ?>
-                          <tr>
-                            <td><?= h((string) $student['cls_roll']) ?></td>
+                          <tr data-mark-row data-roll="<?= h($rollLabel) ?>">
+                            <td><?= h($rollLabel) ?></td>
                             <td><?= h((string) $student['name_ban']) ?></td>
                             <?php if ((int) $selectedSubject['has_mcq'] === 1): ?>
                               <td>
                                 <?php if ($canEditMarks): ?>
-                                  <input class="form-control form-control-sm mark-input" name="mcq[<?= h($ref) ?>]" value="<?= h($mcq) ?>" inputmode="decimal"><span class="print-mark" style="display:none"><?= $mcq !== '' ? h($mcq) : '—' ?></span>
+                                  <div class="mark-field">
+                                    <input
+                                      class="form-control form-control-sm mark-input"
+                                      type="text"
+                                      name="mcq[<?= h($ref) ?>]"
+                                      value="<?= h($mcq) ?>"
+                                      inputmode="decimal"
+                                      autocomplete="off"
+                                      enterkeyhint="next"
+                                      maxlength="6"
+                                      data-component="MCQ"
+                                      aria-label="রোল <?= h($rollLabel) ?> MCQ"
+                                    >
+                                    <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
+                                  </div>
+                                  <span class="print-mark" style="display:none"><?= $mcq !== '' ? h($mcq) : '—' ?></span>
                                 <?php else: ?>
                                   <?= $mcq !== '' ? h($mcq) : '—' ?>
                                 <?php endif; ?>
@@ -774,7 +854,22 @@ include __DIR__ . '/../includes/layout-head.php';
                             <?php if ((int) $selectedSubject['has_cq'] === 1): ?>
                               <td>
                                 <?php if ($canEditMarks): ?>
-                                  <input class="form-control form-control-sm mark-input" name="cq[<?= h($ref) ?>]" value="<?= h($cq) ?>" inputmode="decimal"><span class="print-mark" style="display:none"><?= $cq !== '' ? h($cq) : '—' ?></span>
+                                  <div class="mark-field">
+                                    <input
+                                      class="form-control form-control-sm mark-input"
+                                      type="text"
+                                      name="cq[<?= h($ref) ?>]"
+                                      value="<?= h($cq) ?>"
+                                      inputmode="decimal"
+                                      autocomplete="off"
+                                      enterkeyhint="next"
+                                      maxlength="6"
+                                      data-component="CQ"
+                                      aria-label="রোল <?= h($rollLabel) ?> CQ"
+                                    >
+                                    <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
+                                  </div>
+                                  <span class="print-mark" style="display:none"><?= $cq !== '' ? h($cq) : '—' ?></span>
                                 <?php else: ?>
                                   <?= $cq !== '' ? h($cq) : '—' ?>
                                 <?php endif; ?>
@@ -783,14 +878,29 @@ include __DIR__ . '/../includes/layout-head.php';
                             <?php if ((int) $selectedSubject['has_practical'] === 1): ?>
                               <td>
                                 <?php if ($canEditMarks): ?>
-                                  <input class="form-control form-control-sm mark-input" name="practical[<?= h($ref) ?>]" value="<?= h($practical) ?>" inputmode="decimal"><span class="print-mark" style="display:none"><?= $practical !== '' ? h($practical) : '—' ?></span>
+                                  <div class="mark-field">
+                                    <input
+                                      class="form-control form-control-sm mark-input"
+                                      type="text"
+                                      name="practical[<?= h($ref) ?>]"
+                                      value="<?= h($practical) ?>"
+                                      inputmode="decimal"
+                                      autocomplete="off"
+                                      enterkeyhint="done"
+                                      maxlength="6"
+                                      data-component="Practical"
+                                      aria-label="রোল <?= h($rollLabel) ?> Practical"
+                                    >
+                                    <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
+                                  </div>
+                                  <span class="print-mark" style="display:none"><?= $practical !== '' ? h($practical) : '—' ?></span>
                                 <?php else: ?>
                                   <?= $practical !== '' ? h($practical) : '—' ?>
                                 <?php endif; ?>
                               </td>
                             <?php endif; ?>
-                            <td class="mark-total"><?= $hasMarks ? h((string) (int) round($total)) : '—' ?></td>
-                            <td><?= $hasMarks ? h(letterGrade($total, $full > 0 ? $full : 100)) : '—' ?></td>
+                            <td class="mark-total"><?= $hasMarks ? h(formatMarkValue($total)) : '—' ?></td>
+                            <td class="mark-grade"><?= $hasMarks ? h(letterGrade($total, $full)) : '—' ?></td>
                           </tr>
                         <?php endforeach; ?>
                       </tbody>
@@ -798,7 +908,7 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                 </div>
                 <?php if ($canEditMarks): ?>
-                <div class="card-footer text-end results-save"><button class="btn btn-success">Save all marks</button></div>
+                <div class="card-footer text-end results-save"><button class="btn btn-success" type="submit">Save all marks</button></div>
               </form>
                 <?php else: ?>
               </div>

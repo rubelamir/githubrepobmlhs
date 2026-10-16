@@ -75,6 +75,74 @@ function formatMarkValue(mixed $value): string
     return rtrim(rtrim($formatted, '0'), '.');
 }
 
+/**
+ * Keep only a non-negative decimal mark string (optional, up to 2 places).
+ * Bangla digits become ASCII; letters/signs/extra dots are stripped.
+ */
+function sanitizeMarkInputString(string $raw): string
+{
+    $raw = trim(asciiDigits($raw));
+    if ($raw === '') {
+        return '';
+    }
+
+    $cleaned = preg_replace('/[^0-9.]/', '', $raw) ?? '';
+    if ($cleaned === '') {
+        return '';
+    }
+
+    $dotPos = strpos($cleaned, '.');
+    if ($dotPos === false) {
+        return $cleaned;
+    }
+
+    $intPart = substr($cleaned, 0, $dotPos);
+    $fracPart = preg_replace('/\./', '', substr($cleaned, $dotPos + 1)) ?? '';
+    $intPart = $intPart === '' ? '0' : $intPart;
+    $fracPart = substr($fracPart, 0, 2);
+    if ($fracPart === '') {
+        return $intPart;
+    }
+
+    return $intPart . '.' . $fracPart;
+}
+
+/**
+ * @return array{ok:bool,value:?float,display:string,error:?string}
+ */
+function parseMarkComponentInput(string $raw, string $componentLabel = 'নম্বর', string $roll = ''): array
+{
+    $display = sanitizeMarkInputString($raw);
+    $prefix = $roll !== '' ? ('রোল ' . $roll . '-এর ') : '';
+    if ($display === '') {
+        return ['ok' => true, 'value' => null, 'display' => '', 'error' => null];
+    }
+    if (!is_numeric($display) || !is_finite((float) $display)) {
+        return [
+            'ok' => false,
+            'value' => null,
+            'display' => $display,
+            'error' => $prefix . $componentLabel . ' শুধু সংখ্যায় দিন।',
+        ];
+    }
+    $value = (float) $display;
+    if ($value < 0) {
+        return [
+            'ok' => false,
+            'value' => null,
+            'display' => $display,
+            'error' => $prefix . $componentLabel . ' ঋণাত্মক হতে পারে না।',
+        ];
+    }
+
+    return ['ok' => true, 'value' => $value, 'display' => formatMarkValue($value), 'error' => null];
+}
+
+function formatFullMarksLabel(float $fullMarks): string
+{
+    return rtrim(rtrim(number_format($fullMarks, 2, '.', ''), '0'), '.');
+}
+
 function asciiDigits(string $value): string
 {
     return str_replace(
