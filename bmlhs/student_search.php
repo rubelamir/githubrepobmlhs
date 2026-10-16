@@ -18,7 +18,7 @@ if (isset($_GET['suggest'])) {
     header('Cache-Control: no-store, no-cache, must-revalidate');
     $suggestions = [];
     if (mb_strlen($searchQuery, 'UTF-8') >= 2) {
-        foreach (searchPublicStudents($db, $searchQuery, 8) as $student) {
+        foreach (searchPublicStudents($db, $searchQuery, 5) as $student) {
             $suggestions[] = [
                 'id' => (int) $student['id'],
                 'name' => publicStudentDisplayName($student),
@@ -49,7 +49,7 @@ include 'navbar&marqueetag.php';
 
 $resultCount = count($students);
 ?>
-<?php schoolPageHero('সার্চ ফলাফল', 'নাম, রোল বা শ্রেণী দিয়ে খুঁজে পাওয়া ছাত্র-ছাত্রী'); ?>
+<?php schoolPageHero('সার্চ ফলাফল', 'নাম, রোল, পিতা/মাতার নাম বা মোবাইল দিয়ে খুঁজে পাওয়া ছাত্র-ছাত্রী'); ?>
 
 <div class="school-student-search">
     <div class="container py-4 py-lg-5">
@@ -58,9 +58,9 @@ $resultCount = count($students);
             <form class="school-student-search-form" id="resultStudentSearch" action="student_search" method="get" role="search">
                 <label class="visually-hidden" for="resultStudentSearchInput">ছাত্র-ছাত্রীর তথ্য খুজুন</label>
                 <div class="school-home-search-field">
-                <input class="school-home-search-input" type="search" id="resultStudentSearchInput" name="q" value="<?= h($searchQuery) ?>" placeholder="ছাত্র-ছাত্রীর তথ্য খুজুন" maxlength="120" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="resultStudentSuggest" aria-describedby="resultStudentSearchMessage">
-                <div class="school-suggest" id="resultStudentSuggest" hidden role="listbox" aria-label="সার্চ সাজেশন"></div>
+                <input class="school-home-search-input" type="search" id="resultStudentSearchInput" name="q" value="<?= h($searchQuery) ?>" placeholder="নাম, রোল, পিতা/মাতা বা মোবাইল" maxlength="120" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="resultStudentSuggest" aria-describedby="resultStudentSearchMessage">
                 </div>
+                <div class="school-suggest" id="resultStudentSuggest" hidden role="listbox" aria-label="সার্চ সাজেশন"></div>
                 <button class="school-home-search-btn" type="submit">
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                     <span>Search</span>

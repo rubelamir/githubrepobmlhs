@@ -4,6 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/auth.php';
 
 $mobileAdminDarkTheme = !empty($_SESSION['mobile_admin_dark_theme']);
+$androidAppUserAgent = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+$androidAppRequestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+$isAndroidAdminApp = $androidAppRequestedWith === 'com.bmlhs.mobile'
+    || str_contains($androidAppUserAgent, ' wv');
 
 if (!isset($basePath)) {
     $basePath = '';
@@ -13,7 +17,7 @@ $panelSettings = (isset($settings) && is_array($settings)) ? $settings : schoolS
 $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publicSiteUrl('image/school_logo.png'));
 ?>
 <!doctype html>
-<html lang="bn">
+<html lang="bn"<?= $isAndroidAdminApp ? ' class="bmlhs-android-app"' : '' ?>>
   <head>
     <meta charset="utf-8" />
     <title><?= h($pageTitle) ?></title>
@@ -21,6 +25,9 @@ $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publi
       (() => {
         'use strict';
         const root = document.documentElement;
+        if (/[;\s]wv\b/.test(navigator.userAgent || '')) {
+          root.classList.add('bmlhs-android-app');
+        }
         if (root.getAttribute('data-lte-color-mode') === 'off') return;
         const STORAGE_KEY = 'lte-theme';
         const mobileAdminDarkTheme = <?= $mobileAdminDarkTheme ? 'true' : 'false' ?>;
@@ -70,6 +77,54 @@ $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publi
       .sidebar-brand .brand-image { object-fit: contain; background: #fff; }
       .app-header [data-bmlhs-sidebar-toggle] { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
       .app-header .sidebar-toggle-icon { font-size: 1.6rem; line-height: 1; }
+      html.bmlhs-android-app .app-header.navbar {
+        --bs-navbar-padding-y: 0px;
+        --bs-navbar-padding-x: 4px;
+        --bs-navbar-nav-link-padding-x: 0px;
+        min-height: 64px;
+      }
+      html.bmlhs-android-app .app-header .container-fluid {
+        align-items: center;
+        min-height: 64px;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+      html.bmlhs-android-app .app-header .navbar-nav {
+        align-items: center;
+        gap: 10px;
+      }
+      html.bmlhs-android-app .app-header .navbar-nav > .nav-item {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+      }
+      html.bmlhs-android-app .app-header .navbar-nav > .nav-item > .nav-link {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        gap: 0.4rem;
+        min-width: 64px !important;
+        width: auto;
+        min-height: 64px !important;
+        height: 64px !important;
+        margin: 0;
+        padding: 0 16px !important;
+        line-height: 1;
+        touch-action: manipulation;
+      }
+      html.bmlhs-android-app .app-header .navbar-nav > .nav-item > .nav-link .bi,
+      html.bmlhs-android-app .app-header .sidebar-toggle-icon {
+        font-size: 1.85rem;
+        line-height: 1;
+      }
+      html.bmlhs-android-app .app-header .user-menu .user-image {
+        float: none !important;
+        width: 2.6rem !important;
+        height: 2.6rem !important;
+        margin: 0 !important;
+        font-size: 1rem !important;
+      }
       @media print {
         .app-sidebar, .app-header, .app-footer, .no-print { display: none !important; }
         .app-main { margin: 0 !important; padding: 0 !important; }

@@ -90,6 +90,15 @@
     });
   }
 
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function bindStudentSuggest() {
     var forms = document.querySelectorAll('#homeStudentSearch, #resultStudentSearch');
     Array.prototype.forEach.call(forms, function (form) {
@@ -103,9 +112,12 @@
         list.className = 'school-suggest';
         list.hidden = true;
         list.setAttribute('role', 'listbox');
-        var field = input.closest('.school-home-search-field') || form;
-        field.style.position = field.style.position || 'relative';
-        field.appendChild(list);
+        var field = input.closest('.school-home-search-field');
+        if (field && field.parentNode === form) {
+          field.insertAdjacentElement('afterend', list);
+        } else {
+          form.appendChild(list);
+        }
       }
 
       var timer = 0;
@@ -147,20 +159,49 @@
         input.removeAttribute('aria-invalid');
       }
 
+      function metaChip(label, value) {
+        var text = String(value || '').trim() || '—';
+        return '<span class="school-suggest-chip">'
+          + '<span class="school-suggest-chip-label">' + escapeHtml(label) + '</span>'
+          + '<span class="school-suggest-chip-sep" aria-hidden="true">·</span>'
+          + '<span class="school-suggest-chip-value">' + escapeHtml(text) + '</span>'
+          + '</span>';
+      }
+
       function render(payload) {
-        items = payload.items || [];
+        items = (payload.items || []).slice(0, 5);
         if (!items.length) {
           hideList();
           return;
         }
-        var html = items.map(function (item, index) {
-          var meta = [item.class, item.section, item.roll ? 'রোল ' + item.roll : ''].filter(Boolean).join(' · ');
-          return '<button type="button" class="school-suggest-item" role="option" data-index="' + index + '" data-url="' + item.url + '">'
-            + '<strong>' + item.name + '</strong>'
-            + (meta ? '<span>' + meta + '</span>' : '')
+        var html = '<div class="school-suggest-panel">'
+          + '<div class="school-suggest-head">'
+          + '<span>সাজেশন</span>'
+          + '<span class="school-suggest-count">' + toBn(items.length) + ' জন</span>'
+          + '</div>'
+          + '<div class="school-suggest-list">';
+        html += items.map(function (item, index) {
+          var name = escapeHtml(item.name || '—');
+          var rollText = String(item.roll || '').trim();
+          var rollAvatar = escapeHtml(rollText !== '' ? rollText : '—');
+          return '<button type="button" class="school-suggest-item" role="option" data-index="' + index + '" data-url="' + escapeHtml(item.url || '') + '">'
+            + '<span class="school-suggest-avatar" aria-hidden="true" title="রোল">' + rollAvatar + '</span>'
+            + '<span class="school-suggest-body">'
+            + '<span class="school-suggest-name">' + name + '</span>'
+            + '<span class="school-suggest-meta">'
+            + metaChip('শ্রেণী', item.class)
+            + metaChip('শাখা', item.section)
+            + '</span>'
+            + '</span>'
+            + '<span class="school-suggest-go" aria-hidden="true"><i class="fa-solid fa-chevron-right"></i></span>'
             + '</button>';
         }).join('');
-        html += '<button type="button" class="school-suggest-all" data-all="1">সব ফলাফল দেখুন</button>';
+        html += '</div>'
+          + '<button type="button" class="school-suggest-all" data-all="1">'
+          + '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>'
+          + '<span>সব ফলাফল দেখুন</span>'
+          + '</button>'
+          + '</div>';
         list.innerHTML = html;
         list.hidden = false;
         input.setAttribute('aria-expanded', 'true');

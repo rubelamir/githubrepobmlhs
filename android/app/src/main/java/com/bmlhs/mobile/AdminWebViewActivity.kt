@@ -400,9 +400,54 @@ class AdminWebViewActivity : ComponentActivity() {
             (function() {
               if (window.__bmlhsSidebarTouchFixInstalled) return;
               window.__bmlhsSidebarTouchFixInstalled = true;
+              document.documentElement.classList.add('bmlhs-android-app');
               var toggleSelector = '[data-bmlhs-sidebar-toggle], [data-lte-toggle="sidebar"]';
               var layerFix = document.createElement('style');
               layerFix.textContent = `
+                .app-header.navbar {
+                  --bs-navbar-padding-y: 0px;
+                  --bs-navbar-padding-x: 4px;
+                  --bs-navbar-nav-link-padding-x: 0px;
+                  min-height: 64px !important;
+                }
+                .app-header .container-fluid {
+                  align-items: center;
+                  min-height: 64px !important;
+                  padding-left: 4px !important;
+                  padding-right: 4px !important;
+                }
+                .app-header .navbar-nav { align-items: center; gap: 10px; }
+                .app-header .navbar-nav > .nav-item {
+                  display: flex;
+                  align-items: center;
+                  flex: 0 0 auto;
+                }
+                .app-header .navbar-nav > .nav-item > .nav-link {
+                  display: inline-flex !important;
+                  align-items: center;
+                  justify-content: center;
+                  box-sizing: border-box;
+                  gap: 0.4rem;
+                  min-width: 64px !important;
+                  min-height: 64px !important;
+                  height: 64px !important;
+                  margin: 0;
+                  padding: 0 16px !important;
+                  line-height: 1;
+                  touch-action: manipulation;
+                }
+                .app-header .navbar-nav > .nav-item > .nav-link .bi,
+                .app-header .sidebar-toggle-icon {
+                  font-size: 1.85rem;
+                  line-height: 1;
+                }
+                .app-header .user-menu .user-image {
+                  float: none !important;
+                  width: 2.6rem !important;
+                  height: 2.6rem !important;
+                  margin: 0 !important;
+                  font-size: 1rem !important;
+                }
                 .app-wrapper { isolation: isolate !important; }
                 .app-header { position: relative !important; z-index: 2 !important; }
                 .app-main { position: relative !important; z-index: 1 !important; }

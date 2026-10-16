@@ -258,16 +258,16 @@ endif;
                 <label class="visually-hidden" for="homeStudentSearchInput">ছাত্র-ছাত্রীর তথ্য খুজুন</label>
                 <div class="school-home-search-field">
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                    <input class="school-home-search-input" type="search" id="homeStudentSearchInput" name="q" value="" placeholder="ছাত্র-ছাত্রীর তথ্য খুজুন" maxlength="120" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="homeStudentSuggest" aria-describedby="homeStudentSearchHint homeStudentSearchMessage"<?= $homeSearchEmpty ? ' aria-invalid="true"' : '' ?>>
-                    <div class="school-suggest" id="homeStudentSuggest" hidden role="listbox" aria-label="সার্চ সাজেশন"></div>
+                    <input class="school-home-search-input" type="search" id="homeStudentSearchInput" name="q" value="" placeholder="নাম, রোল, পিতা/মাতা বা মোবাইল" maxlength="120" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="homeStudentSuggest" aria-describedby="homeStudentSearchHint homeStudentSearchMessage"<?= $homeSearchEmpty ? ' aria-invalid="true"' : '' ?>>
                 </div>
+                <div class="school-suggest" id="homeStudentSuggest" hidden role="listbox" aria-label="সার্চ সাজেশন"></div>
                 <button class="school-home-search-btn" type="submit">
                     <span>Search</span>
                     <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                 </button>
             </form>
             <p class="school-home-search-message" id="homeStudentSearchMessage" role="status" aria-live="polite"<?= $homeSearchEmpty ? '' : ' hidden' ?>><?= $homeSearchEmpty ? 'কোন তথ্য খুঁজে পাওয়া যায় নাই' : '' ?></p>
-            <p class="school-home-search-hint" id="homeStudentSearchHint">নাম, রোল, শ্রেণী, শাখা অথবা মোবাইল নম্বর দিয়ে খুঁজুন</p>
+            <p class="school-home-search-hint" id="homeStudentSearchHint">নাম, রোল, পিতার নাম, মাতার নাম অথবা মোবাইল (বাংলা/ইংরেজি) দিয়ে খুঁজুন</p>
         </section>
 
         <section class="school-prayer mb-4" id="schoolPrayerTimes" aria-labelledby="homePrayerHeading" data-city="Lakshmipur" data-country="Bangladesh" data-latitude="22.9447" data-longitude="90.8300" data-method="1" data-school="1">

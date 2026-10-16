@@ -180,22 +180,21 @@ function publicStudentSearchMatchSql(string $query): array
     $like = publicStudentSearchLike($needle);
     $digits = preg_replace('/\D+/', '', $query) ?? '';
 
+    // Public search: student/parent names (BN/EN), mobile, and class roll (BN/EN digits).
     $sql = '(LOWER(CONCAT_WS(\' \',
-                s.name_ban, s.name_eng, s.fname_ban, s.fname_eng,
-                s.mname_ban, s.mname_eng, s.cls_roll, s.session_year,
-                s.mobile, s.admission_token, s.birth_reg_no,
-                c.class_name_ban, c.class_name, sec.section_name_ban, sec.section_name
+                s.name_ban, s.name_eng,
+                s.fname_ban, s.fname_eng,
+                s.mname_ban, s.mname_eng,
+                s.mobile, s.cls_roll
             )) LIKE :q ESCAPE \'\\\\\')';
     $params = ['q' => $like];
 
     if ($digits !== '') {
         $digitLike = publicStudentSearchLike($digits);
         $sql .= ' OR REPLACE(REPLACE(REPLACE(IFNULL(s.mobile, \'\'), \'-\', \'\'), \' \', \'\'), \'+\', \'\') LIKE :d1 ESCAPE \'\\\\\''
-            . ' OR CAST(s.cls_roll AS CHAR) LIKE :d2 ESCAPE \'\\\\\''
-            . ' OR CAST(s.session_year AS CHAR) LIKE :d3 ESCAPE \'\\\\\'';
+            . ' OR CAST(s.cls_roll AS CHAR) LIKE :d2 ESCAPE \'\\\\\'';
         $params['d1'] = $digitLike;
         $params['d2'] = $digitLike;
-        $params['d3'] = $digitLike;
     }
 
     return ['(' . $sql . ')', $params];
