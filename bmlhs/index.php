@@ -267,7 +267,7 @@ endif;
                 </button>
             </form>
             <p class="school-home-search-message" id="homeStudentSearchMessage" role="status" aria-live="polite"<?= $homeSearchEmpty ? '' : ' hidden' ?>><?= $homeSearchEmpty ? 'কোন তথ্য খুঁজে পাওয়া যায় নাই' : '' ?></p>
-            <p class="school-home-search-hint" id="homeStudentSearchHint">নাম, রোল, পিতার নাম, মাতার নাম অথবা মোবাইল (বাংলা/ইংরেজি) দিয়ে খুঁজুন</p>
+            <p class="school-home-search-hint" id="homeStudentSearchHint">নাম, পিতা/মাতার নাম, রোল অথবা মোবাইল নাম্বার দিয়ে খুঁজুন</p>
         </section>
 
         <section class="school-prayer mb-4" id="schoolPrayerTimes" aria-labelledby="homePrayerHeading" data-city="Lakshmipur" data-country="Bangladesh" data-latitude="22.9447" data-longitude="90.8300" data-method="1" data-school="1">

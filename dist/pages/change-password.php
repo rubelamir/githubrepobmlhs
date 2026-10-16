@@ -18,7 +18,6 @@ if ($teacher === null) {
 $teacherId = (int) $teacher['id'];
 $rateScope = 'password_change';
 $rateKey = (string) $teacherId;
-$minLength = 8;
 $maxLength = 72; // bcrypt silently ignores anything beyond 72 bytes.
 
 $errors = [];
@@ -39,12 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($new === '') {
             $errors['new_password'] = 'নতুন পাসওয়ার্ড দিতে হবে।';
-        } elseif (strlen($new) < $minLength) {
-            $errors['new_password'] = 'নতুন পাসওয়ার্ড অন্তত ' . bnDigits((string) $minLength) . ' অক্ষরের হতে হবে।';
         } elseif (strlen($new) > $maxLength) {
             $errors['new_password'] = 'নতুন পাসওয়ার্ড ' . bnDigits((string) $maxLength) . ' অক্ষরের বেশি হতে পারবে না।';
-        } elseif (preg_match('/[A-Za-z]/', $new) !== 1 || preg_match('/\d/', $new) !== 1) {
-            $errors['new_password'] = 'নতুন পাসওয়ার্ডে অন্তত একটি ইংরেজি অক্ষর ও একটি সংখ্যা থাকতে হবে।';
         } elseif ($new === $current) {
             $errors['new_password'] = 'নতুন পাসওয়ার্ড বর্তমান পাসওয়ার্ড থেকে ভিন্ন হতে হবে।';
         }
@@ -233,7 +228,6 @@ include __DIR__ . '/../includes/layout-head.php';
                           id="newPassword"
                           name="new_password"
                           autocomplete="new-password"
-                          minlength="<?= $minLength ?>"
                           maxlength="<?= $maxLength ?>"
                           required
                         >
@@ -275,8 +269,7 @@ include __DIR__ . '/../includes/layout-head.php';
                     <div class="border-top pt-3">
                       <p class="text-secondary small mb-2">পাসওয়ার্ড তৈরির নিয়ম:</p>
                       <ul class="text-secondary small mb-0 ps-3">
-                        <li>অন্তত <?= h(bnDigits((string) $minLength)) ?> অক্ষর দীর্ঘ হতে হবে।</li>
-                        <li>অন্তত একটি ইংরেজি অক্ষর ও একটি সংখ্যা থাকতে হবে।</li>
+                        <li>নতুন পাসওয়ার্ড খালি রাখা যাবে না।</li>
                         <li>বর্তমান পাসওয়ার্ড থেকে ভিন্ন হতে হবে।</li>
                         <li>নিজের মোবাইল নম্বর বা জন্মতারিখ ব্যবহার না করাই ভালো।</li>
                       </ul>
