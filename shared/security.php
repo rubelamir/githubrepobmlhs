@@ -124,7 +124,7 @@ function safeUnlinkUnderDirectory(string $directory, ?string $filename): bool
 
 /**
  * File-based login rate limiting keyed by IP + identifier (e.g. mobile).
- * Locks after $maxAttempts failures for $lockSeconds (default 5 / 15 minutes).
+ * Locks after $maxAttempts failures for $lockSeconds (default 5 / 5 minutes).
  */
 function loginClientIp(): string
 {
@@ -197,7 +197,7 @@ function writeLoginRateLimit(string $bucket, array $data): void
     );
 }
 
-function isLoginRateLimited(string $scope, string $identifier, int $maxAttempts = 5, int $lockSeconds = 900): bool
+function isLoginRateLimited(string $scope, string $identifier, int $maxAttempts = 5, int $lockSeconds = 300): bool
 {
     $bucket = loginRateLimitBucket($scope, $identifier);
     $data = readLoginRateLimit($bucket);
@@ -214,7 +214,7 @@ function isLoginRateLimited(string $scope, string $identifier, int $maxAttempts 
     return false;
 }
 
-function recordLoginFailure(string $scope, string $identifier, int $maxAttempts = 5, int $lockSeconds = 900): void
+function recordLoginFailure(string $scope, string $identifier, int $maxAttempts = 5, int $lockSeconds = 300): void
 {
     $bucket = loginRateLimitBucket($scope, $identifier);
     $data = readLoginRateLimit($bucket);
