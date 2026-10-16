@@ -23,7 +23,7 @@ function smsGatewaySettings(PDO $db): array
     $settings = function_exists('schoolSettings') ? schoolSettings($db) : [];
     $provider = strtolower(trim((string) ($settings['sms_provider'] ?? '')));
     $webhook = trim((string) ($settings['notify_sms_url'] ?? ''));
-    if (!in_array($provider, ['sslwireless', 'bulksmsbd', 'webhook'], true)) {
+    if (!in_array($provider, ['sslwireless', 'bulksmsbd', 'bdbulksms', 'webhook'], true)) {
         $provider = $webhook !== '' ? 'webhook' : '';
     }
 
@@ -40,6 +40,9 @@ function smsGatewayReady(PDO $db): bool
     $settings = smsGatewaySettings($db);
     if ($settings['provider'] === 'webhook') {
         return $settings['webhook'] !== '' && str_contains($settings['webhook'], '{mobile}') && str_contains($settings['webhook'], '{text}');
+    }
+    if ($settings['provider'] === 'bdbulksms') {
+        return $settings['token'] !== '';
     }
     if (in_array($settings['provider'], ['sslwireless', 'bulksmsbd'], true)) {
         return $settings['token'] !== '' && $settings['sid'] !== '';
@@ -96,7 +99,7 @@ function sendSchoolSmsBatch(PDO $db, array $mobiles, string $text, string $conte
     }
 
     $settings = smsGatewaySettings($db);
-    $chunkSize = $settings['provider'] === 'webhook' ? 1 : 50;
+    $chunkSize = in_array($settings['provider'], ['webhook', 'bdbulksms'], true) ? 1 : 50;
     foreach (array_chunk($numbers, $chunkSize) as $chunk) {
         $result = dispatchSchoolSms($settings, $chunk, $text);
         $status = $result['ok'] ? 'sent' : 'failed';
@@ -112,7 +115,12 @@ function dispatchSchoolSms(array $settings, array $numbers, string $text): array
 {
     $provider = (string) ($settings['provider'] ?? '');
     if ($provider === 'webhook') {
-        return dispatchWebhookSms((string) $settings['webhook'], $numbers, $text);
+        return dispatchWebhookSms(
+            (string) $settings['webhook'],
+            $numbers,
+            $text,
+            (string) ($settings['token'] ?? '')
+        );
     }
     if ($provider === 'sslwireless') {
         return dispatchSslWirelessSms((string) $settings['token'], (string) $settings['sid'], $numbers, $text);
@@ -120,23 +128,80 @@ function dispatchSchoolSms(array $settings, array $numbers, string $text): array
     if ($provider === 'bulksmsbd') {
         return dispatchBulkSmsBd((string) $settings['token'], (string) $settings['sid'], $numbers, $text);
     }
+    if ($provider === 'bdbulksms') {
+        return dispatchBdBulkSmsNet((string) $settings['token'], $numbers, $text);
+    }
 
     return ['ok' => false, 'detail' => 'unknown_provider'];
 }
 
-function dispatchWebhookSms(string $template, array $numbers, string $text): array
+function smsLocalBdMobile(string $normalized880): string
+{
+    if (str_starts_with($normalized880, '880') && strlen($normalized880) === 13) {
+        return substr($normalized880, 2);
+    }
+
+    return $normalized880;
+}
+
+function smsWebhookLooksFailed(string $body): bool
+{
+    $body = trim($body);
+    if ($body === '') {
+        return false;
+    }
+    if (preg_match('/\b(error|invalid|failed|denied|unauthorized)\b/i', $body) === 1) {
+        return true;
+    }
+
+    return str_contains(strtolower($body), 'have not supplied');
+}
+
+function dispatchWebhookSms(string $template, array $numbers, string $text, string $token = ''): array
 {
     $mobile = $numbers[0] ?? '';
     $url = strtr($template, [
         '{mobile}' => rawurlencode($mobile),
         '{text}' => rawurlencode($text),
+        '{token}' => rawurlencode($token),
     ]);
     $response = smsHttpRequest($url, '', [], 'GET');
+    $ok = $response['ok'] && !smsWebhookLooksFailed((string) $response['body']);
 
     return [
-        'ok' => $response['ok'],
-        'detail' => $response['ok'] ? 'webhook' : ($response['error'] !== '' ? $response['error'] : 'webhook_failed'),
+        'ok' => $ok,
+        'detail' => $ok ? 'webhook' : smsResponseDetail($response, 'webhook_failed'),
     ];
+}
+
+function dispatchBdBulkSmsNet(string $token, array $numbers, string $text): array
+{
+    $mobile = smsLocalBdMobile((string) ($numbers[0] ?? ''));
+    $body = http_build_query([
+        'token' => $token,
+        'to' => $mobile,
+        'message' => $text,
+    ]);
+    $response = smsHttpRequest(
+        'https://api.bdbulksms.net/api.php?json',
+        $body,
+        ['Content-Type: application/x-www-form-urlencoded']
+    );
+    $decoded = json_decode($response['body'], true);
+    $ok = $response['ok'] && !smsWebhookLooksFailed((string) $response['body']);
+    if (is_array($decoded)) {
+        foreach ($decoded as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $status = strtolower(trim((string) ($row['status'] ?? $row['response'] ?? '')));
+            if ($status !== '' && !in_array($status, ['success', 'sent', 'ok'], true) && !str_contains($status, 'success')) {
+                $ok = false;
+            }
+        }
+    }
+
+    return ['ok' => $ok, 'detail' => $ok ? 'bdbulksms' : smsResponseDetail($response, 'bdbulksms_failed')];
 }
 
 function dispatchSslWirelessSms(string $token, string $sid, array $numbers, string $text): array
@@ -305,4 +370,109 @@ function admissionTokenSmsText(PDO $db, string $token): string
     $link = smsPublicUrl('online_admission');
 
     return $schoolName . ' ভর্তি টোকেন: ' . $token . '। আবেদন: ' . $link;
+}
+
+function parseBdBulkSmsApiParts(string $body): array
+{
+    $cleaned = str_ireplace(['</br>', '<br>', '<br/>', '<br />'], "\n", $body);
+    $parts = preg_split('/\R+/', trim($cleaned)) ?: [];
+    $values = [];
+    foreach ($parts as $part) {
+        $part = trim(html_entity_decode(strip_tags($part), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($part !== '') {
+            $values[] = $part;
+        }
+    }
+
+    return $values;
+}
+
+function fetchBdBulkSmsAccountInfo(string $token): array
+{
+    $empty = [
+        'ok' => false,
+        'balance' => null,
+        'rate' => null,
+        'sms_count' => null,
+        'expire_date' => '',
+        'days_remaining' => null,
+        'detail' => '',
+    ];
+    $token = trim($token);
+    if ($token === '') {
+        $empty['detail'] = 'missing_token';
+
+        return $empty;
+    }
+
+    $url = 'https://api.bdbulksms.net/g_api.php?token=' . rawurlencode($token) . '&balance&expiry&rate';
+    $response = smsHttpRequest($url, '', [], 'GET');
+    if (!$response['ok']) {
+        $empty['detail'] = smsResponseDetail($response, 'account_lookup_failed');
+
+        return $empty;
+    }
+    $parts = parseBdBulkSmsApiParts((string) $response['body']);
+    if (count($parts) < 3) {
+        $empty['detail'] = trim((string) $response['body']) !== ''
+            ? smsResponseDetail($response, 'account_lookup_failed')
+            : 'account_lookup_failed';
+
+        return $empty;
+    }
+
+    $balance = is_numeric($parts[0]) ? (float) $parts[0] : null;
+    $expireDate = (string) ($parts[1] ?? '');
+    $rate = is_numeric($parts[2] ?? null) ? (float) $parts[2] : null;
+    $smsCount = null;
+    if ($balance !== null && $rate !== null && $rate > 0) {
+        $smsCount = round($balance / $rate, 2);
+    }
+    $daysRemaining = null;
+    if (preg_match('/^(\d{2})-(\d{2})-(\d{4})$/', $expireDate, $match) === 1) {
+        $expireTs = strtotime($match[3] . '-' . $match[2] . '-' . $match[1] . ' 23:59:59');
+        if ($expireTs !== false) {
+            $daysRemaining = (int) max(0, floor(($expireTs - time()) / 86400));
+        }
+    }
+
+    return [
+        'ok' => true,
+        'balance' => $balance,
+        'rate' => $rate,
+        'sms_count' => $smsCount,
+        'expire_date' => $expireDate,
+        'days_remaining' => $daysRemaining,
+        'detail' => '',
+    ];
+}
+
+function smsAccountOverview(PDO $db): array
+{
+    $settings = smsGatewaySettings($db);
+    $token = (string) ($settings['token'] ?? '');
+    if ($token === '') {
+        return ['ok' => false, 'detail' => 'missing_token'];
+    }
+    $provider = (string) ($settings['provider'] ?? '');
+    $webhook = (string) ($settings['webhook'] ?? '');
+    $isBdBulk = $provider === 'bdbulksms'
+        || ($provider === 'webhook' && str_contains(strtolower($webhook), 'bdbulksms.net'));
+    if (!$isBdBulk) {
+        return ['ok' => false, 'detail' => 'provider_unsupported'];
+    }
+
+    $cacheKey = 'sms_account_overview_' . hash('sha256', $token);
+    $cached = $_SESSION[$cacheKey] ?? null;
+    if (is_array($cached) && isset($cached['expires_at'], $cached['data']) && (int) $cached['expires_at'] > time()) {
+        return is_array($cached['data']) ? $cached['data'] : ['ok' => false, 'detail' => 'cache_error'];
+    }
+
+    $info = fetchBdBulkSmsAccountInfo($token);
+    $_SESSION[$cacheKey] = [
+        'expires_at' => time() + 120,
+        'data' => $info,
+    ];
+
+    return $info;
 }

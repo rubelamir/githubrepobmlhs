@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($fields as $field) {
             $values[$field] = trim((string) ($_POST[$field] ?? ''));
         }
-        if (!in_array($values['sms_provider'], ['', 'webhook', 'sslwireless', 'bulksmsbd'], true)) {
+        if (!in_array($values['sms_provider'], ['', 'webhook', 'sslwireless', 'bulksmsbd', 'bdbulksms'], true)) {
             $values['sms_provider'] = '';
         }
         $postedToken = trim((string) ($_POST['sms_api_token'] ?? ''));
@@ -121,14 +121,15 @@ include __DIR__ . '/../includes/layout-head.php';
                     <label class="form-label">SMS provider</label>
                     <select class="form-select" name="sms_provider">
                       <option value="" <?= $smsProvider === '' ? 'selected' : '' ?>>Off</option>
+                      <option value="bdbulksms" <?= $smsProvider === 'bdbulksms' ? 'selected' : '' ?>>BD Bulk SMS (GreenWeb)</option>
                       <option value="sslwireless" <?= $smsProvider === 'sslwireless' ? 'selected' : '' ?>>SSL Wireless</option>
                       <option value="bulksmsbd" <?= $smsProvider === 'bulksmsbd' ? 'selected' : '' ?>>BulkSMS BD</option>
                       <option value="webhook" <?= $smsProvider === 'webhook' ? 'selected' : '' ?>>Webhook URL</option>
                     </select>
                   </div>
-                  <div class="col-md-4"><label class="form-label">API token / API key</label><input class="form-control" type="password" name="sms_api_token" value="" autocomplete="new-password" placeholder="<?= ($settings['sms_api_token'] ?? '') !== '' ? 'Saved. Enter a new token to replace it.' : 'API token' ?>"></div>
-                  <div class="col-md-4"><label class="form-label">Sender ID (SID)</label><input class="form-control" name="sms_sid" value="<?= h((string) ($settings['sms_sid'] ?? '')) ?>" placeholder="Approved sender name"></div>
-                  <div class="col-md-12"><label class="form-label">SMS webhook URL</label><input class="form-control" name="notify_sms_url" value="<?= h((string) ($settings['notify_sms_url'] ?? '')) ?>" placeholder="https://sms.example.com/send?to={mobile}&amp;msg={text}"><div class="form-text">SSL Wireless or BulkSMS uses the token and sender ID. Webhook is the older option: include <code>{mobile}</code> and <code>{text}</code>. Admission tokens, password reset and published results use this gateway.</div></div>
+                  <div class="col-md-4"><label class="form-label">API token / API key</label><input class="form-control" type="text" name="sms_api_token" value="<?= h((string) ($settings['sms_api_token'] ?? '')) ?>" autocomplete="off" spellcheck="false" placeholder="API token"></div>
+                  <div class="col-md-4"><label class="form-label">Sender ID (SID)</label><input class="form-control" name="sms_sid" value="<?= h((string) ($settings['sms_sid'] ?? '')) ?>" placeholder="Approved sender name"><div class="form-text">Needed for SSL Wireless / BulkSMS BD. Not required for BD Bulk SMS (GreenWeb).</div></div>
+                  <div class="col-md-12"><label class="form-label">SMS webhook URL</label><input class="form-control" name="notify_sms_url" value="<?= h((string) ($settings['notify_sms_url'] ?? '')) ?>" placeholder="https://sms.example.com/send?to={mobile}&amp;msg={text}"><div class="form-text">Prefer <strong>BD Bulk SMS (GreenWeb)</strong> with your panel token. Webhook needs <code>{mobile}</code> and <code>{text}</code>; optional <code>{token}</code>. Example: <code>https://api.bdbulksms.net/api.php?token={token}&amp;to={mobile}&amp;message={text}</code></div></div>
                   <div class="col-md-6">
                     <?php renderCropperField('logoFile', 'logo_data', 'Logo', 'Crop to 400×400px JPEG, maximum 150KB.'); ?>
                     <?php if (!empty($settings['logo'])): ?>

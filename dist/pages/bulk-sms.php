@@ -154,8 +154,26 @@ if ($loadList && $audience === 'teachers' && tableExists($db, 'teacher_info')) {
     $teachers = fetchRows($db, $sql, $params);
 }
 
+$smsAccount = smsAccountOverview($db);
+
 $pageStyles = <<<'CSS'
 .sms-person-photo { width: 40px; height: 50px; object-fit: cover; }
+.sms-balance-card { background: #f4f5f7; border: 0; }
+.sms-balance-card .sms-balance-col { min-height: 9.5rem; }
+.sms-balance-card .sms-balance-label { font-size: .9rem; color: #6c757d; margin-bottom: .35rem; }
+.sms-balance-card .sms-balance-value { color: #dc3545; font-weight: 700; font-size: 1.15rem; }
+.sms-balance-card .sms-rate-value { color: #0d6efd; font-weight: 700; font-size: 1.15rem; }
+.sms-balance-card .sms-expire-ring {
+  width: 8.5rem; height: 8.5rem; margin: 0 auto;
+  border-radius: 50%; border: 8px solid #28a745;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #fff;
+}
+.sms-balance-card .sms-expire-pct { font-size: 1.5rem; font-weight: 700; color: #6c757d; line-height: 1.1; }
+.sms-balance-card .sms-expire-note { font-size: .72rem; color: #6c757d; max-width: 6.8rem; text-align: center; }
+@media (max-width: 767.98px) {
+  .sms-balance-card .sms-balance-col { min-height: 0; padding-top: .75rem; padding-bottom: .75rem; }
+}
 CSS;
 $pageScripts = [<<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
@@ -231,6 +249,46 @@ include __DIR__ . '/../includes/layout-head.php';
             <?php include __DIR__ . '/../includes/flash.php'; ?>
             <?php if (!smsGatewayReady($db)): ?>
               <div class="alert alert-warning">Set the SMS provider, API token and sender ID in <a href="school-settings.php">School Settings</a> before sending.</div>
+            <?php endif; ?>
+            <?php if (!empty($smsAccount['ok'])): ?>
+              <?php
+                $balance = $smsAccount['balance'];
+                $rate = $smsAccount['rate'];
+                $smsCount = $smsAccount['sms_count'];
+                $expireDate = (string) ($smsAccount['expire_date'] ?? '');
+                $daysRemaining = $smsAccount['days_remaining'];
+                $expirePct = $daysRemaining === null ? null : (int) min(100, max(0, (int) round(($daysRemaining / 90) * 100)));
+              ?>
+              <div class="card sms-balance-card mb-3">
+                <div class="card-body py-3">
+                  <div class="row align-items-center g-3 text-center">
+                    <div class="col-md-4 sms-balance-col d-flex flex-column justify-content-center">
+                      <div class="sms-balance-label">Current balance</div>
+                      <div class="sms-balance-value"><?= h($balance !== null ? number_format((float) $balance, 2) . ' BDT' : '—') ?></div>
+                      <div class="sms-balance-value mt-1"><?= h($smsCount !== null ? number_format((float) $smsCount, 2) . ' SMS' : '—') ?></div>
+                      <?php if ($expireDate !== ''): ?>
+                        <div class="text-secondary small mt-2">Expire: <?= h($expireDate) ?></div>
+                      <?php endif; ?>
+                    </div>
+                    <div class="col-md-4 sms-balance-col d-flex flex-column justify-content-center">
+                      <div class="sms-balance-label">SMS Rate</div>
+                      <div class="sms-rate-value"><?= h($rate !== null ? number_format((float) $rate, 2) . ' BDT/SMS' : '—') ?></div>
+                    </div>
+                    <div class="col-md-4 sms-balance-col d-flex flex-column justify-content-center">
+                      <?php if ($daysRemaining !== null): ?>
+                        <div class="sms-expire-ring" style="border-color: <?= $daysRemaining <= 15 ? '#dc3545' : ($daysRemaining <= 30 ? '#ffc107' : '#28a745') ?>;">
+                          <div class="sms-expire-pct"><?= h((string) ($expirePct ?? 0)) ?>%</div>
+                          <div class="sms-expire-note"><?= h((string) $daysRemaining) ?> Days Remain to Expire your balance</div>
+                        </div>
+                      <?php else: ?>
+                        <div class="text-secondary">Expiry unavailable</div>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <?php elseif (($smsAccount['detail'] ?? '') === 'provider_unsupported' && smsGatewayReady($db)): ?>
+              <div class="alert alert-info">Balance is shown for BD Bulk SMS (GreenWeb). Switch provider in <a href="school-settings.php">School Settings</a> to see it here.</div>
             <?php endif; ?>
             <form method="get" class="card stat-card mb-3">
               <div class="card-body">

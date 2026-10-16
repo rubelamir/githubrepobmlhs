@@ -75,7 +75,24 @@ function ensureSchoolSchema(PDO $db): void
     if (tableExists($db, 'school_settings')) {
         ensureColumn($db, 'school_settings', 'short_name_en', "VARCHAR(40) DEFAULT NULL");
         ensureColumn($db, 'school_settings', 'address_en', "VARCHAR(500) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'school_settings', 'notify_from_email', 'VARCHAR(120) DEFAULT NULL');
+        ensureColumn($db, 'school_settings', 'notify_parent_emails', 'TEXT');
+        ensureColumn($db, 'school_settings', 'notify_sms_url', 'VARCHAR(500) DEFAULT NULL');
+        ensureColumn($db, 'school_settings', 'sms_provider', "VARCHAR(20) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'school_settings', 'sms_api_token', "VARCHAR(255) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'school_settings', 'sms_sid', "VARCHAR(80) NOT NULL DEFAULT ''");
     }
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS sms_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            context_key VARCHAR(40) NOT NULL DEFAULT '',
+            recipient VARCHAR(20) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            detail VARCHAR(180) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_sms_log_context (context_key, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
     if (tableExists($db, 'exam_details')) {
         ensureColumn($db, 'exam_details', 'public_results_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     }
