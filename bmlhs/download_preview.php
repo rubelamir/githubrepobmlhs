@@ -20,7 +20,7 @@ include('navbar&marqueetag.php');
     <br/>
 
     <?php
-    $sql = "SELECT * FROM files WHERE files_status = 1 ORDER BY files_creation_time DESC";
+    $sql = 'SELECT * FROM files WHERE files_status = 1 ORDER BY ' . downloadListOrderSql(publicDatabase());
     $query = mysqli_query($conn, $sql);
     $count_row = mysqli_num_rows($query);
     if ($count_row > 0) {

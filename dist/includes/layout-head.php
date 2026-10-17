@@ -74,8 +74,44 @@ $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publi
       .teacher-card { transition: transform .2s ease, box-shadow .2s ease; }
       .teacher-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.12); }
       .teacher-card-image { width: 120px; height: 145px; object-fit: cover; }
-      .sidebar-brand .brand-image { object-fit: contain; background: #fff; }
-      .app-header [data-bmlhs-sidebar-toggle] { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
+      :root { --bmlhs-topbar-height: 3.5rem; }
+      .sidebar-brand {
+        height: var(--bmlhs-topbar-height);
+        min-height: var(--bmlhs-topbar-height);
+        max-height: var(--bmlhs-topbar-height);
+        padding-top: 0;
+        padding-bottom: 0;
+        box-sizing: border-box;
+      }
+      .sidebar-brand .brand-link { min-height: var(--bmlhs-topbar-height); }
+      .sidebar-brand .brand-image {
+        object-fit: contain;
+        background: #fff;
+        max-height: 2rem;
+        width: auto;
+      }
+      .app-header.navbar {
+        --bs-navbar-padding-y: 0;
+        min-height: var(--bmlhs-topbar-height);
+        height: var(--bmlhs-topbar-height);
+        align-items: center;
+        box-sizing: border-box;
+      }
+      .app-header .container-fluid {
+        min-height: var(--bmlhs-topbar-height);
+        height: 100%;
+        align-items: center;
+      }
+      .app-header .navbar-nav { align-items: center; height: 100%; }
+      .app-header .navbar-nav .nav-link {
+        height: var(--bmlhs-topbar-height);
+        min-height: var(--bmlhs-topbar-height);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+      }
+      .app-header [data-bmlhs-sidebar-toggle] { min-width: 48px; }
       .app-header .sidebar-toggle-icon { font-size: 1.6rem; line-height: 1; }
       html.bmlhs-android-app .app-header.navbar {
         --bs-navbar-padding-y: 0px;

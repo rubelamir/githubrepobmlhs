@@ -91,7 +91,6 @@ body {
     padding-inline: 0.5rem;
   }
 
-  .app-header .navbar-nav .nav-link,
   .app-sidebar .nav-link,
   .app-content .btn,
   .app-content .form-control,
@@ -101,6 +100,8 @@ body {
 
   .app-header .navbar-nav .nav-link {
     min-width: 44px;
+    min-height: var(--bmlhs-topbar-height, 3.5rem);
+    height: var(--bmlhs-topbar-height, 3.5rem);
     display: inline-flex;
     align-items: center;
     justify-content: center;

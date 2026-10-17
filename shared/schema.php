@@ -103,6 +103,7 @@ function ensureSchoolSchema(PDO $db): void
     if (tableExists($db, 'student_promotions')) {
         ensureColumn($db, 'student_promotions', 'promotion_batch', 'VARCHAR(40) DEFAULT NULL');
     }
+    ensureFilesSortOrder($db);
 
     // New tables / SSC candidate fields must run even when schema version is already current.
     ensureExamRoutineSchema($db);
@@ -215,6 +216,7 @@ function ensureSchoolSchema(PDO $db): void
             files_text VARCHAR(255) NOT NULL,
             files_file VARCHAR(255) DEFAULT NULL,
             files_status TINYINT(1) NOT NULL DEFAULT 1,
+            sort_order INT NOT NULL DEFAULT 0,
             files_creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         "CREATE TABLE IF NOT EXISTS image_gallery (
@@ -664,6 +666,33 @@ function ensureTeacherSortOrder(PDO $db): void
     }
 
     recordSchemaMigration($db, 'teacher_sort_order_v15');
+}
+
+function ensureFilesSortOrder(PDO $db): void
+{
+    if (!tableExists($db, 'files')) {
+        return;
+    }
+
+    ensureColumn($db, 'files', 'sort_order', 'INT NOT NULL DEFAULT 0');
+
+    if (schemaMigrationApplied($db, 'files_sort_order_v23')) {
+        return;
+    }
+
+    $rows = fetchRows(
+        $db,
+        'SELECT id FROM files ORDER BY files_creation_time DESC, id DESC'
+    );
+    $update = $db->prepare('UPDATE files SET sort_order = :sort WHERE id = :id');
+    foreach ($rows as $index => $row) {
+        $update->execute([
+            'sort' => ((int) $index + 1) * 10,
+            'id' => (int) $row['id'],
+        ]);
+    }
+
+    recordSchemaMigration($db, 'files_sort_order_v23');
 }
 
 function ensureEventSortOrder(PDO $db): void

@@ -45,7 +45,7 @@ try {
             $db,
             'SELECT id, files_text AS title, files_file AS file, files_status AS status,
                     files_creation_time AS created_at
-             FROM files ORDER BY files_creation_time DESC, id DESC LIMIT 200'
+             FROM files ORDER BY ' . downloadListOrderSql($db) . ' LIMIT 200'
         );
         foreach ($rows as &$row) {
             $file = publicMediaBasename((string) ($row['file'] ?? ''));
@@ -71,14 +71,19 @@ try {
             'files_file',
             'files_file',
             ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'],
-            5 * 1024 * 1024,
+            30 * 1024 * 1024,
             true
         ) ?? '';
         if ($newFile === '') {
             mobileApiJson(['error' => ['code' => 'invalid_download', 'message' => 'Attach a file to create a download.']], 422);
         }
-        $db->prepare('INSERT INTO files (files_text, files_file, files_status) VALUES (:title, :file, 1)')
-            ->execute(['title' => trim($title), 'file' => $newFile]);
+        if (columnExists($db, 'files', 'sort_order')) {
+            $db->prepare('INSERT INTO files (files_text, files_file, files_status, sort_order) VALUES (:title, :file, 1, :sort)')
+                ->execute(['title' => trim($title), 'file' => $newFile, 'sort' => nextDownloadSortOrder($db)]);
+        } else {
+            $db->prepare('INSERT INTO files (files_text, files_file, files_status) VALUES (:title, :file, 1)')
+                ->execute(['title' => trim($title), 'file' => $newFile]);
+        }
         mobileApiJson(['data' => ['id' => (int) $db->lastInsertId(), 'status' => 'created']], 201);
     }
 

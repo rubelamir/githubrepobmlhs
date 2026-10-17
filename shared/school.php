@@ -322,10 +322,14 @@ function storeUploadedFile(string $field, string $relativeDir, array $allowedExt
     if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
         throw new RuntimeException('Unable to create upload directory.');
     }
+    @chmod($directory, 0775);
+    if (!is_writable($directory)) {
+        throw new RuntimeException('Upload directory is not writable.');
+    }
 
     $filename = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
     $target = $directory . DIRECTORY_SEPARATOR . $filename;
-    if (!move_uploaded_file($tmpName, $target)) {
+    if (!saveUploadedTempFile($tmpName, $target)) {
         throw new RuntimeException('Unable to save the uploaded file.');
     }
     writeImageWebpSibling($target);
@@ -369,15 +373,37 @@ function storeUploadedFileFromArray(array $file, string $relativeDir, array $all
     if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
         throw new RuntimeException('Unable to create upload directory.');
     }
+    @chmod($directory, 0775);
+    if (!is_writable($directory)) {
+        throw new RuntimeException('Upload directory is not writable.');
+    }
 
     $filename = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
     $target = $directory . DIRECTORY_SEPARATOR . $filename;
-    if (!move_uploaded_file($tmpName, $target)) {
+    if (!saveUploadedTempFile($tmpName, $target)) {
         throw new RuntimeException('Unable to save the uploaded file.');
     }
     writeImageWebpSibling($target);
 
     return $filename;
+}
+
+function saveUploadedTempFile(string $tmpName, string $target): bool
+{
+    if ($tmpName === '' || $target === '') {
+        return false;
+    }
+    if (@move_uploaded_file($tmpName, $target)) {
+        return true;
+    }
+    // Some Windows/XAMPP setups reject move_uploaded_file even for valid uploads.
+    if (is_uploaded_file($tmpName) && @copy($tmpName, $target)) {
+        @unlink($tmpName);
+
+        return is_file($target);
+    }
+
+    return false;
 }
 
 function writeImageWebpSibling(string $absolutePath): void
@@ -1485,6 +1511,88 @@ function moveTeacherInList(PDO $db, int $id, string $direction): bool
     $ids[$index] = $ids[$target];
     $ids[$target] = $swap;
     saveTeacherListOrder($db, $ids);
+
+    return true;
+}
+
+function downloadListOrderSql(PDO $db): string
+{
+    if (columnExists($db, 'files', 'sort_order')) {
+        return 'sort_order ASC, id ASC';
+    }
+
+    return 'files_creation_time DESC, id DESC';
+}
+
+function nextDownloadSortOrder(PDO $db): int
+{
+    if (!columnExists($db, 'files', 'sort_order')) {
+        return 0;
+    }
+
+    // Newer uploads sort first (lower sort_order).
+    return (int) $db->query('SELECT COALESCE(MIN(sort_order), 10) - 10 FROM files')->fetchColumn();
+}
+
+function saveDownloadListOrder(PDO $db, array $orderedIds): void
+{
+    if (!columnExists($db, 'files', 'sort_order')) {
+        throw new RuntimeException('Download order is not available yet.');
+    }
+
+    $valid = [];
+    foreach (fetchRows($db, 'SELECT id FROM files') as $row) {
+        $valid[(int) $row['id']] = true;
+    }
+
+    $seen = [];
+    $ordered = [];
+    foreach ($orderedIds as $id) {
+        $id = (int) $id;
+        if ($id < 1 || !isset($valid[$id]) || isset($seen[$id])) {
+            continue;
+        }
+        $seen[$id] = true;
+        $ordered[] = $id;
+    }
+
+    foreach ($valid as $id => $unused) {
+        if (!isset($seen[$id])) {
+            $ordered[] = $id;
+        }
+    }
+
+    if ($ordered === []) {
+        return;
+    }
+
+    $update = $db->prepare('UPDATE files SET sort_order = :sort WHERE id = :id');
+    foreach ($ordered as $index => $id) {
+        $update->execute([
+            'sort' => ((int) $index + 1) * 10,
+            'id' => $id,
+        ]);
+    }
+}
+
+function moveDownloadInList(PDO $db, int $id, string $direction): bool
+{
+    $rows = fetchRows($db, 'SELECT id FROM files ORDER BY ' . downloadListOrderSql($db));
+    $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+    $index = array_search($id, $ids, true);
+    if ($index === false) {
+        throw new RuntimeException('Download not found.');
+    }
+
+    $target = $direction === 'up' ? $index - 1 : ($direction === 'down' ? $index + 1 : null);
+    if ($target === null || !isset($ids[$target])) {
+        return false;
+    }
+
+    $swap = $ids[$index];
+    $ids[$index] = $ids[$target];
+    $ids[$target] = $swap;
+    saveDownloadListOrder($db, $ids);
 
     return true;
 }

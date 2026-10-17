@@ -100,11 +100,6 @@ include __DIR__ . '/../includes/layout-head.php';
                         <div class="form-text">Optional. Image, PDF, Word or Excel only. Maximum 10 MB.</div>
                         <div class="invalid-feedback" id="main_notice_file_error">Please choose a valid attachment.</div>
                       </div>
-                      <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" value="1" id="notify_guardians" name="notify_guardians">
-                        <label class="form-check-label" for="notify_guardians">Notify guardians by email / SMS</label>
-                        <div class="form-text">Uses School Settings: parent emails and optional SMS webhook. Leave unchecked to publish only on the website.</div>
-                      </div>
                       <button class="btn btn-primary w-100" type="submit">Publish</button>
                     </form>
                   </div>
