@@ -72,6 +72,12 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <p>Audit log</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/database-backup.php" class="nav-link<?= navActive('database-backup', $active) ?>">
+                  <i class="nav-icon bi bi-database-down"></i>
+                  <p>Database Backup</p>
+                </a>
+              </li>
               <?php endif; ?>
               <?php if (isHeadAdmin()): ?>
               <li class="nav-item">

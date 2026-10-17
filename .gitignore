@@ -11,6 +11,13 @@
 # Archives
 *.zip
 
+# Database backups (keep outside web root when possible; never commit dumps)
+/backups/
+bmlhs-db-backups/
+*.sql.gz
+*_backup_*.sql
+*_backup_*.sql.gz
+
 # Sass Cache
 .sass-cache
 

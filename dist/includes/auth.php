@@ -479,6 +479,7 @@ function currentScriptPanelModule(): ?string
         'academic-api' => null,
         'private-media' => null,
         'audit-log' => null,
+        'database-backup' => null,
         'bulk-sms' => null,
         'contact-inbox' => null,
         'academic-calendar' => 'events',
