@@ -350,7 +350,7 @@ function routinePublicQuery(array $overrides = []): string
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php $keepDocumentOpen = true; include 'footer.php'; ?>
 <?php if ($isPublished && $view === 'class'): ?>
 <script>
 $(document).ready(function () {
@@ -381,3 +381,5 @@ $(document).ready(function () {
 });
 </script>
 <?php endif; ?>
+</body>
+</html>

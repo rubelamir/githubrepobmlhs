@@ -375,7 +375,7 @@ function attendanceQuery(array $overrides = []): string
         <?php endif; ?>
     </div>
 </div>
-<?php include 'footer.php'; ?>
+<?php $keepDocumentOpen = true; include 'footer.php'; ?>
 <script>
 $(document).ready(function () {
   function loadSections(classId) {
@@ -404,3 +404,5 @@ $(document).ready(function () {
   });
 });
 </script>
+</body>
+</html>

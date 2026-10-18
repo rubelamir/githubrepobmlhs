@@ -194,4 +194,8 @@ $footerHasLinks = $footerLinks !== [];
 <?php if ($useAsset['croppie'] ?? false): ?>
 <script src="vendor/Croppie-2.6.4/croppie.min.js"></script>
 <?php endif; ?>
-<?php include("function_footer.php");?>
+<?php include("function_footer.php"); ?>
+<?php if (empty($keepDocumentOpen)): ?>
+</body>
+</html>
+<?php endif; ?>

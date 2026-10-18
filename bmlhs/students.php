@@ -218,7 +218,7 @@ $totalCount = count($students);
         <?php endif; ?>
     </div>
 </div>
-<?php include 'footer.php'; ?>
+<?php $keepDocumentOpen = true; include 'footer.php'; ?>
 <script>
 $(function () {
     var $cls = $('#cls');
@@ -246,3 +246,5 @@ $(function () {
     });
 });
 </script>
+</body>
+</html>

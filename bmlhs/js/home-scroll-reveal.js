@@ -7,8 +7,8 @@
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var pieces = {
     messages: '.school-section-head, .school-message-card',
-    history: '.school-section-head, p, .school-text-more',
-    cards: '.school-section-head, .school-card',
+    history: '.school-section-head, p, .school-text-more, .school-about-timeline-list li',
+    cards: '.school-section-head, .school-card, .school-about-campus-shot',
     events: '.school-events-head, .school-event-featured, .school-event-compact',
     links: '.school-aside-heading, li'
   };

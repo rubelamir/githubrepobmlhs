@@ -234,6 +234,26 @@ function isHeadAdmin(?array $teacher = null): bool
     return currentPanelRole($teacher) === 'head';
 }
 
+function isHeadTeacher(?array $teacher = null): bool
+{
+    $teacher ??= getAuthenticatedTeacher();
+    if ($teacher === null) {
+        return false;
+    }
+
+    return ($teacher['teacher_designation'] ?? '') === 'head_teacher';
+}
+
+function canAccessStudentDetailPages(?array $teacher = null): bool
+{
+    $teacher ??= getAuthenticatedTeacher();
+    if ($teacher === null) {
+        return false;
+    }
+
+    return isHeadTeacher($teacher) || isAssignedClassTeacher($teacher);
+}
+
 function decodedAdminModules(?array $teacher = null): array
 {
     $teacher ??= getAuthenticatedTeacher();
@@ -257,8 +277,12 @@ function canAccessModule(string $module, ?array $teacher = null): bool
     }
 
     $module = trim($module);
-    if ($module === '' || $module === 'dashboard' || $module === 'profile' || $module === 'change-password' || in_array($module, ['student-details-list', 'student-profiles', 'student-profile', 'exam-routine'], true)) {
+    if ($module === '' || $module === 'dashboard' || $module === 'profile' || $module === 'change-password' || $module === 'exam-routine') {
         return true;
+    }
+
+    if (in_array($module, ['student-details-list', 'student-profiles', 'student-profile'], true)) {
+        return canAccessStudentDetailPages($teacher);
     }
 
     if ($module === 'student-list') {
@@ -313,6 +337,12 @@ function canManageModule(string $module, ?array $teacher = null): bool
     $assigned = decodedAdminModules($teacher);
 
     return in_array('*', $assigned, true) || in_array($module, $assigned, true);
+}
+
+/** Permanent student delete: head/admin with students or admissions — not class teachers. */
+function canDeleteStudentRecords(?array $teacher = null): bool
+{
+    return canManageModule('students', $teacher) || canManageModule('admissions', $teacher);
 }
 
 function canViewAllMarksheets(?array $teacher = null): bool
@@ -415,6 +445,119 @@ function panelSeesAllStudents(?array $teacher = null): bool
     return canManageModule('students', $teacher);
 }
 
+/** Full class/section catalog via academic-api (not class-teacher / subject-only staff). */
+function panelSeesFullClassCatalog(?array $teacher = null): bool
+{
+    $teacher ??= getAuthenticatedTeacher();
+    if ($teacher === null) {
+        return false;
+    }
+    if (isHeadAdmin($teacher)) {
+        return true;
+    }
+
+    return canManageModule('students', $teacher)
+        || canManageModule('admissions', $teacher)
+        || canManageModule('classes', $teacher)
+        || canManageModule('sections', $teacher)
+        || canManageModule('subjects', $teacher)
+        || canManageModule('routine', $teacher)
+        || canManageModule('exam-routine', $teacher)
+        || canManageModule('promotions', $teacher)
+        || canManageModule('tabulation-sheet', $teacher)
+        || canManageModule('admit-card', $teacher)
+        || canManageModule('id-cards', $teacher)
+        || canManageModule('certificates', $teacher)
+        || canManageModule('school-settings', $teacher)
+        || canViewAllAttendance($teacher)
+        || canViewAllMarksheets($teacher);
+}
+
+/**
+ * @return array<int, true>
+ */
+function teacherVisibleClassIdMap(PDO $db, ?array $teacher, string $sessionYear): array
+{
+    $teacher ??= getAuthenticatedTeacher();
+    $ids = [];
+    $mobile = (string) ($teacher['teacher_mobile'] ?? '');
+    foreach (classTeacherAssignments($db, $mobile, $sessionYear) as $row) {
+        $classId = (int) ($row['class_id'] ?? 0);
+        if ($classId > 0) {
+            $ids[$classId] = true;
+        }
+    }
+    foreach (teacherAssignedSubjects($db, $mobile) as $subject) {
+        $classId = (int) ($subject['class_id'] ?? 0);
+        if ($classId > 0) {
+            $ids[$classId] = true;
+        }
+    }
+
+    return $ids;
+}
+
+function classesVisibleToPanel(PDO $db, ?array $teacher, string $sessionYear, bool $admissionOnly = false): array
+{
+    $teacher ??= getAuthenticatedTeacher();
+    $all = $admissionOnly ? admissionClasses($db) : schoolClasses($db, true);
+    if (panelSeesFullClassCatalog($teacher)) {
+        return $all;
+    }
+    $allowed = teacherVisibleClassIdMap($db, $teacher, $sessionYear);
+
+    return array_values(array_filter(
+        $all,
+        static fn (array $class): bool => isset($allowed[(int) $class['id']])
+    ));
+}
+
+function sectionsVisibleToPanel(
+    PDO $db,
+    int $classId,
+    ?array $teacher,
+    string $sessionYear,
+    bool $activeOnly = false,
+    bool $forAttendance = false
+): array {
+    $teacher ??= getAuthenticatedTeacher();
+    if ($forAttendance) {
+        return sectionsForAttendance($db, $classId, $teacher, $sessionYear);
+    }
+
+    $all = $classId > 0 ? schoolSections($db, $classId, $activeOnly) : [];
+    if (panelSeesFullClassCatalog($teacher) || $classId < 1) {
+        return $all;
+    }
+
+    $scope = classTeacherScope($db, $teacher, $sessionYear);
+    if (isset($scope['entire'][$classId])) {
+        return $all;
+    }
+
+    $allowedSections = $scope['sections'][$classId] ?? [];
+    $mobile = (string) ($teacher['teacher_mobile'] ?? '');
+    foreach (teacherAssignedSubjects($db, $mobile) as $subject) {
+        if ((int) ($subject['class_id'] ?? 0) !== $classId) {
+            continue;
+        }
+        $sectionId = (int) ($subject['section_id'] ?? 0);
+        if ($sectionId === 0) {
+            return $all;
+        }
+        $allowedSections[$sectionId] = true;
+    }
+
+    if ($allowedSections === []) {
+        return [];
+    }
+
+    return array_values(array_filter(
+        $all,
+        static fn (array $section): bool => isset($allowedSections[(int) $section['id']])
+    ));
+}
+
 /**
  * @param list<string> $where
  */
@@ -487,6 +630,8 @@ function currentScriptPanelModule(): ?string
         'syllabus' => 'downloads',
         'profile' => 'profile',
         'change-password' => 'change-password',
+        // Own staff ID card is allowed for every logged-in teacher; page enforces own-or-teachers access.
+        'teacher-id-card' => null,
     ];
     if (array_key_exists($name, $map)) {
         return $map[$name];
@@ -581,7 +726,7 @@ function requireAuthentication(string $loginPath): void
     }
 
     $module = currentScriptPanelModule();
-    if ($module !== null && $module !== 'dashboard' && $module !== 'profile' && $module !== 'change-password' && !in_array($module, ['student-details-list', 'student-profiles', 'student-profile', 'exam-routine'], true)) {
+    if ($module !== null && $module !== 'dashboard' && $module !== 'profile' && $module !== 'change-password' && $module !== 'exam-routine') {
         requirePanelModule($module);
     }
 }

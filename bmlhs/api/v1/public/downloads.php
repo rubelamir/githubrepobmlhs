@@ -12,11 +12,11 @@ try {
     $db = getDatabaseConnection();
     $rows = fetchRows(
         $db,
-        'SELECT id, files_text AS title, files_file AS file, files_creation_time AS published_at
+        "SELECT id, files_text AS title, files_file AS file, files_creation_time AS published_at
          FROM files
-         WHERE files_status = 1 AND files_file IS NOT NULL AND files_file <> \'\'
-         ORDER BY ' . downloadListOrderSql($db)
-         LIMIT 100'
+         WHERE files_status = 1 AND files_file IS NOT NULL AND files_file <> ''
+         ORDER BY " . downloadListOrderSql($db) . "
+         LIMIT 100"
     );
     foreach ($rows as &$row) {
         $file = basename((string) ($row['file'] ?? ''));

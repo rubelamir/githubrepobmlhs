@@ -115,6 +115,10 @@ body {
   gap: 1.8mm;
   text-align: left;
 }
+.id-card-head-row > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .id-card-logo {
   flex: 0 0 auto;
   width: 8mm;
@@ -126,15 +130,21 @@ body {
 }
 .id-card-school-bn {
   margin: 0;
-  font-size: 2.95mm;
+  font-size: 2.55mm;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .id-card-school-en {
   margin: 0.4mm 0 0;
-  font-size: 2.1mm;
-  line-height: 1.2;
+  font-size: 2mm;
+  line-height: 1.15;
   opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .id-card-title {
   flex: 0 0 auto;
@@ -232,8 +242,8 @@ body {
 }
 .id-card-qr-box {
   flex: 0 0 auto;
-  width: 19mm;
-  height: 19mm;
+  width: 17mm;
+  height: 17mm;
   padding: 0.5mm;
   background: #fff;
   border: 0.25mm solid var(--idc-line);
@@ -246,18 +256,27 @@ body {
 }
 .id-card-facts li {
   display: grid;
-  grid-template-columns: 10mm 1fr;
-  gap: 0.8mm;
-  font-size: 2.2mm;
-  line-height: 1.3;
+  grid-template-columns: 12.5mm minmax(0, 1fr);
+  gap: 0.6mm;
+  align-items: baseline;
+  font-size: 2.05mm;
+  line-height: 1.25;
 }
 .id-card-facts .k {
   color: var(--idc-muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 .id-card-facts .v {
   font-weight: 700;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.id-card-facts li.is-nowrap .v {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .id-card-foot {

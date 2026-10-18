@@ -141,7 +141,7 @@ $resultCount = count($students);
         </div>
     </div>
 </div>
-<?php include 'footer.php'; ?>
+<?php $keepDocumentOpen = true; include 'footer.php'; ?>
 <script src="js/school-home-ui.js?v=<?= (int) @filemtime(__DIR__ . '/js/school-home-ui.js') ?>"></script>
 </body>
 </html>

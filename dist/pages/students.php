@@ -10,6 +10,7 @@ $pageTitle = 'Students | School Admin';
 $classes = schoolClasses($db);
 $panelTeacher = getAuthenticatedTeacher();
 $seeAllClasses = canManageModule('students', $panelTeacher);
+$canDeleteStudents = canDeleteStudentRecords($panelTeacher);
 $search = trim((string) ($_GET['q'] ?? ''));
 $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $classId = (int) ($_GET['cls'] ?? 0);
@@ -93,14 +94,10 @@ if ($loadList) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'delete') {
     try {
-        $deleteId = postedRecordId('student');
-        if (!$seeAllClasses) {
-            $target = fetchRows($db, 'SELECT cls, sections, session_year FROM students_info WHERE id = :id LIMIT 1', ['id' => $deleteId])[0] ?? [];
-            $targetScope = classTeacherScope($db, $panelTeacher, (string) ($target['session_year'] ?? ''));
-            if ($target === [] || !classTeacherScopeAllows($targetScope, (int) $target['cls'], (int) $target['sections'])) {
-                throw new RuntimeException('You can manage only students of the class assigned to you.');
-            }
+        if (!$canDeleteStudents) {
+            throw new RuntimeException('You do not have permission to delete student records.');
         }
+        $deleteId = postedRecordId('student');
         deleteStudentRecord($db, $deleteId);
         redirectWithMessage('students.php', 'success', 'Student record and files deleted.');
     } catch (Throwable $exception) {
@@ -229,12 +226,14 @@ include __DIR__ . '/../includes/layout-head.php';
                         <td><span class="badge text-bg-<?= h($badge) ?>"><?= h($label) ?></span></td>
                         <td class="text-nowrap">
                           <a class="btn btn-sm btn-outline-primary" href="<?= h(signedRecordUrl('student-form.php', (int) $student['id'], 'student')) ?>">Edit</a>
+                          <?php if ($canDeleteStudents): ?>
                           <form method="post" class="d-inline" onsubmit="return confirm('Delete this student and their photos? This cannot be undone.')">
                             <?= csrfField() ?>
                             <input type="hidden" name="action" value="delete">
                             <?= signedRecordField((int) $student['id'], 'student') ?>
                             <button class="btn btn-sm btn-outline-danger">Delete</button>
                           </form>
+                          <?php endif; ?>
                         </td>
                       </tr>
                     <?php endforeach; ?>

@@ -9,8 +9,8 @@ $cardId = requestRecordId('teacher');
 $row = null;
 if ($cardId > 0) {
     $statement = getDatabaseConnection()->prepare(
-        'SELECT id, teacher_name, teacher_index_number, teacher_mobile, teacher_subject, teacher_designation,
-                teacher_birth_date, teacher_pic, teacher_status
+        'SELECT id, teacher_name, teacher_father_name, teacher_mother_name, teacher_index_number, teacher_mobile,
+                teacher_subject, teacher_designation, teacher_birth_date, teacher_pic, teacher_status
          FROM teacher_info
          WHERE id = :id
          LIMIT 1'
@@ -30,6 +30,8 @@ $logo = schoolFileUrl((string) ($school['logo'] ?? ''), '', publicSiteUrl('image
 $name = (string) ($row['teacher_name'] ?? '');
 $designation = publicStaffDesignationLabel((string) ($row['teacher_designation'] ?? ''));
 $subject = publicStaffSubjectLabel((string) ($row['teacher_subject'] ?? ''));
+$fatherName = trim((string) ($row['teacher_father_name'] ?? ''));
+$motherName = trim((string) ($row['teacher_mother_name'] ?? ''));
 $mobile = publicStaffMobileDisplay((string) ($row['teacher_mobile'] ?? ''));
 $indexNumber = trim((string) ($row['teacher_index_number'] ?? ''));
 $birth = publicStaffDate($row['teacher_birth_date'] ?? null);
@@ -114,13 +116,19 @@ $idCardCss = dirname(__DIR__, 2) . '/bmlhs/css/id-card.css';
                 <li><span class="k">বিষয়</span><span class="v"><?= h($subject) ?></span></li>
               <?php endif; ?>
               <?php if ($indexNumber !== ''): ?>
-                <li><span class="k">ইনডেক্স নং</span><span class="v"><?= h($indexNumber) ?></span></li>
+                <li><span class="k">ইনডেক্স</span><span class="v"><?= h($indexNumber) ?></span></li>
+              <?php endif; ?>
+              <?php if ($fatherName !== ''): ?>
+                <li><span class="k">পিতা</span><span class="v"><?= h($fatherName) ?></span></li>
+              <?php endif; ?>
+              <?php if ($motherName !== ''): ?>
+                <li><span class="k">মাতা</span><span class="v"><?= h($motherName) ?></span></li>
               <?php endif; ?>
               <?php if ($mobile !== ''): ?>
-                <li><span class="k">মোবাইল</span><span class="v"><?= h($mobile) ?></span></li>
+                <li class="is-nowrap"><span class="k">মোবাইল</span><span class="v"><?= h($mobile) ?></span></li>
               <?php endif; ?>
               <?php if ($birth !== ''): ?>
-                <li><span class="k">জন্ম তারিখ</span><span class="v"><?= h($birth) ?></span></li>
+                <li class="is-nowrap"><span class="k">জন্ম তারিখ</span><span class="v"><?= h($birth) ?></span></li>
               <?php endif; ?>
             </ul>
             <?php if ($profileQr !== ''): ?>

@@ -12,12 +12,13 @@ function navActive(string $name, string $active): string
 {
     return $active === $name ? ' active' : '';
 }
-$academicPages = ['students', 'student-form', 'student-profile', 'admissions', 'admission-tokens', 'attendance', 'promotions', 'results', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
+$academicPages = ['students', 'student-form', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'promotions', 'results', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
 $academicOpen = in_array($active, $academicPages, true);
 $structureOpen = in_array($active, ['classes', 'sections', 'subjects', 'exams', 'periods'], true);
 $can = static fn (string $module): bool => canAccessModule($module);
 $showStructure = $can('classes') || $can('sections') || $can('subjects') || $can('exams') || $can('periods');
-$detailsListStandalone = currentPanelRole() === 'teacher';
+$showStudentDetailMenus = canAccessStudentDetailPages();
+$detailsListStandalone = $showStudentDetailMenus && currentPanelRole() === 'teacher';
 $showStudents = $can('admissions') || $can('student-form') || $can('student-list') || $can('students') || $can('attendance') || $can('promotions') || $can('results') || $can('result-publication') || $can('tabulation-sheet') || $can('routine') || $can('exam-routine') || $can('admit-card') || $can('id-cards') || $can('seat-level') || $can('testimonials') || $can('certificates');
 $canIdCards = $can('id-cards') || $can('certificates');
 $canSeatLevel = $can('seat-level') || $can('id-cards') || $can('certificates');
@@ -45,37 +46,19 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <p>Dashboard</p>
                 </a>
               </li>
-              <?php if ($can('school-settings')): ?>
-              <li class="nav-item">
-                <a href="<?= $basePath ?>pages/school-settings.php" class="nav-link<?= navActive('school-settings', $active) ?>">
-                  <i class="nav-icon bi bi-gear"></i>
-                  <p>School Settings</p>
-                </a>
-              </li>
-              <?php endif; ?>
-              <?php if (isHeadAdmin() || $can('school-settings') || $can('notices') || $can('admissions')): ?>
+              <?php if (contactInboxAllowed()): ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/contact-inbox.php" class="nav-link<?= navActive('contact-inbox', $active) ?>">
                   <i class="nav-icon bi bi-inbox"></i>
                   <p>Contact inbox</p>
                 </a>
               </li>
+              <?php endif; ?>
+              <?php if (bulkSmsAllowed()): ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/bulk-sms.php" class="nav-link<?= navActive('bulk-sms', $active) ?>">
                   <i class="nav-icon bi bi-chat-dots"></i>
                   <p>SMS</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="<?= $basePath ?>pages/audit-log.php" class="nav-link<?= navActive('audit-log', $active) ?>">
-                  <i class="nav-icon bi bi-journal-text"></i>
-                  <p>Audit log</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="<?= $basePath ?>pages/database-backup.php" class="nav-link<?= navActive('database-backup', $active) ?>">
-                  <i class="nav-icon bi bi-database-down"></i>
-                  <p>Database Backup</p>
                 </a>
               </li>
               <?php endif; ?>
@@ -123,8 +106,8 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/admission-tokens.php" class="nav-link<?= navActive('admission-tokens', $active) ?>"><i class="nav-icon bi bi-key"></i><p>Admission tokens</p></a></li><?php endif; ?>
                   <?php if ($can('student-form')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-form.php" class="nav-link<?= navActive('student-form', $active) ?>"><i class="nav-icon bi bi-person-vcard"></i><p>New admission</p></a></li><?php endif; ?>
                   <?php if ($can('student-list')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/students.php" class="nav-link<?= in_array($active, ['students', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-people"></i><p>Student list</p></a></li><?php endif; ?>
-                  <?php if (!$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-details-list.php" class="nav-link<?= navActive('student-details-list', $active) ?>"><i class="nav-icon bi bi-card-list"></i><p>Student Details List</p></a></li><?php endif; ?>
-                  <?php if (!$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-profiles.php" class="nav-link<?= in_array($active, ['student-profiles', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-person-lines-fill"></i><p>Student Profile</p></a></li><?php endif; ?>
+                  <?php if ($showStudentDetailMenus && !$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-details-list.php" class="nav-link<?= navActive('student-details-list', $active) ?>"><i class="nav-icon bi bi-card-list"></i><p>Student Details List</p></a></li><?php endif; ?>
+                  <?php if ($showStudentDetailMenus && !$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-profiles.php" class="nav-link<?= in_array($active, ['student-profiles', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-person-lines-fill"></i><p>Student Profile</p></a></li><?php endif; ?>
                   <?php if ($can('attendance')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/attendance.php" class="nav-link<?= navActive('attendance', $active) ?>"><i class="nav-icon bi bi-calendar-check"></i><p>Attendance</p></a></li><?php endif; ?>
                   <?php if ($can('promotions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/promotions.php" class="nav-link<?= navActive('promotions', $active) ?>"><i class="nav-icon bi bi-arrow-up-right-circle"></i><p>Class promotion</p></a></li><?php endif; ?>
                   <?php if ($can('results')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/results.php" class="nav-link<?= navActive('results', $active) ?>"><i class="nav-icon bi bi-clipboard-data"></i><p>Mark Entry</p></a></li><?php endif; ?>
@@ -287,6 +270,30 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                 </a>
               </li>
               <?php endif; ?>
+              <?php endif; ?>
+              <?php if ($can('school-settings')): ?>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/school-settings.php" class="nav-link<?= navActive('school-settings', $active) ?>">
+                  <i class="nav-icon bi bi-gear"></i>
+                  <p>School Settings</p>
+                </a>
+              </li>
+              <?php endif; ?>
+              <?php if (auditLogAllowed()): ?>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/audit-log.php" class="nav-link<?= navActive('audit-log', $active) ?>">
+                  <i class="nav-icon bi bi-journal-text"></i>
+                  <p>Audit log</p>
+                </a>
+              </li>
+              <?php endif; ?>
+              <?php if (databaseBackupAllowed()): ?>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/database-backup.php" class="nav-link<?= navActive('database-backup', $active) ?>">
+                  <i class="nav-icon bi bi-database-down"></i>
+                  <p>Database Backup</p>
+                </a>
+              </li>
               <?php endif; ?>
 
               <li class="nav-header">PUBLIC SITE</li>

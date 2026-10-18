@@ -28,7 +28,10 @@ function writeAuditLog(PDO $db, string $action, string $entity, ?int $entityId, 
     ]);
 }
 
-function officeToolsAllowed(): bool
+/**
+ * Contact inbox: head, school-settings, notices, or admissions staff.
+ */
+function contactInboxAllowed(): bool
 {
     if (!function_exists('isHeadAdmin') || !function_exists('canAccessModule')) {
         return false;
@@ -37,6 +40,41 @@ function officeToolsAllowed(): bool
     return isHeadAdmin()
         || canAccessModule('school-settings')
         || canAccessModule('notices')
-        || canAccessModule('admissions')
-        || canAccessModule('result-publication');
+        || canAccessModule('admissions');
+}
+
+/**
+ * Bulk SMS: head or school-settings only (not notices/admissions).
+ */
+function bulkSmsAllowed(): bool
+{
+    if (!function_exists('isHeadAdmin') || !function_exists('canAccessModule')) {
+        return false;
+    }
+
+    return isHeadAdmin() || canAccessModule('school-settings');
+}
+
+/**
+ * Audit log: head or school-settings only.
+ */
+function auditLogAllowed(): bool
+{
+    if (!function_exists('isHeadAdmin') || !function_exists('canAccessModule')) {
+        return false;
+    }
+
+    return isHeadAdmin() || canAccessModule('school-settings');
+}
+
+/**
+ * Database backup create/download/delete: head admin only.
+ */
+function databaseBackupAllowed(): bool
+{
+    if (!function_exists('isHeadAdmin')) {
+        return false;
+    }
+
+    return isHeadAdmin();
 }

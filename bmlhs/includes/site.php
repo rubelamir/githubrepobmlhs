@@ -642,3 +642,106 @@ function schoolHistoryTeaser(string $text, int $maxLines = 4, int $maxChars = 42
 
     return ['text' => $snippet, 'truncated' => $truncated || mb_strlen($text, 'UTF-8') > mb_strlen($snippet, 'UTF-8')];
 }
+
+/** @return list<string> */
+function schoolHistoryParagraphs(string $text): array
+{
+    $text = trim($text);
+    if ($text === '') {
+        return [];
+    }
+
+    $blocks = preg_split('/\R{2,}/u', $text) ?: [];
+    $paragraphs = [];
+    foreach ($blocks as $block) {
+        $block = trim($block);
+        if ($block === '') {
+            continue;
+        }
+        $lines = preg_split('/\R+/u', $block) ?: [];
+        $lines = array_values(array_filter(array_map('trim', $lines), static fn (string $line): bool => $line !== ''));
+        if ($lines === []) {
+            continue;
+        }
+        if (count($lines) === 1) {
+            $paragraphs[] = $lines[0];
+            continue;
+        }
+        // Single newlines: keep as separate paragraphs when each line is a sentence-like unit.
+        foreach ($lines as $line) {
+            $paragraphs[] = $line;
+        }
+    }
+
+    return $paragraphs;
+}
+
+/**
+ * About-page timeline: manual rows from School History admin when present,
+ * otherwise inferred from established year + history text.
+ *
+ * @return list<array{year:string,label:string}>
+ */
+function schoolHistoryTimeline(string $historyText, string $established = '', int $limit = 12, ?PDO $db = null): array
+{
+    $limit = max(1, $limit);
+    if ($db instanceof PDO && tableExists($db, 'school_history_timeline')) {
+        $manual = fetchRows(
+            $db,
+            'SELECT event_year, label
+             FROM school_history_timeline
+             WHERE is_active = 1
+             ORDER BY sort_order ASC, event_year ASC, id ASC
+             LIMIT ' . (int) $limit
+        );
+        if ($manual !== []) {
+            $out = [];
+            foreach ($manual as $row) {
+                $year = (string) ((int) ($row['event_year'] ?? 0));
+                $label = trim((string) ($row['label'] ?? ''));
+                if ($year === '0' || $label === '') {
+                    continue;
+                }
+                $out[] = ['year' => $year, 'label' => $label];
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+    }
+
+    $items = [];
+    $established = trim($established);
+    if ($established !== '' && preg_match('/((?:18|19|20)\d{2})/', asciiDigits($established), $match) === 1) {
+        $items[(int) $match[1]] = 'বিদ্যালয় প্রতিষ্ঠা';
+    }
+
+    $paragraphs = schoolHistoryParagraphs($historyText);
+    if ($paragraphs === [] && trim($historyText) !== '') {
+        $paragraphs = [trim($historyText)];
+    }
+    foreach ($paragraphs as $paragraph) {
+        if (!preg_match_all('/((?:18|19|20)\d{2})/', asciiDigits($paragraph), $matches)) {
+            continue;
+        }
+        foreach ($matches[1] as $yearText) {
+            $year = (int) $yearText;
+            if (isset($items[$year])) {
+                continue;
+            }
+            $label = schoolSnippet($paragraph, 72);
+            $items[$year] = $label !== '' ? $label : 'ঐতিহাসিক ধাপ';
+        }
+    }
+
+    ksort($items, SORT_NUMERIC);
+    $out = [];
+    foreach ($items as $year => $label) {
+        $out[] = ['year' => (string) $year, 'label' => $label];
+        if (count($out) >= $limit) {
+            break;
+        }
+    }
+
+    return $out;
+}

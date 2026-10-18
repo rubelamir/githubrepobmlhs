@@ -359,7 +359,7 @@ endif;
     </aside>
 </div>
 
-<?php include('footer.php') ?>
+<?php $keepDocumentOpen = true; include('footer.php'); ?>
 <?php if ($classSectionChart !== []): ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="js/student-class-chart.js?v=<?= (int) @filemtime(__DIR__ . '/js/student-class-chart.js') ?>"></script>

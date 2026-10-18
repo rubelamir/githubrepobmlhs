@@ -136,7 +136,7 @@ if ($students !== []) {
 
 $summary = ['present' => 0, 'absent' => 0, 'late' => 0];
 foreach ($students as $student) {
-    $current = $existing[(int) $student['id']] ?? 'present';
+    $current = (string) ($existing[(int) $student['id']] ?? '');
     if (isset($summary[$current])) {
         $summary[$current]++;
     }
@@ -234,7 +234,7 @@ include __DIR__ . '/../includes/layout-head.php';
                     <?php foreach ($students as $student): ?>
                       <?php
                         $studentRef = signedRecordRef((int) $student['id'], 'student');
-                        $current = $existing[(int) $student['id']] ?? 'present';
+                        $current = (string) ($existing[(int) $student['id']] ?? '');
                       ?>
                       <tr>
                         <td><?= h((string) $student['cls_roll']) ?></td>

@@ -204,6 +204,7 @@ include __DIR__ . '/includes/layout-head.php';
                   </div>
                 </a>
               </div>
+              <?php if (contactInboxAllowed()): ?>
               <div class="col-sm-6 col-xl-3">
                 <a href="pages/contact-inbox.php" class="text-decoration-none">
                   <div class="card stat-card h-100">
@@ -221,6 +222,7 @@ include __DIR__ . '/includes/layout-head.php';
                   </div>
                 </a>
               </div>
+              <?php endif; ?>
               <?php endif; ?>
             </div>
             <?php endif; ?>

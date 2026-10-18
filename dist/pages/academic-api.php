@@ -7,17 +7,15 @@ requireAuthentication('../examples/login-v2.php');
 header('Content-Type: application/json; charset=utf-8');
 
 $db = getDatabaseConnection();
+$teacher = getAuthenticatedTeacher();
+$sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $type = (string) ($_GET['type'] ?? '');
 
 if ($type === 'sections') {
     $classId = (int) ($_GET['class_id'] ?? 0);
     $forAttendance = (string) ($_GET['for'] ?? '') === 'attendance';
     $activeOnly = (string) ($_GET['active'] ?? '') === '1';
-    $teacher = getAuthenticatedTeacher();
-    $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
-    $rows = $forAttendance
-        ? sectionsForAttendance($db, $classId, $teacher, $sessionYear)
-        : schoolSections($db, $classId, $activeOnly);
+    $rows = sectionsVisibleToPanel($db, $classId, $teacher, $sessionYear, $activeOnly, $forAttendance);
     echo json_encode($rows, JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -27,7 +25,6 @@ if ($type === 'subjects') {
     $sectionId = (int) ($_GET['section_id'] ?? 0);
     $rows = classSubjects($db, $classId, $sectionId);
     $forMarks = (string) ($_GET['for'] ?? '') === 'marks';
-    $teacher = getAuthenticatedTeacher();
     if ($forMarks) {
         if ($teacher && !canViewAllMarksheets($teacher)) {
             $rows = filterSubjectsForTeacher($rows, (string) ($teacher['teacher_mobile'] ?? ''));
@@ -41,7 +38,10 @@ if ($type === 'subjects') {
 
 if ($type === 'classes') {
     $admissionOnly = (string) ($_GET['admission'] ?? '') === '1';
-    echo json_encode($admissionOnly ? admissionClasses($db) : schoolClasses($db, true), JSON_UNESCAPED_UNICODE);
+    echo json_encode(
+        classesVisibleToPanel($db, $teacher, $sessionYear, $admissionOnly),
+        JSON_UNESCAPED_UNICODE
+    );
     exit;
 }
 

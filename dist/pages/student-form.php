@@ -19,6 +19,7 @@ if ($id > 0) {
 
 $panelTeacher = getAuthenticatedTeacher();
 $fullAdmission = canManageModule('admissions', $panelTeacher);
+$canDeleteStudents = canDeleteStudentRecords($panelTeacher);
 $admissionYear = $id > 0 ? trim((string) ($student['session_year'] ?? '')) : (string) date('Y');
 $scope = ['entire' => [], 'sections' => []];
 if (!$fullAdmission) {
@@ -78,6 +79,9 @@ if ((int) $values['upazilla'] > 0 && tableExists($db, 'upazilas')) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ((string) ($_POST['action'] ?? '') === 'delete') {
         try {
+            if (!$canDeleteStudents) {
+                throw new RuntimeException('You do not have permission to delete student records.');
+            }
             if ($id <= 0) {
                 throw new RuntimeException('Student not found.');
             }
@@ -395,7 +399,7 @@ include __DIR__ . '/../includes/layout-head.php';
                 <button class="btn btn-success"><?= $id > 0 ? 'Update student' : 'Complete admission' ?></button>
               </div>
             </form>
-            <?php if ($id > 0): ?>
+            <?php if ($id > 0 && $canDeleteStudents): ?>
             <form method="post" class="mt-3" onsubmit="return confirm('Delete this student and their photos? This cannot be undone.')">
               <?= csrfField() ?>
               <?= signedRecordField($id, 'student') ?>

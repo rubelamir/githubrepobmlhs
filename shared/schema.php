@@ -51,6 +51,22 @@ function ensureContactMessagesTable(PDO $db): void
     );
 }
 
+function ensureHistoryTimelineTable(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS school_history_timeline (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_year SMALLINT NOT NULL,
+            label VARCHAR(255) NOT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_history_timeline_year (event_year),
+            KEY idx_history_timeline_sort (sort_order, event_year)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+}
+
 function ensureSchoolSchema(PDO $db): void
 {
     static $completed = false;
@@ -66,6 +82,9 @@ function ensureSchoolSchema(PDO $db): void
     if (is_file($marker)) {
         if (!tableExists($db, 'contact_messages')) {
             ensureContactMessagesTable($db);
+        }
+        if (!tableExists($db, 'school_history_timeline')) {
+            ensureHistoryTimelineTable($db);
         }
 
         return;
@@ -112,6 +131,7 @@ function ensureSchoolSchema(PDO $db): void
     ensureMarkSubmissionSchema($db);
     ensureRoutineSlotIndex($db);
     ensureContactMessagesTable($db);
+    ensureHistoryTimelineTable($db);
 
     if (schemaVersionIsCurrent($db)) {
         @file_put_contents($marker, (string) time());
@@ -1263,6 +1283,7 @@ function ensurePublicFeaturesSchema(PDO $db): void
             syllabus_creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
+    ensureHistoryTimelineTable($db);
 
     if (tableExists($db, 'image_gallery')) {
         ensureColumn($db, 'image_gallery', 'album_id', 'INT DEFAULT NULL');

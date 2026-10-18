@@ -1152,7 +1152,7 @@ exit;
 </div>
 
                         <!-- history close -->
-<?php include('footer.php') ?>
+<?php $keepDocumentOpen = true; include('footer.php'); ?>
 <script>
 $(document).ready(function() {
     function loadData(type, category_id) {
@@ -1301,3 +1301,5 @@ $(document).ready(function() {
   });
 })();
 </script>
+</body>
+</html>

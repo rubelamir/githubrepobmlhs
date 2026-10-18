@@ -1382,7 +1382,7 @@ $admHero = [
     <!-- =============== Registration Section End =============================== -->
 </div>
 <!-- history close -->
-<?php include('footer.php') ?>
+<?php $keepDocumentOpen = true; include('footer.php'); ?>
 <script>
 $(document).ready(function() {
     function loadData(type, category_id) {
@@ -1542,3 +1542,5 @@ $('form').submit(function (e) {
         $("#session_year").attr("disabled", false);
     });
 </script>
+</body>
+</html>

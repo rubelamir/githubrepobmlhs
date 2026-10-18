@@ -254,7 +254,7 @@ function resultGradeClass(string $grade): string
         <?php endif; ?>
     </div>
 </div>
-<?php include 'footer.php'; ?>
+<?php $keepDocumentOpen = true; include 'footer.php'; ?>
 <?php if ($publicResultsEnabled): ?>
 <script>
 $(document).ready(function () {
@@ -280,3 +280,5 @@ $(document).ready(function () {
 });
 </script>
 <?php endif; ?>
+</body>
+</html>
