@@ -110,7 +110,7 @@ function resultsPdfHtml(
     $html .= '<div class="results-title"><strong>মার্কশিট</strong><br>'
         . h($examName) . ' · ' . h($classLine) . ' · শিক্ষাবর্ষ ' . h(bnDigits($sessionYear))
         . '<br>' . h($subjectName) . ' · পূর্ণমান ' . h((string) ($subject['full_marks'] ?? 100))
-        . ((int) ($subject['is_optional'] ?? 0) === 1 ? ' · ঐচ্ছিক' : '')
+        . ((int) ($subject['is_optional'] ?? 0) === 1 ? ' · চতুর্থ বিষয়' : '')
         . '</div>';
 
     $hasMcq = (int) ($subject['has_mcq'] ?? 0) === 1;
@@ -132,7 +132,6 @@ function resultsPdfHtml(
         $practical = formatMarkValue($mark['practical'] ?? '');
         $hasMarks = $mcq !== '' || $cq !== '' || $practical !== '';
         $total = (float) $mcq + (float) $cq + (float) $practical;
-        $full = (float) ($subject['full_marks'] ?? 100);
         $html .= '<tr' . ($index % 2 === 1 ? ' class="alt"' : '') . '>'
             . '<td class="center">' . h((string) $student['cls_roll']) . '</td>'
             . '<td>' . h((string) $student['name_ban']) . '</td>'
@@ -140,7 +139,7 @@ function resultsPdfHtml(
             . ($hasCq ? '<td class="center">' . h($cq !== '' ? $cq : '—') . '</td>' : '')
             . ($hasPractical ? '<td class="center">' . h($practical !== '' ? $practical : '—') . '</td>' : '')
             . '<td class="center">' . ($hasMarks ? h((string) (int) round($total)) : '—') . '</td>'
-            . '<td class="center">' . ($hasMarks ? h(letterGrade($total, $full > 0 ? $full : 100)) : '—') . '</td>'
+            . '<td class="center">' . ($hasMarks ? h(subjectPaperGrade($subject, $mark['mcq'] ?? null, $mark['cq'] ?? null, $mark['practical'] ?? null)) : '—') . '</td>'
             . '</tr>';
     }
 

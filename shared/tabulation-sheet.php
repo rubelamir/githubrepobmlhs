@@ -62,7 +62,10 @@ function buildTabulationSheetRows(array $students, array $subjects, array $marks
             $applicable = $subjectId > 0;
             $subjectSourceSectionId = isset($sourceIds[$sectionId]) ? $sectionId : 0;
             $optional = (int) ($subject['optional_by_section'][$subjectSourceSectionId] ?? $subject['is_optional'] ?? 0) === 1;
-            $passMarks = (float) ($subject['pass_marks_by_section'][$subjectSourceSectionId] ?? $subject['pass_marks'] ?? 33);
+            $rules = function_exists('subjectComponentRules') ? subjectComponentRules($subject) : ['mcq' => null, 'cq' => null, 'practical' => null];
+            $passMcq = is_array($rules['mcq'] ?? null) ? (float) $rules['mcq']['pass'] : null;
+            $passCq = is_array($rules['cq'] ?? null) ? (float) $rules['cq']['pass'] : null;
+            $passPractical = is_array($rules['practical'] ?? null) ? (float) $rules['practical']['pass'] : null;
             $mark = $subjectId > 0
                 ? ($marks[$roll][$sectionId][$subjectId] ?? $marks[$roll][0][$subjectId] ?? null)
                 : null;
@@ -85,13 +88,11 @@ function buildTabulationSheetRows(array $students, array $subjects, array $marks
             } elseif ($applicable && !$optional) {
                 $complete = false;
             }
-            if (
-                $subjectHasMarks
-                && $applicable
-                && !$optional
-                && $subjectTotal < $passMarks
-            ) {
-                $failed = true;
+            if ($subjectHasMarks && $applicable && !$optional) {
+                $grade = subjectPaperGrade($subject, $mcq, $cq, $practical);
+                if ($grade === 'F') {
+                    $failed = true;
+                }
             }
 
             $cells[] = [
@@ -100,7 +101,9 @@ function buildTabulationSheetRows(array $students, array $subjects, array $marks
                 'practical' => $practical,
                 'total' => $subjectTotal,
                 'applicable' => $applicable,
-                'pass_marks' => $passMarks,
+                'pass_mcq' => $passMcq,
+                'pass_cq' => $passCq,
+                'pass_practical' => $passPractical,
             ];
         }
 
@@ -331,13 +334,13 @@ function tabulationSheetTableHtml(array $subjects, array $rows): string
         foreach ($subjects as $subjectIndex => $subject) {
             $cell = $row['cells'][$subjectIndex] ?? [];
             if ((int) ($subject['has_mcq'] ?? 0) === 1) {
-                $html .= tabulationPdfMarkCell($cell['mcq'] ?? null, $cell['pass_marks'] ?? null);
+                $html .= tabulationPdfMarkCell($cell['mcq'] ?? null, isset($cell['pass_mcq']) ? (float) $cell['pass_mcq'] : null);
             }
             if ((int) ($subject['has_cq'] ?? 0) === 1) {
-                $html .= tabulationPdfMarkCell($cell['cq'] ?? null, $cell['pass_marks'] ?? null);
+                $html .= tabulationPdfMarkCell($cell['cq'] ?? null, isset($cell['pass_cq']) ? (float) $cell['pass_cq'] : null);
             }
             if ((int) ($subject['has_practical'] ?? 0) === 1) {
-                $html .= tabulationPdfMarkCell($cell['practical'] ?? null, $cell['pass_marks'] ?? null);
+                $html .= tabulationPdfMarkCell($cell['practical'] ?? null, isset($cell['pass_practical']) ? (float) $cell['pass_practical'] : null);
             }
             if (tabulationSubjectColumnCount($subject) === 1
                 && (int) ($subject['has_mcq'] ?? 0) + (int) ($subject['has_cq'] ?? 0) + (int) ($subject['has_practical'] ?? 0) === 0
@@ -353,7 +356,7 @@ function tabulationSheetTableHtml(array $subjects, array $rows): string
             . '<td class="center ts-result-cell ' . $resultClass . '">' . $resultHtml . '</td>'
             . '<td class="center ts-rank-cell">' . ($row['rank'] !== null ? h(bnDigits((string) $row['rank'])) : '—') . '</td></tr>';
     }
-    $html .= '</tbody></table><div class="ts-meta" style="margin-top:2mm">* ঐচ্ছিক বিষয়; অকৃতকার্য নির্ধারণে গণনা করা হয় না। অসম্পূর্ণ নম্বরের শিক্ষার্থীরা মেধাক্রমে অন্তর্ভুক্ত নয়।</div>';
+    $html .= '</tbody></table><div class="ts-meta" style="margin-top:2mm">* চতুর্থ বিষয়। আবশ্যিক বিষয়ে যেকোনো অংশে (CQ, MCQ বা Practical) ফেল করলে অকৃতকার্য। চতুর্থ বিষয়ের ফেল সামগ্রিক ফেল নয়। অসম্পূর্ণ নম্বরের শিক্ষার্থীরা মেধাক্রমে অন্তর্ভুক্ত নয়।</div>';
 
     return $html;
 }

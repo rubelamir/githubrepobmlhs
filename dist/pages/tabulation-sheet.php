@@ -437,9 +437,9 @@ include __DIR__ . '/../includes/layout-head.php';
                               <td class="name-cell"><?= h((string) ($row['student']['name_ban'] ?: $row['student']['name_eng'])) ?></td>
                               <?php foreach ($subjects as $index => $subject): ?>
                                 <?php $cell = $row['cells'][$index]; ?>
-                                <?php if ((int) $subject['has_mcq'] === 1): ?><td class="mark-cell<?= $cell['mcq'] !== null && $cell['mcq'] < $cell['pass_marks'] ? ' mark-below-pass' : '' ?>"><?= $cell['mcq'] !== null ? h(formatMarkValue(number_format((float) $cell['mcq'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
-                                <?php if ((int) $subject['has_cq'] === 1): ?><td class="mark-cell<?= $cell['cq'] !== null && $cell['cq'] < $cell['pass_marks'] ? ' mark-below-pass' : '' ?>"><?= $cell['cq'] !== null ? h(formatMarkValue(number_format((float) $cell['cq'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
-                                <?php if ((int) $subject['has_practical'] === 1): ?><td class="mark-cell<?= $cell['practical'] !== null && $cell['practical'] < $cell['pass_marks'] ? ' mark-below-pass' : '' ?>"><?= $cell['practical'] !== null ? h(formatMarkValue(number_format((float) $cell['practical'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
+                                <?php if ((int) $subject['has_mcq'] === 1): ?><td class="mark-cell<?= $cell['mcq'] !== null && isset($cell['pass_mcq']) && $cell['mcq'] < $cell['pass_mcq'] ? ' mark-below-pass' : '' ?>"><?= $cell['mcq'] !== null ? h(formatMarkValue(number_format((float) $cell['mcq'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
+                                <?php if ((int) $subject['has_cq'] === 1): ?><td class="mark-cell<?= $cell['cq'] !== null && isset($cell['pass_cq']) && $cell['cq'] < $cell['pass_cq'] ? ' mark-below-pass' : '' ?>"><?= $cell['cq'] !== null ? h(formatMarkValue(number_format((float) $cell['cq'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
+                                <?php if ((int) $subject['has_practical'] === 1): ?><td class="mark-cell<?= $cell['practical'] !== null && isset($cell['pass_practical']) && $cell['practical'] < $cell['pass_practical'] ? ' mark-below-pass' : '' ?>"><?= $cell['practical'] !== null ? h(formatMarkValue(number_format((float) $cell['practical'], 2, '.', ''))) : '—' ?></td><?php endif; ?>
                                 <?php if (tabulationSubjectColumnCount($subject) === 1 && (int) $subject['has_mcq'] + (int) $subject['has_cq'] + (int) $subject['has_practical'] === 0): ?><td class="mark-cell">—</td><?php endif; ?>
                               <?php endforeach; ?>
                               <?php
@@ -460,7 +460,7 @@ include __DIR__ . '/../includes/layout-head.php';
                         </tbody>
                       </table>
                     </div>
-                    <p class="small text-secondary mt-2 mb-0 tabulation-note">* ঐচ্ছিক বিষয়; অকৃতকার্য নির্ধারণে গণনা করা হয় না। কোনো আবশ্যিক বিষয়ের নম্বর অনুপস্থিত থাকলে ফলাফল অসম্পূর্ণ দেখাবে এবং মেধাক্রমে অন্তর্ভুক্ত হবে না।</p>
+                    <p class="small text-secondary mt-2 mb-0 tabulation-note">* চতুর্থ বিষয়; এতে ফেল করলে সামগ্রিক ফেল হয় না। আবশ্যিক বিষয়ে CQ, MCQ বা Practical-এর যেকোনো একটিতে পাস নম্বরের নিচে থাকলে অকৃতকার্য। কোনো আবশ্যিক বিষয়ের নম্বর অনুপস্থিত থাকলে ফলাফল অসম্পূর্ণ দেখাবে এবং মেধাক্রমে অন্তর্ভুক্ত হবে না। লাল নম্বর সেই অংশের পাস নম্বরের নিচে।</p>
                   </div>
                 </div>
               <?php endif; ?>

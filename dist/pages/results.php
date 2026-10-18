@@ -153,7 +153,7 @@ if (in_array((string) ($_GET['download'] ?? ''), ['csv', 'template'], true)) {
             ($_GET['download'] ?? '') === 'template' || !$hasMarks ? '' : (string) $total,
             ($_GET['download'] ?? '') === 'template' || !$hasMarks
                 ? ''
-                : letterGrade($total, $fullMarks > 0 ? $fullMarks : 100),
+                : subjectPaperGrade($selectedSubject, $mcq, $cq, $practical),
         ];
     }
 
@@ -404,6 +404,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($marks['mcq'] === null && $marks['cq'] === null && $marks['practical'] === null) {
                     continue;
                 }
+                $limitError = subjectComponentLimitError($subject, $marks['mcq'], $marks['cq'], $marks['practical'], $roll);
+                if ($limitError !== null) {
+                    throw new RuntimeException('CSV-এর row ' . $rowNumber . ': ' . $limitError);
+                }
                 $totalMark = (float) ($marks['mcq'] ?? 0)
                     + (float) ($marks['cq'] ?? 0)
                     + (float) ($marks['practical'] ?? 0);
@@ -465,6 +469,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $cleared++;
                 }
                 continue;
+            }
+            $limitError = subjectComponentLimitError($subject, $mcq, $cq, $practical, $roll);
+            if ($limitError !== null) {
+                throw new RuntimeException($limitError);
             }
             $totalMark = (float) ($mcq ?? 0) + (float) ($cq ?? 0) + (float) ($practical ?? 0);
             $fullMarks = (float) ($subject['full_marks'] ?? 100);
@@ -734,9 +742,16 @@ include __DIR__ . '/../includes/layout-head.php';
               <?php
                 $subjectFullMarks = (float) ($selectedSubject['full_marks'] ?? 100);
                 $subjectFullMarksLabel = formatFullMarksLabel($subjectFullMarks > 0 ? $subjectFullMarks : 100);
+                $componentRules = subjectComponentRules($selectedSubject);
+                $mcqFull = $componentRules['mcq']['full'] ?? null;
+                $cqFull = $componentRules['cq']['full'] ?? null;
+                $practicalFull = $componentRules['practical']['full'] ?? null;
+                $mcqPass = $componentRules['mcq']['pass'] ?? null;
+                $cqPass = $componentRules['cq']['pass'] ?? null;
+                $practicalPass = $componentRules['practical']['pass'] ?? null;
               ?>
               <?php if ($canEditMarks): ?>
-              <form method="post" class="card stat-card results-mark-sheet" id="resultsMarkForm" data-full-marks="<?= h((string) $subjectFullMarks) ?>" data-full-label="<?= h($subjectFullMarksLabel) ?>" novalidate>
+              <form method="post" class="card stat-card results-mark-sheet" id="resultsMarkForm" data-full-marks="<?= h((string) $subjectFullMarks) ?>" data-full-label="<?= h($subjectFullMarksLabel) ?>" data-pass-mcq="<?= $mcqPass === null ? '' : h((string) $mcqPass) ?>" data-pass-cq="<?= $cqPass === null ? '' : h((string) $cqPass) ?>" data-pass-practical="<?= $practicalPass === null ? '' : h((string) $practicalPass) ?>" novalidate>
                 <?= csrfField() ?>
                 <input type="hidden" name="exam" value="<?= (int) $examId ?>">
                 <input type="hidden" name="cls" value="<?= (int) $classId ?>">
@@ -821,7 +836,6 @@ include __DIR__ . '/../includes/layout-head.php';
                             $practical = formatMarkValue($mark['practical'] ?? '');
                             $hasMarks = $mcq !== '' || $cq !== '' || $practical !== '';
                             $total = (float) $mcq + (float) $cq + (float) $practical;
-                            $full = $subjectFullMarks > 0 ? $subjectFullMarks : 100;
                             $rollLabel = (string) $student['cls_roll'];
                           ?>
                           <tr data-mark-row data-roll="<?= h($rollLabel) ?>">
@@ -841,6 +855,7 @@ include __DIR__ . '/../includes/layout-head.php';
                                       enterkeyhint="next"
                                       maxlength="6"
                                       data-component="MCQ"
+                                      data-max="<?= $mcqFull === null ? '' : h((string) $mcqFull) ?>"
                                       aria-label="রোল <?= h($rollLabel) ?> MCQ"
                                     >
                                     <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
@@ -865,6 +880,7 @@ include __DIR__ . '/../includes/layout-head.php';
                                       enterkeyhint="next"
                                       maxlength="6"
                                       data-component="CQ"
+                                      data-max="<?= $cqFull === null ? '' : h((string) $cqFull) ?>"
                                       aria-label="রোল <?= h($rollLabel) ?> CQ"
                                     >
                                     <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
@@ -889,6 +905,7 @@ include __DIR__ . '/../includes/layout-head.php';
                                       enterkeyhint="done"
                                       maxlength="6"
                                       data-component="Practical"
+                                      data-max="<?= $practicalFull === null ? '' : h((string) $practicalFull) ?>"
                                       aria-label="রোল <?= h($rollLabel) ?> Practical"
                                     >
                                     <div class="mark-error" hidden><span class="mark-error-icon" aria-hidden="true">⚠</span><span class="mark-error-text"></span></div>
@@ -900,7 +917,7 @@ include __DIR__ . '/../includes/layout-head.php';
                               </td>
                             <?php endif; ?>
                             <td class="mark-total"><?= $hasMarks ? h(formatMarkValue($total)) : '—' ?></td>
-                            <td class="mark-grade"><?= $hasMarks ? h(letterGrade($total, $full)) : '—' ?></td>
+                            <td class="mark-grade"><?= $hasMarks ? h(subjectPaperGrade($selectedSubject, $mcq, $cq, $practical)) : '—' ?></td>
                           </tr>
                         <?php endforeach; ?>
                       </tbody>

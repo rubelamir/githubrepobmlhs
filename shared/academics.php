@@ -795,14 +795,13 @@ function studentResultRows(PDO $db, string $roll, int $classId, int $sectionId, 
         }
         $total = (float) $mcq + (float) $cq + (float) $practical;
         $grand += $total;
-        $full = (float) ($subject['full_marks'] ?? 100);
         $rows[] = [
             'subject' => $subject,
             'mcq' => $mcq,
             'cq' => $cq,
             'practical' => $practical,
             'total' => $total,
-            'grade' => letterGrade($total, $full > 0 ? $full : 100),
+            'grade' => subjectPaperGrade($subject, $mcq, $cq, $practical),
         ];
     }
 
@@ -1600,6 +1599,174 @@ function letterGrade(float $obtained, float $full = 100): string
     };
 }
 
+/**
+ * SSC-style paper: CQ and MCQ (and Practical, when present) each have their own
+ * full mark and pass mark. A paper with only one component keeps the subject's
+ * own full and pass marks.
+ *
+ * @return array{mcq:?array{full:float,pass:float},cq:?array{full:float,pass:float},practical:?array{full:float,pass:float}}
+ */
+function subjectComponentRules(array $subject): array
+{
+    $hasMcq = (int) ($subject['has_mcq'] ?? 0) === 1;
+    $hasCq = (int) ($subject['has_cq'] ?? 0) === 1;
+    $hasPractical = (int) ($subject['has_practical'] ?? 0) === 1;
+    $full = (float) ($subject['full_marks'] ?? 100);
+    if ($full <= 0) {
+        $full = 100.0;
+    }
+    $pass = (float) ($subject['pass_marks'] ?? 33);
+    $rules = ['mcq' => null, 'cq' => null, 'practical' => null];
+    $scale = $full / 100.0;
+    if ($hasMcq && $hasCq && $hasPractical) {
+        $rules['mcq'] = ['full' => 25.0 * $scale, 'pass' => 8.0 * $scale];
+        $rules['cq'] = ['full' => 50.0 * $scale, 'pass' => 17.0 * $scale];
+        $rules['practical'] = ['full' => 25.0 * $scale, 'pass' => 8.0 * $scale];
+
+        return $rules;
+    }
+    if ($hasMcq && $hasCq) {
+        $rules['mcq'] = ['full' => 30.0 * $scale, 'pass' => 10.0 * $scale];
+        $rules['cq'] = ['full' => 70.0 * $scale, 'pass' => 23.0 * $scale];
+
+        return $rules;
+    }
+    if ($hasMcq) {
+        $rules['mcq'] = ['full' => $full, 'pass' => $pass];
+    }
+    if ($hasCq) {
+        $rules['cq'] = ['full' => $full, 'pass' => $pass];
+    }
+    if ($hasPractical) {
+        $rules['practical'] = ['full' => $full, 'pass' => $pass];
+    }
+
+    return $rules;
+}
+
+function subjectMarkValue(mixed $value): ?float
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    return (float) $value;
+}
+
+function subjectPaperGrade(array $subject, mixed $mcq, mixed $cq, mixed $practical): string
+{
+    $rules = subjectComponentRules($subject);
+    $marks = [
+        'mcq' => subjectMarkValue($mcq),
+        'cq' => subjectMarkValue($cq),
+        'practical' => subjectMarkValue($practical),
+    ];
+    $failedPart = false;
+    $total = 0.0;
+    $full = 0.0;
+    foreach ($marks as $part => $mark) {
+        $rule = $rules[$part];
+        if (!is_array($rule)) {
+            continue;
+        }
+        $value = $mark ?? 0.0;
+        $total += $value;
+        $full += (float) $rule['full'];
+        if ($value < (float) $rule['pass']) {
+            $failedPart = true;
+        }
+    }
+    if ($failedPart) {
+        return 'F';
+    }
+    if ($full <= 0) {
+        $full = (float) ($subject['full_marks'] ?? 100);
+    }
+
+    return letterGrade($total, $full > 0 ? $full : 100);
+}
+
+function subjectComponentLimitError(array $subject, mixed $mcq, mixed $cq, mixed $practical, string $roll = ''): ?string
+{
+    $rules = subjectComponentRules($subject);
+    $marks = [
+        'mcq' => ['MCQ', subjectMarkValue($mcq)],
+        'cq' => ['CQ', subjectMarkValue($cq)],
+        'practical' => ['Practical', subjectMarkValue($practical)],
+    ];
+    foreach ($marks as $part => [$label, $value]) {
+        $rule = $rules[$part];
+        if (!is_array($rule) || $value === null) {
+            continue;
+        }
+        if ($value > (float) $rule['full'] + 0.000001) {
+            $who = $roll !== '' ? 'রোল ' . $roll . '-এর ' : '';
+
+            return $who . $label . ' সর্বোচ্চ ' . formatMarkValue((string) $rule['full']) . ' হতে পারবে।';
+        }
+    }
+
+    return null;
+}
+
+function subjectPassSummary(array $subject): string
+{
+    $rules = subjectComponentRules($subject);
+    $labels = ['cq' => 'CQ', 'mcq' => 'MCQ', 'practical' => 'Practical'];
+    $parts = [];
+    foreach ($labels as $part => $label) {
+        $rule = $rules[$part];
+        if (!is_array($rule)) {
+            continue;
+        }
+        $parts[] = $label . ' ' . formatMarkValue((string) $rule['pass']) . '/' . formatMarkValue((string) $rule['full']);
+    }
+
+    return implode(', ', $parts);
+}
+
+function fourthSubjectBonus(string $grade): float
+{
+    $point = gradePoint($grade);
+    if ($grade === 'F' || $point <= 2.0) {
+        return 0.0;
+    }
+
+    return round($point - 2.0, 2);
+}
+
+/**
+ * Compulsory grade points plus the fourth-subject bonus, divided by the
+ * number of compulsory subjects. Any compulsory F makes the GPA 0.
+ * The result never exceeds 5.00.
+ *
+ * @param list<array{grade:string,optional:bool}> $papers
+ * @return array{gpa:float,failed:bool,letter:string}
+ */
+function examResultGpa(array $papers): array
+{
+    $points = [];
+    $bonus = 0.0;
+    $failed = false;
+    foreach ($papers as $paper) {
+        $grade = (string) ($paper['grade'] ?? 'F');
+        if (!empty($paper['optional'])) {
+            $bonus += fourthSubjectBonus($grade);
+            continue;
+        }
+        $points[] = gradePoint($grade);
+        if ($grade === 'F') {
+            $failed = true;
+        }
+    }
+    if ($failed || $points === []) {
+        return ['gpa' => 0.0, 'failed' => true, 'letter' => 'F'];
+    }
+    $gpa = min(5.0, round((array_sum($points) + $bonus) / count($points), 2));
+
+    return ['gpa' => $gpa, 'failed' => false, 'letter' => letterFromGpa($gpa)];
+}
+
 function letterFromGpa(float $gpa): string
 {
     return match (true) {
@@ -1626,28 +1793,20 @@ function studentResultSheet(
         $sheet = studentResultRows($db, $roll, $classId, 0, $sessionYear, $examId);
     }
 
-    $gradePoints = [];
-    $failed = false;
+    $papers = [];
     $fullTotal = 0.0;
     foreach ($sheet['rows'] as $paper) {
-        $optional = (int) ($paper['subject']['is_optional'] ?? 0) === 1;
         $fullTotal += (float) ($paper['subject']['full_marks'] ?? 100);
-        if ($optional) {
-            continue;
-        }
-        $gradePoints[] = gradePoint((string) $paper['grade']);
-        if ((string) $paper['grade'] === 'F') {
-            $failed = true;
-        }
+        $papers[] = [
+            'grade' => (string) $paper['grade'],
+            'optional' => (int) ($paper['subject']['is_optional'] ?? 0) === 1,
+        ];
     }
-    $gpa = $gradePoints === [] ? 0.0 : round(array_sum($gradePoints) / count($gradePoints), 2);
-    if ($failed) {
-        $gpa = 0.0;
-    }
+    $result = examResultGpa($papers);
 
-    $sheet['gpa'] = $gpa;
-    $sheet['failed'] = $failed;
-    $sheet['letter'] = $failed || $gradePoints === [] ? 'F' : letterFromGpa($gpa);
+    $sheet['gpa'] = $result['gpa'];
+    $sheet['failed'] = $result['failed'];
+    $sheet['letter'] = $result['letter'];
     $sheet['full_total'] = $fullTotal;
     $sheet['remarks'] = studentExamRemark($db, $roll, $classId, $sectionId, $sessionYear, $examId);
     if ($sheet['remarks'] === '' && $sectionId !== 0) {

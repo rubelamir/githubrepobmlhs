@@ -443,13 +443,16 @@ include __DIR__ . '/../includes/layout-head.php';
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_optional" id="is_optional"
                                <?= $editRow && (int) ($editRow['is_optional'] ?? 0) === 1 ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="is_optional">Optional</label>
+                        <label class="form-check-label" for="is_optional">চতুর্থ বিষয়</label>
                       </div>
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
                                <?= !$editRow || (int) ($editRow['is_active'] ?? 1) === 1 ? 'checked' : '' ?>>
                         <label class="form-check-label" for="is_active">Active</label>
                       </div>
+                    </div>
+                    <div class="col-12">
+                      <p class="small text-secondary mb-0">১০০ নম্বরের সাধারণ বিষয় (CQ + MCQ): CQ-তে পাস ২৩/৭০, MCQ-তে ১০/৩০। ব্যবহারিক বিষয়: CQ ১৭/৫০, MCQ ৮/২৫, Practical ৮/২৫। পূর্ণমান ১০০-এর কম হলে একই অনুপাতে পাস নম্বর কমে। যেকোনো এক অংশে ফেল করলে গ্রেড F এবং পয়েন্ট ০। চতুর্থ বিষয়ের পয়েন্ট থেকে ২.০০ বাদ দিয়ে বোনাস যোগ হয়; ২.০০ বা তার কম হলে বোনাস ০। আবশ্যিক বিষয়ে F হলে জিপিএ ০.০০, আর বোনাসসহ জিপিএ সর্বোচ্চ ৫.০০।</p>
                     </div>
                     <div class="col-12 d-flex gap-2">
                       <button class="btn btn-primary"><?= $editRow ? 'Update subject' : 'Add subject' ?></button>
@@ -549,11 +552,11 @@ include __DIR__ . '/../includes/layout-head.php';
                                 · <?= h((string) $subject['subject_code']) ?>
                               <?php endif; ?>
                               <?php if ((int) $subject['is_optional'] === 1): ?>
-                                <span class="badge text-bg-light">Optional</span>
+                                <span class="badge text-bg-light">চতুর্থ বিষয়</span>
                               <?php endif; ?>
                             </div>
                           </td>
-                          <td><?= (int) $subject['full_marks'] ?> <span class="text-secondary small">(pass <?= (int) $subject['pass_marks'] ?>)</span></td>
+                          <td><?= (int) $subject['full_marks'] ?> <span class="text-secondary small"><?= h(subjectPassSummary($subject)) ?></span></td>
                           <td><?= h(implode(' · ', $parts) ?: '—') ?></td>
                           <td><?= $teacherName !== '' ? h($teacherName) : '—' ?></td>
                           <td>

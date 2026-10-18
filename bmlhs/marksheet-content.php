@@ -102,7 +102,7 @@
                         <td>
                             <?= h((string) ($subject['subject_name_ban'] ?: $subject['subject_name'])) ?>
                             <?php if ((int) ($subject['is_optional'] ?? 0) === 1): ?>
-                                <small class="school-subject-note">ঐচ্ছিক</small>
+                                <small class="school-subject-note">চতুর্থ বিষয়</small>
                             <?php endif; ?>
                         </td>
                         <td><?= h(bnDigits((string) (int) ($subject['full_marks'] ?? 100))) ?></td>

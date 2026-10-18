@@ -91,17 +91,33 @@
     }
   }
 
+  function passMark(form, component) {
+    var key = component === 'MCQ' ? 'data-pass-mcq' : (component === 'CQ' ? 'data-pass-cq' : 'data-pass-practical');
+    var raw = form ? form.getAttribute(key) : '';
+    if (raw === null || raw === '') {
+      return null;
+    }
+    var number = Number(raw);
+    return isFinite(number) ? number : null;
+  }
+
   function updateRowTotal(row, fullMarks) {
     if (!row) {
       return { total: null, over: false };
     }
+    var form = row.closest('form');
     var inputs = row.querySelectorAll('.mark-input');
     var total = 0;
     var hasValue = false;
     var invalid = false;
+    var failedPart = false;
     Array.prototype.forEach.call(inputs, function (input) {
       var number = parseNumber(input.value);
+      var pass = passMark(form, input.getAttribute('data-component'));
       if (number === null) {
+        if (pass !== null && hasValue) {
+          failedPart = true;
+        }
         return;
       }
       if (!isFinite(number)) {
@@ -110,7 +126,31 @@
       }
       hasValue = true;
       total += number;
+      if (pass !== null && number < pass) {
+        failedPart = true;
+      }
     });
+    if (hasValue) {
+      Array.prototype.forEach.call(inputs, function (input) {
+        var pass = passMark(form, input.getAttribute('data-component'));
+        if (pass !== null && parseNumber(input.value) === null) {
+          failedPart = true;
+        }
+      });
+    }
+    var gradeFull = 0;
+    if (hasValue && !invalid) {
+      Array.prototype.forEach.call(inputs, function (input) {
+        var pass = passMark(form, input.getAttribute('data-component'));
+        var max = Number(input.getAttribute('data-max') || '0');
+        if (pass !== null && max > 0) {
+          gradeFull += max;
+        }
+      });
+    }
+    if (!(gradeFull > 0)) {
+      gradeFull = fullMarks > 0 ? fullMarks : 100;
+    }
     var totalCell = row.querySelector('.mark-total');
     var gradeCell = row.querySelector('.mark-grade');
     var over = hasValue && fullMarks > 0 && total > fullMarks + 1e-9;
@@ -120,7 +160,7 @@
     }
     if (gradeCell) {
       gradeCell.textContent = hasValue && !invalid && !over
-        ? letterGrade(total, fullMarks > 0 ? fullMarks : 100)
+        ? (failedPart ? 'F' : letterGrade(total, gradeFull))
         : '—';
     }
     return { total: hasValue ? total : null, over: over, invalid: invalid };
@@ -146,6 +186,12 @@
     var number = parseNumber(input.value);
     if (number !== null && !isFinite(number)) {
       setInputError(input, 'শুধু সংখ্যা');
+      return false;
+    }
+    var componentMax = Number(input.getAttribute('data-max') || '0');
+    if (number !== null && componentMax > 0 && number > componentMax + 1e-9) {
+      setInputError(input, 'সর্বোচ্চ ' + formatMarkDisplay(componentMax));
+      updateRowTotal(input.closest('tr'), fullMarks);
       return false;
     }
 

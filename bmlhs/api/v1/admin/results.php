@@ -184,7 +184,7 @@ try {
             'cq' => $values['cq'],
             'practical' => $values['practical'],
             'total' => $total,
-            'grade' => $hasMarks ? letterGrade((float) $total, $fullMarks > 0 ? $fullMarks : 100) : null,
+            'grade' => $hasMarks ? subjectPaperGrade($subject, $values['mcq'], $values['cq'], $values['practical']) : null,
         ];
     }
 
