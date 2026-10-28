@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ftplib
 import json
+import os
 import ssl
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_FILE = ROOT / ".vscode" / "sftp.json"
+FTPS_ENV_KEYS = ("FTP_HOST", "FTP_USERNAME", "FTP_PASSWORD", "FTP_REMOTE_PATH")
 SKIP_PREFIXES = (
     ".git/",
     ".github/",
@@ -27,6 +29,20 @@ SKIP_SUFFIXES = (".sql", ".md", ".pdf", ".csv", ".log")
 
 
 def load_config() -> dict:
+    if any(key in os.environ for key in FTPS_ENV_KEYS):
+        config = {
+            "protocol": "ftp",
+            "secure": True,
+            "host": os.environ.get("FTP_HOST", ""),
+            "username": os.environ.get("FTP_USERNAME", ""),
+            "password": os.environ.get("FTP_PASSWORD", ""),
+            "remotePath": os.environ.get("FTP_REMOTE_PATH", ""),
+        }
+        missing = [key for key in FTPS_ENV_KEYS if not os.environ.get(key)]
+        if missing:
+            raise RuntimeError(f"FTPS environment configuration is incomplete: {', '.join(missing)}")
+        return config
+
     if not CONFIG_FILE.is_file():
         raise RuntimeError("FTPS configuration is missing: .vscode/sftp.json")
     config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
@@ -95,6 +111,8 @@ def deploy(paths: list[str]) -> list[str]:
     config = load_config()
     remote_root = str(config.get("remotePath", "/")).strip("/")
     root_parts = [part for part in remote_root.split("/") if part]
+    if any(part in {".", ".."} for part in root_parts):
+        raise RuntimeError("Deployment stopped: FTPS remote path must not contain '.' or '..' segments.")
     with ftplib.FTP_TLS(
         str(config["host"]),
         timeout=45,
