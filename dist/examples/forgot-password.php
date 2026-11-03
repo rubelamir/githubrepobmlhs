@@ -1,240 +1,356 @@
-<!doctype html>
-<html lang="en">
-  <!--begin::Head-->
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>AdminLTE 4 | Forgot Password</title>
+<?php
+declare(strict_types=1);
 
-    <!--begin::Theme Init (prevents flash of incorrect theme on load, #6043)-->
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/password-reset.php';
+
+if (isAuthenticated()) {
+    header('Location: ../index.php', true, 302);
+    exit;
+}
+
+try {
+    $db = getDatabaseConnection();
+    $school = schoolSettings($db);
+} catch (PDOException $exception) {
+    error_log($exception->getMessage());
+    $db = null;
+    $school = [];
+}
+
+$schoolNameBn = (string) ($school['school_name_bn'] ?? 'বিদ্যালয়');
+$schoolNameEn = (string) ($school['school_name_en'] ?? 'School Admin');
+$logoUrl = schoolFileUrl((string) ($school['logo'] ?? ''), '', '');
+
+$state = $_SESSION['pw_reset'] ?? null;
+if (!is_array($state) || (int) ($state['expires'] ?? 0) < time()) {
+    $state = null;
+    unset($_SESSION['pw_reset']);
+}
+$step = $state['step'] ?? 'mobile';
+if ($step === 'new' && (int) ($state['verified_until'] ?? 0) < time()) {
+    $state = null;
+    $step = 'mobile';
+    unset($_SESSION['pw_reset']);
+}
+
+$error = '';
+$notice = '';
+$mobile = (string) ($state['mobile'] ?? '');
+$genericSentNotice = 'নম্বরটি নিবন্ধিত থাকলে একটি ৬ অঙ্কের কোড SMS-এ পাঠানো হয়েছে। কোডটি ' . bnDigits((string) (PASSWORD_RESET_CODE_TTL / 60)) . ' মিনিট কার্যকর থাকবে।';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db instanceof PDO) {
+    $action = (string) ($_POST['action'] ?? '');
+
+    try {
+        if (!verifyCsrfToken()) {
+            $error = 'নিরাপত্তা টোকেনের মেয়াদ শেষ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।';
+        } elseif ($action === 'cancel') {
+            unset($_SESSION['pw_reset']);
+            header('Location: forgot-password.php', true, 303);
+            exit;
+        } elseif ($action === 'send') {
+            $mobile = trim((string) ($_POST['mobile'] ?? $mobile));
+            $core = passwordResetMobileCore($mobile);
+            $secondsSinceSend = time() - (int) ($state['sent_at'] ?? 0);
+
+            if (strlen($core) < 6) {
+                $error = 'সঠিক মোবাইল নম্বর লিখুন।';
+            } elseif ($state !== null && $secondsSinceSend < PASSWORD_RESET_RESEND_SECONDS) {
+                $error = 'নতুন কোডের জন্য অনুগ্রহ করে ' . bnDigits((string) (PASSWORD_RESET_RESEND_SECONDS - $secondsSinceSend)) . ' সেকেন্ড অপেক্ষা করুন।';
+                $step = 'otp';
+            } else {
+                $teacher = passwordResetFindTeacher($db, $mobile);
+                $result = $teacher !== null
+                    ? passwordResetSendCode($db, $teacher)
+                    : (smsGatewayReady($db) ? 'sent' : 'sms_unavailable');
+
+                if ($result === 'sms_unavailable') {
+                    $error = 'এই মুহূর্তে SMS সেবা চালু নেই। প্রধান শিক্ষক অথবা অফিস সহকারীর সাথে যোগাযোগ করুন।';
+                } else {
+                    // The reply is identical for unknown, throttled and failed sends so the form cannot reveal which numbers are registered.
+                    $state = [
+                        'step' => 'otp',
+                        'mobile' => $mobile,
+                        'teacher_id' => $teacher !== null ? (int) $teacher['id'] : 0,
+                        'teacher_mobile' => $teacher !== null ? (string) $teacher['teacher_mobile'] : '',
+                        'sent_at' => time(),
+                        'expires' => time() + 1800,
+                    ];
+                    $_SESSION['pw_reset'] = $state;
+                    $step = 'otp';
+                    $notice = $genericSentNotice;
+                }
+            }
+        } elseif ($action === 'verify' && $state !== null && $step === 'otp') {
+            $core = passwordResetMobileCore((string) $state['mobile']);
+            if (isLoginRateLimited('pw-reset-otp', $core)) {
+                $minutes = bnDigits((string) loginRateLimitMinutesRemaining('pw-reset-otp', $core));
+                $error = 'অনেকবার ভুল কোড দেওয়া হয়েছে। ' . $minutes . ' মিনিট পর আবার চেষ্টা করুন।';
+            } else {
+                $outcome = passwordResetCheckCode($db, (int) $state['teacher_id'], (string) ($_POST['code'] ?? ''));
+                if ($outcome === 'ok') {
+                    clearLoginFailures('pw-reset-otp', $core);
+                    session_regenerate_id(true);
+                    $state['step'] = 'new';
+                    $state['verified_until'] = time() + PASSWORD_RESET_VERIFIED_TTL;
+                    $_SESSION['pw_reset'] = $state;
+                    $step = 'new';
+                } else {
+                    recordLoginFailure('pw-reset-otp', $core);
+                    $error = 'কোডটি সঠিক নয় অথবা মেয়াদ শেষ হয়ে গেছে।';
+                }
+            }
+        } elseif ($action === 'save' && $state !== null && $step === 'new' && (int) $state['teacher_id'] > 0) {
+            $password = (string) ($_POST['new_password'] ?? '');
+            $confirm = (string) ($_POST['confirm_password'] ?? '');
+
+            if (strlen($password) < PASSWORD_RESET_MIN_LENGTH) {
+                $error = 'পাসওয়ার্ড কমপক্ষে ' . bnDigits((string) PASSWORD_RESET_MIN_LENGTH) . ' অক্ষরের হতে হবে।';
+            } elseif (strlen($password) > PASSWORD_RESET_MAX_LENGTH) {
+                $error = 'পাসওয়ার্ড ' . bnDigits((string) PASSWORD_RESET_MAX_LENGTH) . ' অক্ষরের বেশি হতে পারবে না।';
+            } elseif ($password !== $confirm) {
+                $error = 'দুটি পাসওয়ার্ড মিলছে না।';
+            } else {
+                passwordResetSaveNewPassword($db, (int) $state['teacher_id'], (string) $state['teacher_mobile'], $password);
+                unset($_SESSION['pw_reset']);
+                session_regenerate_id(true);
+                redirectWithMessage('login-v2.php', 'success', 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে। নতুন পাসওয়ার্ড দিয়ে প্রবেশ করুন।');
+            }
+        } else {
+            $error = 'অনুরোধটি সম্পন্ন করা যায়নি। প্রথম থেকে আবার চেষ্টা করুন।';
+        }
+    } catch (PDOException | RuntimeException $exception) {
+        error_log($exception->getMessage());
+        $error = 'সেবাটি এই মুহূর্তে পাওয়া যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $error = 'সেবাটি এই মুহূর্তে পাওয়া যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+}
+
+$titles = [
+    'mobile' => ['পাসওয়ার্ড পুনরুদ্ধার', 'আপনার নিবন্ধিত মোবাইল নম্বর দিন। SMS-এ একটি ৬ অঙ্কের কোড পাঠানো হবে।'],
+    'otp' => ['কোড যাচাই করুন', 'মোবাইলে পাঠানো ৬ অঙ্কের কোডটি লিখুন।'],
+    'new' => ['নতুন পাসওয়ার্ড দিন', 'নিজের জন্য একটি নতুন পাসওয়ার্ড নির্বাচন করুন।'],
+];
+[$pageTitle, $pageSubtitle] = $titles[$step];
+?>
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <title><?= h($schoolNameBn) ?> | পাসওয়ার্ড পুনরুদ্ধার</title>
     <script>
       (() => {
         'use strict';
         const root = document.documentElement;
-
-        // Applications with their own theming opt out of AdminLTE's color mode
-        // entirely, here as well as in the bundle.
-        if (root.getAttribute('data-lte-color-mode') === 'off') {
-          return;
-        }
-
-        const STORAGE_KEY = 'lte-theme';
         let stored = null;
-        try {
-          stored = localStorage.getItem(STORAGE_KEY);
-        } catch {
-          // localStorage may be unavailable (private mode, sandboxed iframe).
-        }
-        // Mirror the precedence in color-mode.ts: the visitor's stored choice
-        // wins, then a theme this page declared itself, then the OS preference.
-        const authored = root.getAttribute('data-bs-theme');
+        try { stored = localStorage.getItem('lte-theme'); } catch {}
         let resolved = 'light';
-        if (stored === 'dark' || stored === 'light') {
-          resolved = stored;
-        } else if (authored === 'dark' || authored === 'light') {
-          resolved = authored;
-        } else if (globalThis.matchMedia('(prefers-color-scheme: dark)').matches) {
-          resolved = 'dark';
-        }
+        if (stored === 'dark' || stored === 'light') resolved = stored;
+        else if (globalThis.matchMedia('(prefers-color-scheme: dark)').matches) resolved = 'dark';
         root.setAttribute('data-bs-theme', resolved);
         root.style.colorScheme = resolved;
-        // Flag values computed here, so the bundle does not mistake them for a
-        // theme the page declared and stop following the OS preference.
-        if (resolved !== authored) {
-          root.setAttribute('data-lte-theme-resolved', '');
-        }
       })();
     </script>
-    <!--end::Theme Init-->
-
-    <!--begin::Accessibility Meta Tags-->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#007bff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
-    <!--end::Accessibility Meta Tags-->
-
-    <!--begin::Primary Meta Tags-->
-    <meta name="title" content="AdminLTE 4 | Forgot Password" />
-    <meta name="author" content="ColorlibHQ" />
-    <meta
-      name="description"
-      content="AdminLTE is a free Bootstrap 5 admin dashboard template with almost 50 example pages, built with vanilla JS and designed with accessibility in mind."
-    />
-    <meta
-      name="keywords"
-      content="bootstrap 5, bootstrap, bootstrap 5 admin dashboard, bootstrap 5 dashboard, bootstrap 5 charts, bootstrap 5 calendar, bootstrap 5 datepicker, bootstrap 5 tables, bootstrap 5 datatable, vanilla js datatable, colorlibhq, colorlibhq dashboard, colorlibhq admin dashboard, accessible admin panel"
-    />
-    <!--end::Primary Meta Tags-->
-
-    <!--begin::Accessibility Features-->
-    <!-- Skip links will be dynamically added by accessibility.js -->
-    <meta name="supported-color-schemes" content="light dark" />
-    <link rel="preload" href="../css/adminlte.css" as="style" />
-    <!--end::Accessibility Features-->
-
-    <!--begin::Fonts-->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css"
-      integrity="sha256-tXJfXfp6Ewt1ilPzLDtQnJV4hclT9XuaZUKyUvmyr+Q="
-      crossorigin="anonymous"
-      media="print"
-      onload="this.media = 'all'"
-    />
-    <!--end::Fonts-->
-
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css"
-      crossorigin="anonymous"
-    />
-    <!--end::Third Party Plugin(OverlayScrollbars)-->
-
-    <!--begin::Third Party Plugin(Bootstrap Icons)-->
+    <meta name="theme-color" content="#1a4d3e" />
+    <?php if ($logoUrl !== ''): ?>
+    <link rel="icon" href="<?= h($logoUrl) ?>" />
+    <?php endif; ?>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
       crossorigin="anonymous"
     />
-    <!--end::Third Party Plugin(Bootstrap Icons)-->
-
-    <!--begin::Required Plugin(AdminLTE)-->
     <link rel="stylesheet" href="../css/adminlte.css" />
-    <!--end::Required Plugin(AdminLTE)-->
+    <link rel="stylesheet" href="../css/responsive.css?v=<?= (int) @filemtime(__DIR__ . '/../css/responsive.css') ?>" />
+    <link rel="stylesheet" href="../css/auth-pages.css?v=<?= (int) @filemtime(__DIR__ . '/../css/auth-pages.css') ?>" />
   </head>
-  <!--end::Head-->
-  <!--begin::Body-->
-  <body class="login-page bg-body-secondary">
-    <main class="login-box">
-      <h1 class="login-logo">
-        <a href="../index.php"><b>Admin</b>LTE</a>
-      </h1>
-      <!-- /.login-logo -->
-      <div class="card">
-        <div class="card-body login-card-body">
-          <p class="login-box-msg">
-            You forgot your password? Here you can easily retrieve a new password.
-          </p>
+  <body class="slogin-page">
+    <main class="slogin-card">
+      <aside class="slogin-brand">
+        <div class="slogin-emblem">
+          <?php if ($logoUrl !== ''): ?>
+            <img src="<?= h($logoUrl) ?>" alt="<?= h($schoolNameEn) ?>" width="104" height="104" />
+          <?php else: ?>
+            <span aria-hidden="true"><?= h(mb_substr($schoolNameEn, 0, 1)) ?></span>
+          <?php endif; ?>
+        </div>
+        <div>
+          <h1 class="slogin-name"><?= h($schoolNameBn) ?></h1>
+          <p class="slogin-name-en"><?= h($schoolNameEn) ?></p>
+        </div>
+        <span class="slogin-tag"><i class="bi bi-shield-lock" aria-hidden="true"></i> প্রশাসনিক প্যানেল</span>
+      </aside>
 
-          <form action="../examples/login.php" method="post">
-            <label class="visually-hidden" for="forgotEmail">Email</label>
-            <div class="input-group mb-3">
-              <input id="forgotEmail" type="email" class="form-control" placeholder="Email" />
-              <div class="input-group-text">
-                <span class="bi bi-envelope"></span>
-              </div>
+      <section class="slogin-form">
+        <ol class="slogin-steps" aria-label="ধাপ">
+          <li class="<?= $step === 'mobile' ? 'is-current' : 'is-done' ?>">মোবাইল</li>
+          <li class="<?= $step === 'otp' ? 'is-current' : ($step === 'new' ? 'is-done' : '') ?>">কোড</li>
+          <li class="<?= $step === 'new' ? 'is-current' : '' ?>">নতুন পাসওয়ার্ড</li>
+        </ol>
+
+        <h2 class="slogin-title"><?= h($pageTitle) ?></h2>
+        <p class="slogin-subtitle"><?= h($pageSubtitle) ?></p>
+
+        <div aria-live="polite">
+          <?php if ($error !== ''): ?>
+            <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+              <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
+              <span><?= h($error) ?></span>
             </div>
-            <div class="row">
-              <div class="col-12">
-                <div class="d-grid gap-2">
-                  <button type="submit" class="btn btn-primary">Request new password</button>
-                </div>
-              </div>
-              <!-- /.col -->
+          <?php endif; ?>
+          <?php if ($notice !== ''): ?>
+            <div class="alert alert-success d-flex align-items-start gap-2" role="status">
+              <i class="bi bi-check-circle-fill mt-1" aria-hidden="true"></i>
+              <span><?= h($notice) ?></span>
             </div>
+          <?php endif; ?>
+        </div>
+
+        <?php if ($step === 'mobile'): ?>
+        <form action="forgot-password.php" method="post" novalidate>
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="send" />
+          <div class="mb-4">
+            <label for="resetMobile" class="form-label fw-semibold">মোবাইল নম্বর</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-phone" aria-hidden="true"></i></span>
+              <input
+                id="resetMobile"
+                name="mobile"
+                type="tel"
+                class="form-control"
+                value="<?= h($mobile) ?>"
+                placeholder="০১XXXXXXXXX"
+                inputmode="numeric"
+                autocomplete="username"
+                maxlength="20"
+                required
+                autofocus
+              />
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn slogin-submit">
+              <i class="bi bi-chat-dots me-1" aria-hidden="true"></i> কোড পাঠান
+            </button>
+          </div>
+        </form>
+
+        <?php elseif ($step === 'otp'): ?>
+        <form action="forgot-password.php" method="post" novalidate>
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="verify" />
+          <div class="mb-4">
+            <label for="resetCode" class="form-label fw-semibold">যাচাইকরণ কোড</label>
+            <input
+              id="resetCode"
+              name="code"
+              type="text"
+              class="form-control slogin-otp"
+              inputmode="numeric"
+              pattern="[0-9০-৯]{6}"
+              autocomplete="one-time-code"
+              maxlength="6"
+              placeholder="······"
+              required
+              autofocus
+            />
+          </div>
+          <div class="d-grid mb-3">
+            <button type="submit" class="btn slogin-submit">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i> যাচাই করুন
+            </button>
+          </div>
+        </form>
+        <div class="d-flex flex-wrap justify-content-between gap-2 small">
+          <form action="forgot-password.php" method="post" class="d-inline">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="send" />
+            <input type="hidden" name="mobile" value="<?= h($mobile) ?>" />
+            <button type="submit" class="btn btn-link btn-sm p-0">কোড পাননি? আবার পাঠান</button>
           </form>
+          <form action="forgot-password.php" method="post" class="d-inline">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="cancel" />
+            <button type="submit" class="btn btn-link btn-sm p-0 link-secondary">নম্বর পরিবর্তন করুন</button>
+          </form>
+        </div>
 
-          <p class="mt-3 mb-1">
-            <a href="login.php">Login</a>
-          </p>
+        <?php else: ?>
+        <form action="forgot-password.php" method="post" id="newPasswordForm" novalidate>
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="save" />
+          <div class="mb-3">
+            <label for="newPassword" class="form-label fw-semibold">নতুন পাসওয়ার্ড</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock-fill" aria-hidden="true"></i></span>
+              <input
+                id="newPassword"
+                name="new_password"
+                type="password"
+                class="form-control"
+                autocomplete="new-password"
+                minlength="<?= PASSWORD_RESET_MIN_LENGTH ?>"
+                maxlength="<?= PASSWORD_RESET_MAX_LENGTH ?>"
+                required
+                autofocus
+              />
+            </div>
+            <div class="form-text">কমপক্ষে <?= h(bnDigits((string) PASSWORD_RESET_MIN_LENGTH)) ?> অক্ষর।</div>
+          </div>
+          <div class="mb-4">
+            <label for="confirmPassword" class="form-label fw-semibold">পাসওয়ার্ড আবার লিখুন</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
+              <input
+                id="confirmPassword"
+                name="confirm_password"
+                type="password"
+                class="form-control"
+                autocomplete="new-password"
+                maxlength="<?= PASSWORD_RESET_MAX_LENGTH ?>"
+                required
+              />
+              <div class="invalid-feedback" id="confirmFeedback">দুটি পাসওয়ার্ড মিলছে না।</div>
+            </div>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn slogin-submit">
+              <i class="bi bi-save me-1" aria-hidden="true"></i> পাসওয়ার্ড সংরক্ষণ করুন
+            </button>
+          </div>
+        </form>
+        <script>
+          (() => {
+            'use strict';
+            const form = document.getElementById('newPasswordForm');
+            const first = document.getElementById('newPassword');
+            const second = document.getElementById('confirmPassword');
+            const sync = () => second.classList.toggle('is-invalid', second.value !== '' && second.value !== first.value);
+            first.addEventListener('input', sync);
+            second.addEventListener('input', sync);
+            form.addEventListener('submit', (event) => {
+              if (first.value.length < <?= PASSWORD_RESET_MIN_LENGTH ?> || first.value !== second.value) {
+                event.preventDefault();
+                second.classList.toggle('is-invalid', first.value !== second.value);
+                (first.value.length < <?= PASSWORD_RESET_MIN_LENGTH ?> ? first : second).focus();
+              }
+            });
+          })();
+        </script>
+        <?php endif; ?>
+
+        <div class="slogin-foot">
           <p class="mb-0">
-            <a href="register.php" class="text-center"> Register a new membership </a>
+            <a href="login-v2.php"><i class="bi bi-arrow-left-short" aria-hidden="true"></i>লগইন পাতায় ফিরে যান</a>
           </p>
         </div>
-        <!-- /.login-card-body -->
-      </div>
+      </section>
     </main>
-    <!-- /.login-box -->
-
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Third Party Plugin(OverlayScrollbars)--><!--begin::Required Plugin(popperjs for Bootstrap 5)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Required Plugin(popperjs for Bootstrap 5)--><!--begin::Required Plugin(Bootstrap 5)-->
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"
-      crossorigin="anonymous"
-    ></script>
-    <!--end::Required Plugin(Bootstrap 5)--><!--begin::Required Plugin(AdminLTE)-->
-    <script src="../js/adminlte.js"></script>
-    <!--end::Required Plugin(AdminLTE)-->
-    <!--begin::OverlayScrollbars Configure-->
-    <script>
-      const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
-      const Default = {
-        scrollbarTheme: 'os-theme-light',
-        scrollbarAutoHide: 'leave',
-        scrollbarClickScroll: true,
-      };
-      document.addEventListener('DOMContentLoaded', function () {
-        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
-
-        // Disable OverlayScrollbars on mobile devices to prevent touch interference
-        const isMobile = window.innerWidth <= 992;
-
-        if (
-          sidebarWrapper &&
-          OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined &&
-          !isMobile
-        ) {
-          OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
-            scrollbars: {
-              theme: Default.scrollbarTheme,
-              autoHide: Default.scrollbarAutoHide,
-              clickScroll: Default.scrollbarClickScroll,
-            },
-          });
-        }
-      });
-    </script>
-    <!--end::OverlayScrollbars Configure-->
-    <!--begin::Charts follow the colour mode-->
-    <script>
-      // ApexCharts draws light-theme tooltips and axis text unless told otherwise,
-      // which is unreadable in dark mode (#6105). Give it the page's colour mode as
-      // a global default before any chart is created — this runs before the chart
-      // pages' own scripts — and keep every chart that has a `chart.id` in step
-      // when the mode changes (ColorMode, the OS in auto mode, or your own code).
-      (() => {
-        'use strict';
-        const mode = () =>
-          document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
-        // `Apex` is ApexCharts' global-options object; it must exist before the library loads.
-        // theme.mode also sets a dark chart background — keep the card's instead.
-        // eslint-disable-next-line unicorn/no-global-object-property-assignment
-        globalThis.Apex ||= {};
-        const apex = globalThis.Apex;
-        apex.theme = { mode: mode() };
-        apex.chart = Object.assign(apex.chart || {}, { background: 'transparent' });
-        new MutationObserver(() => {
-          const next = mode();
-          apex.theme = { mode: next };
-          const instances = apex._chartInstances || [];
-          for (const { chart } of instances) {
-            chart.updateOptions({ theme: { mode: next } }, false, false);
-          }
-        }).observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ['data-bs-theme'],
-        });
-      })();
-    </script>
-    <!--end::Charts follow the colour mode-->
-
-    <!--begin::Color Mode Toggle-->
-    <!-- The light/dark/auto switcher ships in adminlte.js as the ColorMode
-     module (since 4.1) — no page script needed. Only the no-flash snippet
-     in <head> stays inline, because it must run before first paint. -->
-    <!--end::Color Mode Toggle-->
-
-    <!--end::Script-->
   </body>
-  <!--end::Body-->
 </html>
