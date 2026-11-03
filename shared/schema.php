@@ -124,6 +124,7 @@ function ensureSchoolSchema(PDO $db): void
     }
     ensureFilesSortOrder($db);
     ensureFileFoldersSchema($db);
+    purgeLateAttendance($db);
 
     // New tables / SSC candidate fields must run even when schema version is already current.
     ensureExamRoutineSchema($db);
@@ -687,6 +688,18 @@ function ensureTeacherSortOrder(PDO $db): void
     }
 
     recordSchemaMigration($db, 'teacher_sort_order_v15');
+}
+
+// One-time: the 'late' status is no longer used, so its records are removed.
+function purgeLateAttendance(PDO $db): void
+{
+    if (!tableExists($db, 'student_attendance') || !tableExists($db, 'schema_migrations')
+        || schemaMigrationApplied($db, 'purge_late_attendance_v1')
+    ) {
+        return;
+    }
+    $db->exec("DELETE FROM student_attendance WHERE status = 'late'");
+    recordSchemaMigration($db, 'purge_late_attendance_v1');
 }
 
 function ensureFileFoldersSchema(PDO $db): void

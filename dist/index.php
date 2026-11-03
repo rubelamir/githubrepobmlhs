@@ -94,12 +94,8 @@ $todayPresent = tableExists($db, 'student_attendance')
 $todayAbsent = tableExists($db, 'student_attendance')
     ? tableCount($db, 'student_attendance', "attendance_date = CURDATE() AND status = 'absent'")
     : 0;
-$todayLate = tableExists($db, 'student_attendance')
-    ? tableCount($db, 'student_attendance', "attendance_date = CURDATE() AND status = 'late'")
-    : 0;
 $classTodayPresent = 0;
 $classTodayAbsent = 0;
-$classTodayLate = 0;
 if ($showClassTeacherAttendance && $classRosterFilters !== [] && tableExists($db, 'students_info') && tableExists($db, 'student_attendance')) {
         $classAttendance = fetchRows(
             $db,
@@ -114,8 +110,6 @@ if ($showClassTeacherAttendance && $classRosterFilters !== [] && tableExists($db
             $total = (int) ($row['total'] ?? 0);
             if ((string) ($row['status'] ?? '') === 'absent') {
                 $classTodayAbsent = $total;
-            } elseif ((string) ($row['status'] ?? '') === 'late') {
-                $classTodayLate = $total;
             } elseif ((string) ($row['status'] ?? '') === 'present') {
                 $classTodayPresent = $total;
             }
@@ -133,7 +127,7 @@ $unreadMessages = tableExists($db, 'contact_messages')
 
 // Class teachers only ever see their own roster; teachers without one get no charts.
 $showCharts = $role !== 'teacher' || ($showClassTeacherAttendance && $classRosterFilters !== []);
-$trendChart = ['labels' => [], 'present' => [], 'absent' => [], 'late' => []];
+$trendChart = ['labels' => [], 'present' => [], 'absent' => []];
 $classChart = $trendChart;
 if ($showCharts) {
     $chartFilters = $showClassTeacherAttendance ? $classRosterFilters : [];
@@ -185,7 +179,7 @@ include __DIR__ . '/includes/layout-head.php';
             <?php if ($role !== 'teacher' || !$showClassTeacherAttendance): ?>
             <div class="row g-3 mb-4">
               <?php if (!$showClassTeacherAttendance): ?>
-              <?= dashboardStatCard('pages/attendance.php', "Today's attendance", $todayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $todayAbsent . ' absent · ' . $todayLate . ' late') ?>
+              <?= dashboardStatCard('pages/attendance.php', "Today's attendance", $todayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $todayAbsent . ' absent') ?>
               <?php endif; ?>
               <?php if ($role !== 'teacher'): ?>
               <?= dashboardStatCard('pages/result-publication.php', 'Unpublished results', (string) $unpublishedExams, 'bi-clipboard-x', 'warning', 'col-sm-6 col-xl-3') ?>
@@ -201,7 +195,7 @@ include __DIR__ . '/includes/layout-head.php';
                 <?= dashboardStatCard((string) $stat['href'], (string) $stat['label'], (string) (int) $stat['count'], (string) $stat['icon'], (string) $stat['color'], 'col-sm-6 col-xl-2') ?>
               <?php endforeach; ?>
               <?php if ($showClassTeacherAttendance): ?>
-                <?= dashboardStatCard($classTeacherAttendanceHref, "Today's attendance", $classTodayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $classTodayAbsent . ' absent · ' . $classTodayLate . ' late') ?>
+                <?= dashboardStatCard($classTeacherAttendanceHref, "Today's attendance", $classTodayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $classTodayAbsent . ' absent') ?>
               <?php endif; ?>
             </div>
 

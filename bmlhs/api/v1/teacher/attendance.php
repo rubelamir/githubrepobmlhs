@@ -136,7 +136,7 @@ try {
         }
         $remarks = trim($remarksValue);
         if (!is_int($studentId) || !isset($allowed[$studentId]) || isset($seen[$studentId])
-            || !in_array($status, ['present', 'absent', 'late'], true) || mb_strlen($remarks, 'UTF-8') > 255
+            || !in_array($status, ['present', 'absent'], true) || mb_strlen($remarks, 'UTF-8') > 255
         ) {
             mobileApiJson(['error' => ['code' => 'invalid_attendance', 'message' => 'Attendance contains an invalid student, duplicate, status or remark.']], 422);
         }

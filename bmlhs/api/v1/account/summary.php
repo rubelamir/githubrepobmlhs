@@ -34,8 +34,7 @@ try {
             'SELECT
                 COUNT(*) AS total,
                 SUM(status = \'present\') AS present,
-                SUM(status = \'absent\') AS absent,
-                SUM(status = \'late\') AS late
+                SUM(status = \'absent\') AS absent
              FROM student_attendance WHERE student_id = :student_id',
             ['student_id' => $studentId]
         );
@@ -48,7 +47,7 @@ try {
              LIMIT 60',
             ['student_id' => $studentId]
         );
-        $attendance = $attendanceRows[0] ?? ['total' => 0, 'present' => 0, 'absent' => 0, 'late' => 0];
+        $attendance = $attendanceRows[0] ?? ['total' => 0, 'present' => 0, 'absent' => 0];
         $publishedResults = [];
         foreach (schoolPublishedExams($db) as $exam) {
             $sheet = studentResultSheet(
@@ -89,7 +88,6 @@ try {
                     'total' => (int) ($attendance['total'] ?? 0),
                     'present' => (int) ($attendance['present'] ?? 0),
                     'absent' => (int) ($attendance['absent'] ?? 0),
-                    'late' => (int) ($attendance['late'] ?? 0),
                 ],
                 'recent_attendance' => $recentAttendance,
                 'published_results' => $publishedResults,
