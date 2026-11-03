@@ -52,49 +52,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             readfile($path);
             exit;
         }
-        if ($action === 'delete') {
-            $basename = backupBasenameFromSignedRef((string) ($_POST['file'] ?? ''));
-            $path = $basename !== '' ? resolveDatabaseBackupPath($basename) : null;
-            if ($path === null) {
-                throw new RuntimeException('Backup file not found.');
-            }
-            if (!@unlink($path)) {
-                throw new RuntimeException('Unable to delete backup file.');
-            }
-            writeAuditLog($db, 'backup_delete', 'database', null, 'Deleted backup: ' . $basename);
-            redirectWithMessage('database-backup.php', 'success', 'Backup deleted.');
-        }
     } catch (Throwable $exception) {
         redirectWithMessage('database-backup.php', 'danger', userFacingError($exception));
     }
 }
 
-// Catch-up for the daily 2:00 AM schedule if the PC/server was offline at that time.
-$scheduled = databaseBackupMaybeRunScheduled(true);
-if (!empty($scheduled['ran']) && is_array($scheduled['result'] ?? null) && !empty($scheduled['result']['ok'])) {
-    writeAuditLog(
-        $db,
-        'backup',
-        'database',
-        null,
-        'Scheduled database backup created: ' . (string) ($scheduled['result']['file'] ?? '')
-    );
-}
-
 pruneDatabaseBackups($keepDays);
 $backups = listDatabaseBackups();
 $backupDir = databaseBackupDirectory();
-$hasToday = todaysDatabaseBackupExists();
-$nextRunLabel = $hasToday
-    ? 'Tomorrow 2:00 AM'
-    : ((int) date('G') < 2 ? 'Today 2:00 AM' : 'Catch-up pending (open this page or wait for the scheduler)');
 
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header">
           <div class="container-fluid">
             <h3 class="mb-0">Database Backup</h3>
-            <p class="text-secondary mb-0">Daily automatic backups at 2:00 AM. Files older than <?= (int) $keepDays ?> days are deleted automatically.</p>
+            <p class="text-secondary mb-0">Create backups manually. Files older than <?= (int) $keepDays ?> days are deleted automatically.</p>
           </div>
         </div>
         <div class="app-content">
@@ -105,8 +77,8 @@ include __DIR__ . '/../includes/layout-head.php';
                 <div class="card stat-card h-100">
                   <div class="card-body">
                     <div class="text-secondary small">Schedule</div>
-                    <div class="fs-5 fw-semibold">Every day at 2:00 AM</div>
-                    <div class="text-secondary small mt-1">Next: <?= h($nextRunLabel) ?></div>
+                    <div class="fs-5 fw-semibold">Manual only</div>
+                    <div class="text-secondary small mt-1">Backups are created only with the button</div>
                   </div>
                 </div>
               </div>
@@ -165,12 +137,6 @@ include __DIR__ . '/../includes/layout-head.php';
                             <input type="hidden" name="action" value="download">
                             <input type="hidden" name="file" value="<?= h(signedBackupFileRef($file['name'])) ?>">
                             <button class="btn btn-sm btn-outline-primary">Download</button>
-                          </form>
-                          <form method="post" class="d-inline" onsubmit="return confirm('Delete this backup file?')">
-                            <?= csrfField() ?>
-                            <input type="hidden" name="action" value="delete">
-                            <input type="hidden" name="file" value="<?= h(signedBackupFileRef($file['name'])) ?>">
-                            <button class="btn btn-sm btn-outline-danger">Delete</button>
                           </form>
                         </td>
                       </tr>
