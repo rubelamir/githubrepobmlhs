@@ -96,6 +96,10 @@ def upload_file(ftp: ftplib.FTP_TLS, relative: Path, root_parts: list[str]) -> N
 def deploy(paths: list[str]) -> list[str]:
     selected: list[Path] = []
     seen: set[str] = set()
+    extra_file = ROOT / "scripts" / "deploy-extra-paths.txt"
+    # Manual runs also publish files listed here, for changes missed by a failed deploy.
+    if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch" and extra_file.is_file():
+        paths = [*paths, *extra_file.read_text(encoding="utf-8").splitlines()]
     for raw_path in paths:
         relative = relative_upload_path(raw_path)
         if relative is None:
