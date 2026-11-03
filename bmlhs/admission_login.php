@@ -1,6 +1,6 @@
 <?php
 $pageAssets = [];
-$pageMeta = ['title' => 'আবেদনকারী লগইন'];
+$pageMeta = ['title' => 'আবেদনকারী লগইন', 'noindex' => true];
 include('header.php');
 include('navbar&marqueetag.php');
 

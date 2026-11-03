@@ -61,6 +61,46 @@ $useAsset['jquery'] = $useAsset['jquery'] || $useAsset['owl'] || $useAsset['data
         <meta name="twitter:title" content="<?= h($documentTitle) ?>">
         <meta name="twitter:description" content="<?= h($metaDescription) ?>">
         <meta name="twitter:image" content="<?= h($metaImage) ?>">
+        <?php if (!empty($pageMeta['noindex'])): ?>
+        <meta name="robots" content="noindex, nofollow">
+        <?php else: ?>
+        <meta name="robots" content="index, follow, max-image-preview:large">
+        <?php endif; ?>
+        <?php $gscToken = trim((string) ($school['gsc_verification'] ?? '')); ?>
+        <?php if ($gscToken !== ''): ?>
+        <meta name="google-site-verification" content="<?= h($gscToken) ?>">
+        <?php endif; ?>
+        <script type="application/ld+json"><?= json_encode(
+            array_filter([
+                '@context' => 'https://schema.org',
+                '@type' => 'School',
+                'name' => (string) $school['school_name_bn'],
+                'alternateName' => (string) $school['school_name_en'],
+                'url' => publicAbsoluteUrl(''),
+                'logo' => publicAbsoluteUrl($logo),
+                'description' => $metaDescription,
+                'foundingDate' => (string) ($school['established'] ?? ''),
+                'email' => (string) ($school['email'] ?? ''),
+                'telephone' => (string) ($school['mobile'] ?? ''),
+                'address' => [
+                    '@type' => 'PostalAddress',
+                    'streetAddress' => (string) ($school['address'] ?? ''),
+                    'addressCountry' => 'BD',
+                ],
+                'sameAs' => array_values(array_filter([(string) ($school['facebook'] ?? '')])),
+            ], static fn ($value) => $value !== '' && $value !== []),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP
+        ) ?></script>
+        <?php $gaId = strtoupper(trim((string) ($school['ga_measurement_id'] ?? ''))); ?>
+        <?php if (preg_match('/^G-[A-Z0-9]{4,15}$/', $gaId) === 1): ?>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=<?= h($gaId) ?>"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '<?= h($gaId) ?>', { anonymize_ip: true });
+        </script>
+        <?php endif; ?>
         <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
         <link rel="preload" href="fonts/ttf/NotoSansBengali-Regular.ttf" as="font" type="font/ttf" crossorigin>
         <link rel="preload" href="fonts/literata-700.woff2" as="font" type="font/woff2" crossorigin>

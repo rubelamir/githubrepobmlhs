@@ -43,3 +43,6 @@ ErrorDocument 404 /AdminLTE-4.9.1/bmlhs/404.php
     ExpiresByType font/woff2 "access plus 365 days"
     ExpiresByType font/ttf "access plus 365 days"
 </IfModule>
+
+# Search engine sitemap
+RewriteRule ^sitemap\.xml$ sitemap.php [L]

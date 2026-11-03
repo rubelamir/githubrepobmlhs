@@ -1,6 +1,6 @@
 <?php
 $pageAssets = [];
-$pageMeta = ['title' => 'শিক্ষার্থীর তথ্য বিবরণী'];
+$pageMeta = ['title' => 'শিক্ষার্থীর তথ্য বিবরণী', 'noindex' => true];
 include('header.php');
 include('navbar&marqueetag.php');
 

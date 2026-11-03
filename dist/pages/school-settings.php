@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'title_messages', 'title_history', 'title_info', 'title_events', 'title_ssc', 'title_teachers',
             'title_president', 'title_head_teacher', 'title_important_links',
             'notify_from_email', 'notify_parent_emails', 'notify_sms_url',
-            'sms_provider', 'sms_sid',
+            'sms_provider', 'sms_sid', 'ga_measurement_id', 'gsc_verification',
         ];
         $values = [];
         foreach ($fields as $field) {
@@ -26,6 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (!in_array($values['sms_provider'], ['', 'webhook', 'sslwireless', 'bulksmsbd', 'bdbulksms'], true)) {
             $values['sms_provider'] = '';
+        }
+        $values['ga_measurement_id'] = strtoupper($values['ga_measurement_id']);
+        if ($values['ga_measurement_id'] !== '' && preg_match('/^G-[A-Z0-9]{4,15}$/', $values['ga_measurement_id']) !== 1) {
+            throw new RuntimeException('Google Analytics ID must look like G-XXXXXXXXXX.');
+        }
+        if ($values['gsc_verification'] !== '' && preg_match('/^[A-Za-z0-9_-]{20,120}$/', $values['gsc_verification']) !== 1) {
+            throw new RuntimeException('Search Console verification code may contain only letters, numbers, - and _.');
         }
         $postedToken = trim((string) ($_POST['sms_api_token'] ?? ''));
         $values['sms_api_token'] = $postedToken !== '' ? $postedToken : (string) ($settings['sms_api_token'] ?? '');
@@ -49,7 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  title_ssc=:title_ssc, title_teachers=:title_teachers, title_president=:title_president,
                  title_head_teacher=:title_head_teacher, title_important_links=:title_important_links,
                  notify_from_email=:notify_from_email, notify_parent_emails=:notify_parent_emails, notify_sms_url=:notify_sms_url,
-                 sms_provider=:sms_provider, sms_api_token=:sms_api_token, sms_sid=:sms_sid
+                 sms_provider=:sms_provider, sms_api_token=:sms_api_token, sms_sid=:sms_sid,
+                 ga_measurement_id=:ga_measurement_id, gsc_verification=:gsc_verification
                  WHERE id = :id'
             )->execute($values);
         } else {
@@ -57,11 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'INSERT INTO school_settings (school_name_bn, school_name_en, short_name_en, address, address_en, established, eiin, mpo_code, mobile, email, about_short, facebook, map_embed, logo,
                  nav_cta_label, nav_cta_url, footer_credit, title_messages, title_history, title_info, title_events, title_ssc, title_teachers,
                  title_president, title_head_teacher, title_important_links, notify_from_email, notify_parent_emails, notify_sms_url,
-                 sms_provider, sms_api_token, sms_sid)
+                 sms_provider, sms_api_token, sms_sid, ga_measurement_id, gsc_verification)
                  VALUES (:school_name_bn, :school_name_en, :short_name_en, :address, :address_en, :established, :eiin, :mpo_code, :mobile, :email, :about_short, :facebook, :map_embed, :logo,
                  :nav_cta_label, :nav_cta_url, :footer_credit, :title_messages, :title_history, :title_info, :title_events, :title_ssc, :title_teachers,
                  :title_president, :title_head_teacher, :title_important_links, :notify_from_email, :notify_parent_emails, :notify_sms_url,
-                 :sms_provider, :sms_api_token, :sms_sid)'
+                 :sms_provider, :sms_api_token, :sms_sid, :ga_measurement_id, :gsc_verification)'
             )->execute($values);
         }
         redirectWithMessage('school-settings.php', 'success', 'School profile updated. The public website will use these details.');
@@ -130,6 +138,9 @@ include __DIR__ . '/../includes/layout-head.php';
                   <div class="col-md-4"><label class="form-label">API token / API key</label><input class="form-control" type="text" name="sms_api_token" value="<?= h((string) ($settings['sms_api_token'] ?? '')) ?>" autocomplete="off" spellcheck="false" placeholder="API token"></div>
                   <div class="col-md-4"><label class="form-label">Sender ID (SID)</label><input class="form-control" name="sms_sid" value="<?= h((string) ($settings['sms_sid'] ?? '')) ?>" placeholder="Approved sender name"><div class="form-text">Needed for SSL Wireless / BulkSMS BD. Not required for BD Bulk SMS (GreenWeb).</div></div>
                   <div class="col-md-12"><label class="form-label">SMS webhook URL</label><input class="form-control" name="notify_sms_url" value="<?= h((string) ($settings['notify_sms_url'] ?? '')) ?>" placeholder="https://sms.example.com/send?to={mobile}&amp;msg={text}"><div class="form-text">Prefer <strong>BD Bulk SMS (GreenWeb)</strong> with your panel token. Webhook needs <code>{mobile}</code> and <code>{text}</code>; optional <code>{token}</code>. Example: <code>https://api.bdbulksms.net/api.php?token={token}&amp;to={mobile}&amp;message={text}</code></div></div>
+                  <div class="col-12"><hr class="my-2"><h6 class="mb-0">Google (SEO &amp; Analytics)</h6></div>
+                  <div class="col-md-6"><label class="form-label">Google Analytics ID</label><input class="form-control" name="ga_measurement_id" maxlength="30" value="<?= h((string) ($settings['ga_measurement_id'] ?? '')) ?>" placeholder="G-XXXXXXXXXX" autocomplete="off" spellcheck="false"><div class="form-text">Google Analytics 4 &rarr; Admin &rarr; Data streams &rarr; Measurement ID. Leave blank to disable tracking.</div></div>
+                  <div class="col-md-6"><label class="form-label">Search Console verification code</label><input class="form-control" name="gsc_verification" maxlength="120" value="<?= h((string) ($settings['gsc_verification'] ?? '')) ?>" placeholder="content value of the google-site-verification meta tag" autocomplete="off" spellcheck="false"><div class="form-text">Search Console &rarr; Add property &rarr; HTML tag. Paste only the <code>content</code> value.</div></div>
                   <div class="col-md-6">
                     <?php renderCropperField('logoFile', 'logo_data', 'Logo', 'Crop to 400×400px JPEG, maximum 150KB.'); ?>
                     <?php if (!empty($settings['logo'])): ?>
