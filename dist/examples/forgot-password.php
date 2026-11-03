@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db instanceof PDO) {
             $core = passwordResetMobileCore($mobile);
             $secondsSinceSend = time() - (int) ($state['sent_at'] ?? 0);
 
-            if (strlen($core) < 6) {
-                $error = 'সঠিক মোবাইল নম্বর লিখুন।';
+            if (!passwordResetIsBdMobile($mobile)) {
+                $error = 'সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: ০১৭XXXXXXXX)।';
             } elseif ($state !== null && $secondsSinceSend < PASSWORD_RESET_RESEND_SECONDS) {
                 $error = 'নতুন কোডের জন্য অনুগ্রহ করে ' . bnDigits((string) (PASSWORD_RESET_RESEND_SECONDS - $secondsSinceSend)) . ' সেকেন্ড অপেক্ষা করুন।';
                 $step = 'otp';
@@ -237,6 +237,7 @@ $titles = [
                 required
                 autofocus
               />
+              <div class="invalid-feedback">সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন (যেমন: ০১৭XXXXXXXX)।</div>
             </div>
           </div>
           <div class="d-grid">
@@ -245,6 +246,25 @@ $titles = [
             </button>
           </div>
         </form>
+        <script>
+          (() => {
+            'use strict';
+            const input = document.getElementById('resetMobile');
+            const bn = '০১২৩৪৫৬৭৮৯';
+            const valid = () => {
+              const clean = input.value.trim().replace(/[০-৯]/g, (d) => bn.indexOf(d)).replace(/[\s-]+/g, '');
+              return /^(?:\+?88)?01[3-9]\d{8}$/.test(clean);
+            };
+            input.addEventListener('input', () => input.classList.toggle('is-invalid', input.value !== '' && !valid()));
+            input.form.addEventListener('submit', (event) => {
+              if (!valid()) {
+                event.preventDefault();
+                input.classList.add('is-invalid');
+                input.focus();
+              }
+            });
+          })();
+        </script>
 
         <?php elseif ($step === 'otp'): ?>
         <form action="forgot-password.php" method="post" novalidate>

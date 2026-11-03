@@ -35,6 +35,14 @@ function ensurePasswordResetSchema(PDO $db): void
     );
 }
 
+/** Accepts only Bangladeshi mobile formats: 01XXXXXXXXX, 8801XXXXXXXXX or +8801XXXXXXXXX (operator digit 3-9). */
+function passwordResetIsBdMobile(string $input): bool
+{
+    $clean = (string) preg_replace('/[\s\-]+/', '', asciiDigits(trim($input)));
+
+    return preg_match('/^(?:\+?88)?01[3-9]\d{8}$/', $clean) === 1;
+}
+
 /** Same number matching as the sign-in form: dashes, spaces, +88 and missing leading zero are tolerated. */
 function passwordResetMobileCore(string $input): string
 {
