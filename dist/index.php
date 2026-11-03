@@ -210,8 +210,17 @@ include __DIR__ . '/includes/layout-head.php';
               <div class="col-lg-7">
                 <div class="card stat-card h-100">
                   <div class="card-header"><h3 class="card-title mb-0">গত ৭ দিনের উপস্থিতি</h3></div>
-                  <div class="card-body">
-                    <div class="chart-box"><canvas id="attendanceTrendChart" role="img" aria-label="গত ৭ দিনের উপস্থিতির লাইন চার্ট"></canvas></div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-striped table-bordered text-nowrap mb-0 align-middle">
+                        <thead><tr><th>Date</th><th class="text-end">Present</th><th class="text-end">Absent</th><th class="text-end">Late</th></tr></thead>
+                        <tbody>
+                          <?php foreach ($trendChart['labels'] as $i => $label): ?>
+                            <tr><td><?= h((string) $label) ?></td><td class="text-end"><?= (int) ($trendChart['present'][$i] ?? 0) ?></td><td class="text-end"><?= (int) ($trendChart['absent'][$i] ?? 0) ?></td><td class="text-end"><?= (int) ($trendChart['late'][$i] ?? 0) ?></td></tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -222,7 +231,16 @@ include __DIR__ . '/includes/layout-head.php';
                     <?php if ($classChart['labels'] === []): ?>
                       <p class="text-secondary text-center my-5">আজকের উপস্থিতি এখনো নেওয়া হয়নি।</p>
                     <?php else: ?>
-                      <div class="chart-box"><canvas id="classAttendanceChart" role="img" aria-label="আজকের ক্লাসভিত্তিক উপস্থিতির বার চার্ট"></canvas></div>
+                      <div class="table-responsive">
+                      <table class="table table-striped table-bordered text-nowrap mb-0 align-middle">
+                        <thead><tr><th>Class</th><th class="text-end">Present</th><th class="text-end">Absent</th><th class="text-end">Late</th></tr></thead>
+                        <tbody>
+                          <?php foreach ($classChart['labels'] as $i => $label): ?>
+                            <tr><td><?= h((string) $label) ?></td><td class="text-end"><?= (int) ($classChart['present'][$i] ?? 0) ?></td><td class="text-end"><?= (int) ($classChart['absent'][$i] ?? 0) ?></td><td class="text-end"><?= (int) ($classChart['late'][$i] ?? 0) ?></td></tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
                     <?php endif; ?>
                   </div>
                 </div>
