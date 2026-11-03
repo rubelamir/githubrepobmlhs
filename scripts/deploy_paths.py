@@ -113,10 +113,14 @@ def deploy(paths: list[str]) -> list[str]:
     root_parts = [part for part in remote_root.split("/") if part]
     if any(part in {".", ".."} for part in root_parts):
         raise RuntimeError("Deployment stopped: FTPS remote path must not contain '.' or '..' segments.")
+    # The shared-hosting FTP certificate does not match the host name, so only
+    # the hostname check is skipped; the certificate chain is still verified.
+    context = ssl.create_default_context()
+    context.check_hostname = False
     with ftplib.FTP_TLS(
         str(config["host"]),
         timeout=45,
-        context=ssl.create_default_context(),
+        context=context,
     ) as ftp:
         ftp.login(str(config["username"]), str(config["password"]))
         ftp.prot_p()
