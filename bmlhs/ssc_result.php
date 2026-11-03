@@ -207,7 +207,21 @@ legend: {
 position: 'top',
 horizontalAlign: 'left',
 offsetX: 40
+},
+responsive: [{
+breakpoint: 576,
+options: {
+// Phones: hide the 0/34/68... scale, and let bars use the space the scale padding left empty.
+xaxis: {
+max: Math.ceil((Math.max.apply(null, appeared.concat([0])) * 1.02) / 10) * 10,
+labels: { show: false },
+axisTicks: { show: false }
+},
+yaxis: { labels: { minWidth: 0, offsetX: -4 } },
+grid: { padding: { left: -6, right: 104 } },
+legend: { offsetX: 0 }
 }
+}]
 };
 
 var started = false;
