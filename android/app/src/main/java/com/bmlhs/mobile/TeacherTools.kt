@@ -444,7 +444,7 @@ private fun AttendanceCard(entry: AttendanceEntry, onChange: (AttendanceEntry) -
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("${entry.roll} · ${entry.name}", fontWeight = FontWeight.SemiBold)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("present" to "উপস্থিত", "absent" to "অনুপস্থিত", "late" to "বিলম্ব").forEach { (status, label) ->
+                listOf("present" to "উপস্থিত", "absent" to "অনুপস্থিত").forEach { (status, label) ->
                     if (entry.status == status) {
                         Button(
                             onClick = { onChange(entry.copy(status = status)) },

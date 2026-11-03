@@ -44,7 +44,6 @@ $weekDays = ['শনি', 'রবি', 'সোম', 'মঙ্গল', 'বু�
 $statusLabels = [
     'present' => 'উপস্থিত',
     'absent' => 'অনুপস্থিত',
-    'late' => 'বিলম্ব',
 ];
 
 $students = [];
@@ -52,7 +51,7 @@ $dayMarks = [];
 $monthMarks = [];
 $monthDays = [];
 $yearMonths = [];
-$summary = ['present' => 0, 'absent' => 0, 'late' => 0, 'unmarked' => 0];
+$summary = ['present' => 0, 'absent' => 0, 'unmarked' => 0];
 
 if ($classId > 0 && tableExists($db, 'students_info')) {
     $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll FROM students_info s'
@@ -242,15 +241,9 @@ function attendanceQuery(array $overrides = []): string
                     </div>
                 </div>
                 <div class="col-6 col-lg-3">
-                    <div class="school-att-stat is-late">
-                        <span>বিলম্ব</span>
-                        <strong><?= h(bnDigits((string) $summary['late'])) ?></strong>
-                    </div>
-                </div>
-                <div class="col-6 col-lg-3">
                     <div class="school-att-stat is-muted">
                         <span><?= $view === 'day' ? 'অচিহ্নিত' : 'মোট রেকর্ড' ?></span>
-                        <strong><?= h(bnDigits((string) ($view === 'day' ? $summary['unmarked'] : ($summary['present'] + $summary['absent'] + $summary['late'])))) ?></strong>
+                        <strong><?= h(bnDigits((string) ($view === 'day' ? $summary['unmarked'] : ($summary['present'] + $summary['absent'])))) ?></strong>
                     </div>
                 </div>
             </div>
@@ -270,8 +263,7 @@ function attendanceQuery(array $overrides = []): string
                                 $cellDate = sprintf('%04d-%02d-%02d', $year, $month, $d);
                                 $p = (int) ($monthDays[$d]['present'] ?? 0);
                                 $a = (int) ($monthDays[$d]['absent'] ?? 0);
-                                $l = (int) ($monthDays[$d]['late'] ?? 0);
-                                $has = $p + $a + $l > 0;
+                                $has = $p + $a > 0;
                             ?>
                             <a class="school-att-cal-cell<?= $has ? ' has-data' : '' ?>" href="<?= h(attendanceQuery(['view' => 'day', 'date' => $cellDate])) ?>">
                                 <span class="school-att-cal-num"><?= h(bnDigits((string) $d)) ?></span>
@@ -279,7 +271,6 @@ function attendanceQuery(array $overrides = []): string
                                     <span class="school-att-cal-dots">
                                         <i class="is-present"><?= h(bnDigits((string) $p)) ?></i>
                                         <i class="is-absent"><?= h(bnDigits((string) $a)) ?></i>
-                                        <?php if ($l > 0): ?><i class="is-late"><?= h(bnDigits((string) $l)) ?></i><?php endif; ?>
                                     </span>
                                 <?php endif; ?>
                             </a>
@@ -295,8 +286,7 @@ function attendanceQuery(array $overrides = []): string
                         <?php
                             $p = (int) ($yearMonths[$m]['present'] ?? 0);
                             $a = (int) ($yearMonths[$m]['absent'] ?? 0);
-                            $l = (int) ($yearMonths[$m]['late'] ?? 0);
-                            $total = $p + $a + $l;
+                            $total = $p + $a;
                         ?>
                         <div class="col-6 col-md-4 col-xl-3">
                             <a class="school-att-month-card" href="<?= h(attendanceQuery(['view' => 'month', 'month' => $m, 'year' => $year])) ?>">
@@ -328,7 +318,6 @@ function attendanceQuery(array $overrides = []): string
                                     <?php else: ?>
                                         <th>উপস্থিত</th>
                                         <th>অনুপস্থিত</th>
-                                        <th>বিলম্ব</th>
                                     <?php endif; ?>
                                 </tr>
                             </thead>
@@ -362,7 +351,6 @@ function attendanceQuery(array $overrides = []): string
                                         <?php else: ?>
                                             <td><?= h(bnDigits((string) (int) ($monthMarks[$id]['present'] ?? 0))) ?></td>
                                             <td><?= h(bnDigits((string) (int) ($monthMarks[$id]['absent'] ?? 0))) ?></td>
-                                            <td><?= h(bnDigits((string) (int) ($monthMarks[$id]['late'] ?? 0))) ?></td>
                                         <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
