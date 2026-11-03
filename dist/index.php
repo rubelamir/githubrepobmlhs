@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/dashboard-widgets.php';
 requireAuthentication('examples/login-v2.php');
 
 $db = getDatabaseConnection();
@@ -47,6 +48,9 @@ if ($classRosterFilters !== [] && tableExists($db, 'students_info')) {
     );
     $studentCount = (int) ($classStudentRows[0]['total'] ?? 0);
 }
+
+$classLabels = dashboardClassLabels($db);
+$sectionLabels = dashboardSectionLabels($db);
 
 $stats = [];
 if (canAccessModule('teachers')) {
@@ -127,6 +131,26 @@ $unreadMessages = tableExists($db, 'contact_messages')
     ? tableCount($db, 'contact_messages', 'is_read = 0')
     : 0;
 
+// Class teachers only ever see their own roster; teachers without one get no charts.
+$showCharts = $role !== 'teacher' || ($showClassTeacherAttendance && $classRosterFilters !== []);
+$trendChart = ['labels' => [], 'present' => [], 'absent' => [], 'late' => []];
+$classChart = $trendChart;
+if ($showCharts) {
+    $chartFilters = $showClassTeacherAttendance ? $classRosterFilters : [];
+    $chartParams = $showClassTeacherAttendance ? $classRosterParams : [];
+    $trendChart = dashboardAttendanceTrend($db, $chartFilters, $chartParams);
+    $classChart = dashboardClassAttendanceToday($db, $chartFilters, $chartParams, $classLabels);
+}
+$quickActions = dashboardQuickActions();
+
+$pageCssFiles = ['css/dashboard.css?v=' . (int) @filemtime(__DIR__ . '/css/dashboard.css')];
+if ($showCharts) {
+    $pageScriptFiles = [
+        'assets/vendor/chartjs/chart.umd.min.js',
+        'assets/js/dashboard-charts.js?v=' . (int) @filemtime(__DIR__ . '/assets/js/dashboard-charts.js'),
+    ];
+}
+
 include __DIR__ . '/includes/layout-head.php';
 ?>
         <div class="app-content-header">
@@ -147,126 +171,68 @@ include __DIR__ . '/includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/includes/flash.php'; ?>
+            <?php if ($quickActions !== []): ?>
+            <section class="quick-actions mb-4" aria-label="দ্রুত কাজ">
+              <?php foreach ($quickActions as $action): ?>
+                <a class="quick-action quick-action-<?= h($action['color']) ?>" href="<?= h($action['href']) ?>">
+                  <i class="bi <?= h($action['icon']) ?>" aria-hidden="true"></i>
+                  <span><?= h($action['label']) ?></span>
+                </a>
+              <?php endforeach; ?>
+            </section>
+            <?php endif; ?>
+
             <?php if ($role !== 'teacher' || !$showClassTeacherAttendance): ?>
             <div class="row g-3 mb-4">
               <?php if (!$showClassTeacherAttendance): ?>
-              <div class="col-sm-6 col-xl-3">
-                <a href="pages/attendance.php" class="text-decoration-none">
-                  <div class="card stat-card h-100">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div class="text-secondary small">Today's attendance</div>
-                          <div class="fs-5 fw-semibold"><?= (int) $todayPresent ?> present</div>
-                          <div class="small text-secondary"><?= (int) $todayAbsent ?> absent · <?= (int) $todayLate ?> late</div>
-                        </div>
-                        <div class="icon-wrap bg-info bg-opacity-10 text-info">
-                          <i class="bi bi-calendar-check"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
+              <?= dashboardStatCard('pages/attendance.php', "Today's attendance", $todayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $todayAbsent . ' absent · ' . $todayLate . ' late') ?>
               <?php endif; ?>
               <?php if ($role !== 'teacher'): ?>
-              <div class="col-sm-6 col-xl-3">
-                <a href="pages/result-publication.php" class="text-decoration-none">
-                  <div class="card stat-card h-100">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div class="text-secondary small">Unpublished results</div>
-                          <div class="fs-2 fw-semibold"><?= (int) $unpublishedExams ?></div>
-                        </div>
-                        <div class="icon-wrap bg-warning bg-opacity-10 text-warning">
-                          <i class="bi bi-clipboard-x"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="col-sm-6 col-xl-3">
-                <a href="pages/admissions.php" class="text-decoration-none">
-                  <div class="card stat-card h-100">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div class="text-secondary small">New admission applications</div>
-                          <div class="fs-2 fw-semibold"><?= (int) $newApplications ?></div>
-                        </div>
-                        <div class="icon-wrap bg-primary bg-opacity-10 text-primary">
-                          <i class="bi bi-person-plus"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
+              <?= dashboardStatCard('pages/result-publication.php', 'Unpublished results', (string) $unpublishedExams, 'bi-clipboard-x', 'warning', 'col-sm-6 col-xl-3') ?>
+              <?= dashboardStatCard('pages/admissions.php', 'New admission applications', (string) $newApplications, 'bi-person-plus', 'primary', 'col-sm-6 col-xl-3') ?>
               <?php if (contactInboxAllowed()): ?>
-              <div class="col-sm-6 col-xl-3">
-                <a href="pages/contact-inbox.php" class="text-decoration-none">
-                  <div class="card stat-card h-100">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div class="text-secondary small">Unread messages</div>
-                          <div class="fs-2 fw-semibold"><?= (int) $unreadMessages ?></div>
-                        </div>
-                        <div class="icon-wrap bg-danger bg-opacity-10 text-danger">
-                          <i class="bi bi-envelope"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
+              <?= dashboardStatCard('pages/contact-inbox.php', 'Unread messages', (string) $unreadMessages, 'bi-envelope', 'danger', 'col-sm-6 col-xl-3') ?>
               <?php endif; ?>
               <?php endif; ?>
             </div>
             <?php endif; ?>
             <div class="row g-3 mb-4">
               <?php foreach ($stats as $stat): ?>
-                <div class="col-sm-6 col-xl-2">
-                  <a href="<?= h($stat['href']) ?>" class="text-decoration-none">
-                    <div class="card stat-card h-100">
-                      <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                          <div>
-                            <div class="text-secondary small"><?= h($stat['label']) ?></div>
-                            <div class="fs-2 fw-semibold"><?= (int) $stat['count'] ?></div>
-                          </div>
-                          <div class="icon-wrap bg-<?= h($stat['color']) ?> bg-opacity-10 text-<?= h($stat['color']) ?>">
-                            <i class="bi <?= h($stat['icon']) ?>"></i>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </div>
+                <?= dashboardStatCard((string) $stat['href'], (string) $stat['label'], (string) (int) $stat['count'], (string) $stat['icon'], (string) $stat['color'], 'col-sm-6 col-xl-2') ?>
               <?php endforeach; ?>
               <?php if ($showClassTeacherAttendance): ?>
-                <div class="col-sm-6 col-xl-3">
-                  <a href="<?= h($classTeacherAttendanceHref) ?>" class="text-decoration-none">
-                    <div class="card stat-card h-100">
-                      <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                          <div>
-                            <div class="text-secondary small">Today's attendance</div>
-                            <div class="fs-5 fw-semibold"><?= (int) $classTodayPresent ?> present</div>
-                            <div class="small text-secondary"><?= (int) $classTodayAbsent ?> absent · <?= (int) $classTodayLate ?> late</div>
-                          </div>
-                          <div class="icon-wrap bg-info bg-opacity-10 text-info">
-                            <i class="bi bi-calendar-check"></i>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </div>
+                <?= dashboardStatCard($classTeacherAttendanceHref, "Today's attendance", $classTodayPresent . ' present', 'bi-calendar-check', 'info', 'col-sm-6 col-xl-3', 'fs-5', $classTodayAbsent . ' absent · ' . $classTodayLate . ' late') ?>
               <?php endif; ?>
             </div>
+
+            <?php if ($showCharts): ?>
+            <div class="row g-3 mb-4">
+              <div class="col-lg-7">
+                <div class="card stat-card h-100">
+                  <div class="card-header"><h3 class="card-title mb-0">গত ৭ দিনের উপস্থিতি</h3></div>
+                  <div class="card-body">
+                    <div class="chart-box"><canvas id="attendanceTrendChart" role="img" aria-label="গত ৭ দিনের উপস্থিতির লাইন চার্ট"></canvas></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-5">
+                <div class="card stat-card h-100">
+                  <div class="card-header"><h3 class="card-title mb-0">আজকের ক্লাসভিত্তিক উপস্থিতি</h3></div>
+                  <div class="card-body">
+                    <?php if ($classChart['labels'] === []): ?>
+                      <p class="text-secondary text-center my-5">আজকের উপস্থিতি এখনো নেওয়া হয়নি।</p>
+                    <?php else: ?>
+                      <div class="chart-box"><canvas id="classAttendanceChart" role="img" aria-label="আজকের ক্লাসভিত্তিক উপস্থিতির বার চার্ট"></canvas></div>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <script type="application/json" id="dashboardChartData"><?= json_encode(
+                ['trend' => $trendChart, 'classes' => $classChart],
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            ) ?></script>
+            <?php endif; ?>
 
             <?php if ($assignedSubjects !== [] || $role === 'teacher'): ?>
             <div class="card stat-card mb-4">
@@ -278,7 +244,7 @@ include __DIR__ . '/includes/layout-head.php';
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
-                  <table class="table table-striped mb-0 align-middle">
+                  <table class="table table-striped table-stack mb-0 align-middle">
                     <thead><tr><th>Class</th><th>Section</th><th>Subject</th><th></th></tr></thead>
                     <tbody>
                       <?php if ($assignedSubjects === []): ?>
@@ -294,9 +260,9 @@ include __DIR__ . '/includes/layout-head.php';
                           ]);
                         ?>
                         <tr>
-                          <td><?= h(classLabel($db, (int) $item['class_id'])) ?></td>
-                          <td><?= (int) $item['section_id'] > 0 ? h(sectionLabel($db, (int) $item['section_id'])) : 'Entire class' ?></td>
-                          <td><?= h((string) ($item['subject_name_ban'] ?: $item['subject_name'])) ?></td>
+                          <td data-label="Class"><?= h($classLabels[(int) $item['class_id']] ?? (string) $item['class_id']) ?></td>
+                          <td data-label="Section"><?= (int) $item['section_id'] > 0 ? h($sectionLabels[(int) $item['section_id']] ?? (string) $item['section_id']) : 'Entire class' ?></td>
+                          <td data-label="Subject"><?= h((string) ($item['subject_name_ban'] ?: $item['subject_name'])) ?></td>
                           <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="pages/results.php?<?= h($q) ?>">Enter marks</a></td>
                         </tr>
                       <?php endforeach; ?>
@@ -317,7 +283,7 @@ include __DIR__ . '/includes/layout-head.php';
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
-                  <table class="table table-striped mb-0 align-middle">
+                  <table class="table table-striped table-stack mb-0 align-middle">
                     <thead><tr><th>Class</th><th>Section</th><th></th></tr></thead>
                     <tbody>
                       <?php if ($classTeacherSlots === []): ?>
@@ -333,8 +299,8 @@ include __DIR__ . '/includes/layout-head.php';
                           ]);
                         ?>
                         <tr>
-                          <td><?= h(classLabel($db, (int) $item['class_id'])) ?></td>
-                          <td><?= (int) $item['section_id'] > 0 ? h(sectionLabel($db, (int) $item['section_id'])) : 'Entire class' ?></td>
+                          <td data-label="Class"><?= h($classLabels[(int) $item['class_id']] ?? (string) $item['class_id']) ?></td>
+                          <td data-label="Section"><?= (int) $item['section_id'] > 0 ? h($sectionLabels[(int) $item['section_id']] ?? (string) $item['section_id']) : 'Entire class' ?></td>
                           <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="pages/attendance.php?<?= h($q) ?>">Attendance</a></td>
                         </tr>
                       <?php endforeach; ?>
@@ -357,7 +323,7 @@ include __DIR__ . '/includes/layout-head.php';
                   </div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
-                      <table class="table table-striped mb-0 align-middle">
+                      <table class="table table-striped table-stack mb-0 align-middle">
                         <thead>
                           <tr>
                             <th>Notice</th>
@@ -371,15 +337,15 @@ include __DIR__ . '/includes/layout-head.php';
                           <?php endif; ?>
                           <?php foreach ($notices as $notice): ?>
                             <tr>
-                              <td><?= h(schoolSnippet((string) $notice['main_notice_text'], 90)) ?></td>
-                              <td>
+                              <td data-label="Notice"><?= h(schoolSnippet((string) $notice['main_notice_text'], 90)) ?></td>
+                              <td data-label="Status">
                                 <?php if ((int) $notice['main_notice_status'] === 1): ?>
                                   <span class="badge text-bg-success">Published</span>
                                 <?php else: ?>
                                   <span class="badge text-bg-secondary">Hidden</span>
                                 <?php endif; ?>
                               </td>
-                              <td class="text-nowrap"><?php
+                              <td class="text-nowrap" data-label="Date"><?php
                                 $noticeStamp = strtotime((string) ($notice['main_notice_creation_time'] ?? ''));
                                 echo $noticeStamp
                                     ? h('at ' . date('g:i A', $noticeStamp) . ' in ' . date('d-m-Y', $noticeStamp))

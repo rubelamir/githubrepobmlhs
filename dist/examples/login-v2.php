@@ -27,6 +27,7 @@ $schoolEiin = (string) ($school['eiin'] ?? '');
 $schoolEstablished = (string) ($school['established'] ?? '');
 $logoUrl = schoolFileUrl((string) ($school['logo'] ?? ''), '', '');
 
+[$flashType, $flashMessage] = consumeFlash();
 $mobile = (string) ($_COOKIE[$rememberCookie] ?? '');
 $remember = $mobile !== '';
 $error = '';
@@ -140,12 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($logoUrl !== ''): ?>
     <link rel="icon" href="<?= h($logoUrl) ?>" />
     <?php endif; ?>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
@@ -153,217 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     />
     <link rel="stylesheet" href="../css/adminlte.css" />
     <link rel="stylesheet" href="../css/responsive.css?v=<?= (int) @filemtime(__DIR__ . '/../css/responsive.css') ?>" />
-    <style>
-      :root {
-        --slogin-forest: #1a4d3e;
-        --slogin-forest-mid: #246b54;
-        --slogin-forest-deep: #0f2f26;
-        --slogin-amber: #c4892a;
-        --slogin-amber-soft: #e8c078;
-      }
-      body.slogin-page {
-        min-height: 100vh;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: clamp(0.75rem, 3vw, 2.5rem);
-        font-family: "Hind Siliguri", system-ui, -apple-system, "Segoe UI", sans-serif;
-        background:
-          radial-gradient(1100px 560px at 12% 8%, rgba(36, 107, 84, 0.18), transparent 62%),
-          radial-gradient(900px 520px at 88% 92%, rgba(196, 137, 42, 0.16), transparent 62%),
-          var(--bs-body-bg);
-      }
-      .slogin-card {
-        width: min(1040px, 100%);
-        display: grid;
-        grid-template-columns: 1.02fr 0.98fr;
-        border-radius: 1.35rem;
-        overflow: hidden;
-        background: var(--bs-body-bg);
-        border: 1px solid rgba(15, 47, 38, 0.08);
-        box-shadow: 0 1.75rem 4.5rem rgba(15, 47, 38, 0.22);
-      }
-      .slogin-brand {
-        position: relative;
-        overflow: hidden;
-        color: #fff;
-        padding: clamp(1.75rem, 3vw, 2.75rem);
-        display: flex;
-        flex-direction: column;
-        gap: 1.15rem;
-        background: linear-gradient(155deg, var(--slogin-forest-mid) 0%, var(--slogin-forest) 45%, var(--slogin-forest-deep) 100%);
-      }
-      .slogin-brand::before {
-        content: "";
-        position: absolute;
-        inset: auto -30% -45% -30%;
-        height: 70%;
-        background: radial-gradient(circle at 50% 0, rgba(232, 192, 120, 0.26), transparent 66%);
-      }
-      .slogin-brand::after {
-        content: "";
-        position: absolute;
-        top: -22%;
-        right: -18%;
-        width: 58%;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-      }
-      .slogin-brand > * {
-        position: relative;
-        z-index: 1;
-      }
-      .slogin-emblem {
-        width: 104px;
-        height: 104px;
-        padding: 0.55rem;
-        border-radius: 50%;
-        background: #fff;
-        display: grid;
-        place-items: center;
-        outline: 3px solid rgba(232, 192, 120, 0.55);
-        outline-offset: 4px;
-        box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.28);
-      }
-      .slogin-emblem img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-      .slogin-emblem span {
-        font-size: 2.1rem;
-        font-weight: 700;
-        color: var(--slogin-forest);
-      }
-      .slogin-name {
-        margin: 0;
-        font-size: clamp(1.3rem, 2.4vw, 1.8rem);
-        font-weight: 700;
-        line-height: 1.4;
-      }
-      .slogin-name-en {
-        margin: 0.35rem 0 0;
-        font-size: 0.9rem;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.76);
-      }
-      .slogin-tag {
-        align-self: flex-start;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.3rem 0.8rem;
-        border-radius: 999px;
-        font-size: 0.76rem;
-        letter-spacing: 0.08em;
-        font-weight: 600;
-        text-transform: uppercase;
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-      }
-      .slogin-rule {
-        height: 1px;
-        background: linear-gradient(90deg, rgba(232, 192, 120, 0.65), rgba(255, 255, 255, 0.04));
-      }
-      .slogin-meta {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: grid;
-        gap: 0.6rem;
-        font-size: 0.92rem;
-        color: rgba(255, 255, 255, 0.85);
-      }
-      .slogin-meta li {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.6rem;
-      }
-      .slogin-meta i {
-        margin-top: 0.15rem;
-        color: var(--slogin-amber-soft);
-      }
-      .slogin-form {
-        padding: clamp(1.75rem, 3vw, 2.75rem);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-      .slogin-title {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--bs-emphasis-color);
-      }
-      .slogin-subtitle {
-        margin: 0.35rem 0 1.5rem;
-        font-size: 0.94rem;
-        color: var(--bs-secondary-color);
-      }
-      .slogin-form .form-control:focus {
-        border-color: var(--slogin-forest-mid);
-        box-shadow: 0 0 0 0.2rem rgba(36, 107, 84, 0.18);
-      }
-      .slogin-submit {
-        --bs-btn-color: #fff;
-        --bs-btn-bg: var(--slogin-forest);
-        --bs-btn-border-color: var(--slogin-forest);
-        --bs-btn-hover-color: #fff;
-        --bs-btn-hover-bg: var(--slogin-forest-deep);
-        --bs-btn-hover-border-color: var(--slogin-forest-deep);
-        --bs-btn-active-color: #fff;
-        --bs-btn-active-bg: var(--slogin-forest-deep);
-        --bs-btn-active-border-color: var(--slogin-forest-deep);
-        --bs-btn-disabled-color: #fff;
-        --bs-btn-disabled-bg: var(--slogin-forest-mid);
-        --bs-btn-disabled-border-color: var(--slogin-forest-mid);
-        font-weight: 600;
-        padding-block: 0.7rem;
-      }
-      .slogin-foot {
-        margin-top: 1.65rem;
-        font-size: 0.88rem;
-        color: var(--bs-secondary-color);
-      }
-      .slogin-foot a {
-        font-weight: 600;
-        text-decoration: none;
-        color: var(--slogin-forest-mid);
-      }
-      .slogin-foot a:hover {
-        text-decoration: underline;
-      }
-      [data-bs-theme="dark"] .slogin-card {
-        border-color: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 1.75rem 4.5rem rgba(0, 0, 0, 0.55);
-      }
-      [data-bs-theme="dark"] .slogin-foot a {
-        color: var(--slogin-amber-soft);
-      }
-      @media (max-width: 991.98px) {
-        .slogin-card {
-          grid-template-columns: 1fr;
-        }
-        .slogin-brand {
-          flex-direction: row;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-        .slogin-emblem {
-          width: 74px;
-          height: 74px;
-        }
-        .slogin-brand .slogin-rule,
-        .slogin-brand .slogin-meta,
-        .slogin-brand .slogin-tag {
-          display: none;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="../css/auth-pages.css?v=<?= (int) @filemtime(__DIR__ . '/../css/auth-pages.css') ?>" />
   </head>
   <body class="slogin-page">
     <main class="slogin-card">
@@ -399,6 +184,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="slogin-subtitle">শিক্ষক ও কর্মচারীবৃন্দ নিজের মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে প্রবেশ করুন।</p>
 
         <div aria-live="polite">
+          <?php if ($flashType === 'success' && $flashMessage !== ''): ?>
+            <div class="alert alert-success d-flex align-items-start gap-2" role="status">
+              <i class="bi bi-check-circle-fill mt-1" aria-hidden="true"></i>
+              <span><?= h($flashMessage) ?></span>
+            </div>
+          <?php endif; ?>
           <?php if ($error !== ''): ?>
             <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
               <i class="bi bi-exclamation-triangle-fill mt-1" aria-hidden="true"></i>
@@ -425,8 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 autocomplete="username"
                 maxlength="20"
                 required
+                aria-describedby="mobileFeedback"
                 <?= $mobile === '' ? 'autofocus' : '' ?>
               />
+              <div class="invalid-feedback" id="mobileFeedback">সঠিক মোবাইল নম্বর লিখুন।</div>
             </div>
           </div>
 
@@ -440,6 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 type="password"
                 class="form-control"
                 autocomplete="current-password"
+                aria-describedby="passwordFeedback capsWarning"
                 required
                 <?= $mobile === '' ? '' : 'autofocus' ?>
               />
@@ -453,6 +247,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               >
                 <i class="bi bi-eye" aria-hidden="true"></i>
               </button>
+              <div class="invalid-feedback" id="passwordFeedback">পাসওয়ার্ড লিখুন।</div>
+            </div>
+            <div class="form-text text-warning-emphasis d-none" id="capsWarning" role="status">
+              <i class="bi bi-capslock-fill" aria-hidden="true"></i> ক্যাপস লক চালু আছে
             </div>
           </div>
 
@@ -461,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <input class="form-check-input" type="checkbox" name="remember" value="1" id="rememberMobile" <?= $remember ? 'checked' : '' ?> />
               <label class="form-check-label" for="rememberMobile">নম্বরটি মনে রাখুন</label>
             </div>
-            <a class="link-secondary text-decoration-none small" href="<?= h(publicSiteUrl('contact.php')) ?>">সহায়তা</a>
+            <a class="link-secondary text-decoration-none small" href="forgot-password.php">পাসওয়ার্ড ভুলে গেছেন?</a>
           </div>
 
           <div class="d-grid">
@@ -473,7 +271,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="slogin-foot">
           <p class="mb-1">
-            পাসওয়ার্ড ভুলে গেলে প্রধান শিক্ষক অথবা অফিস সহকারীর সাথে যোগাযোগ করুন।
+            সমস্যা হলে প্রধান শিক্ষক অথবা অফিস সহকারীর সাথে
+            <a href="<?= h(publicSiteUrl('contact.php')) ?>">যোগাযোগ করুন</a>।
           </p>
           <p class="mb-0">
             <a href="<?= h(publicSiteUrl('index.php')) ?>">
@@ -500,10 +299,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           });
         }
 
+        const caps = document.getElementById('capsWarning');
+        const updateCaps = (event) => {
+          if (!caps || typeof event.getModifierState !== 'function') return;
+          caps.classList.toggle('d-none', !event.getModifierState('CapsLock'));
+        };
+        field?.addEventListener('keydown', updateCaps);
+        field?.addEventListener('keyup', updateCaps);
+        field?.addEventListener('blur', () => caps?.classList.add('d-none'));
+
         const form = document.getElementById('loginForm');
         const submit = document.getElementById('loginSubmit');
-        form?.addEventListener('submit', () => {
-          if (!submit) return;
+        const mobileInput = document.getElementById('loginMobile');
+        const banglaDigits = '০১২৩৪৫৬৭৮৯';
+        const digitCount = (value) =>
+          Array.from(value).filter((ch) => /[0-9]/.test(ch) || banglaDigits.includes(ch)).length;
+        const check = (input, valid) => {
+          input.classList.toggle('is-invalid', !valid);
+          input.setAttribute('aria-invalid', String(!valid));
+          return valid;
+        };
+        // Mirrors the server rule (at least six digits) so legacy numbers are not rejected here.
+        const mobileOk = () => check(mobileInput, digitCount(mobileInput.value) >= 6);
+        const passwordOk = () => check(field, field.value !== '');
+        mobileInput?.addEventListener('blur', () => mobileInput.value !== '' && mobileOk());
+        mobileInput?.addEventListener('input', () => mobileInput.classList.contains('is-invalid') && mobileOk());
+        field?.addEventListener('input', () => field.classList.contains('is-invalid') && passwordOk());
+
+        form?.addEventListener('submit', (event) => {
+          if (!submit || !mobileInput || !field) return;
+          const mobileValid = mobileOk();
+          const passwordValid = passwordOk();
+          if (!mobileValid || !passwordValid) {
+            event.preventDefault();
+            (mobileValid ? field : mobileInput).focus();
+            return;
+          }
           submit.disabled = true;
           submit.innerHTML =
             '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>প্রবেশ করা হচ্ছে…';
