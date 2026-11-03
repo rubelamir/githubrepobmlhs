@@ -250,6 +250,15 @@ include __DIR__ . '/../includes/layout-head.php';
             <?php if (!smsGatewayReady($db)): ?>
               <div class="alert alert-warning">Set the SMS provider, API token and sender ID in <a href="school-settings.php">School Settings</a> before sending.</div>
             <?php endif; ?>
+            <div class="alert alert-primary d-flex flex-wrap align-items-center gap-2 mb-3">
+              <i class="bi bi-wallet2 fs-5" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                <strong>SMS রিচার্জ:</strong>
+                <a href="https://gwb.li/buy" target="_blank" rel="noopener noreferrer">gwb.li/buy</a>
+                <span class="d-block d-sm-inline ms-sm-2">রিচার্জ নাম্বার: <a href="tel:01925521257" class="fw-semibold">01925521257</a></span>
+              </div>
+              <a class="btn btn-sm btn-primary" href="https://gwb.li/buy" target="_blank" rel="noopener noreferrer">রিচার্জ করুন</a>
+            </div>
             <?php if (!empty($smsAccount['ok'])): ?>
               <?php
                 $balance = $smsAccount['balance'];
