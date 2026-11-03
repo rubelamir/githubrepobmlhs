@@ -12,6 +12,6 @@ dist/css/auth-pages.css
 dist/css/dashboard.css
 dist/examples/forgot-password.php
 dist/examples/login-v2.php
-dist/includes/dashboard-widgets.php
+dist/includes/dashboard-cards.php
 dist/includes/password-reset.php
 dist/index.php

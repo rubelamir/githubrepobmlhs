@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/dashboard-widgets.php';
+require_once __DIR__ . '/includes/dashboard-cards.php';
 requireAuthentication('examples/login-v2.php');
 
 $db = getDatabaseConnection();
