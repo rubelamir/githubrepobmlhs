@@ -129,7 +129,11 @@ def deploy(paths: list[str]) -> list[str]:
         ftp.login(str(config["username"]), str(config["password"]))
         ftp.prot_p()
         for relative in selected:
-            upload_file(ftp, relative, root_parts)
+            try:
+                upload_file(ftp, relative, root_parts)
+            except (ftplib.Error, OSError) as error:
+                raise RuntimeError(f"Failed uploading {relative.as_posix()}: {error}") from error
+            print(f"Uploaded {relative.as_posix()}")
     return [relative.as_posix() for relative in selected]
 
 
