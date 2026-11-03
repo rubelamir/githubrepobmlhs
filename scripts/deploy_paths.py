@@ -86,8 +86,23 @@ def upload_file(ftp: ftplib.FTP_TLS, relative: Path, root_parts: list[str]) -> N
         except ftplib.error_perm:
             ftp.mkd(directory)
             ftp.cwd(directory)
-    with local_path.open("rb") as source:
-        ftp.storbinary(f"STOR {relative.name}", source)
+    try:
+        with local_path.open("rb") as source:
+            ftp.storbinary(f"STOR {relative.name}", source)
+    except ftplib.error_perm as error:
+        if not str(error).startswith("553"):
+            raise
+        # Existing remote file is not writable (read-only mode/owner); replace it.
+        try:
+            ftp.sendcmd(f"SITE CHMOD 644 {relative.name}")
+        except ftplib.Error:
+            pass
+        try:
+            ftp.delete(relative.name)
+        except ftplib.error_perm:
+            pass
+        with local_path.open("rb") as source:
+            ftp.storbinary(f"STOR {relative.name}", source)
     remote_size = ftp.size(relative.name)
     if remote_size != local_path.stat().st_size:
         raise OSError(f"Uploaded size mismatch for {relative.as_posix()}.")
