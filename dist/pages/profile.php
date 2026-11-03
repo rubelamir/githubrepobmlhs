@@ -386,6 +386,7 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
   <link rel="icon" href="<?= h($panelFavicon) ?>">
   <link rel="shortcut icon" href="<?= h($panelFavicon) ?>">
   <link rel="stylesheet" href="../css/adminlte.css">
+  <link rel="stylesheet" href="../css/navbar-touch.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
   <style>
@@ -828,6 +829,7 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
   <script src="../js/adminlte.js"></script>
+  <script src="../assets/js/sidebar-toggle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script>
     (() => {
