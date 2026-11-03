@@ -87,6 +87,10 @@ def upload_file(ftp: ftplib.FTP_TLS, relative: Path, root_parts: list[str]) -> N
             ftp.mkd(directory)
             ftp.cwd(directory)
     try:
+        ftp.sendcmd("SITE CHMOD 755 .")
+    except ftplib.Error:
+        pass
+    try:
         with local_path.open("rb") as source:
             ftp.storbinary(f"STOR {relative.name}", source)
     except ftplib.error_perm as error:
@@ -101,8 +105,15 @@ def upload_file(ftp: ftplib.FTP_TLS, relative: Path, root_parts: list[str]) -> N
             ftp.delete(relative.name)
         except ftplib.error_perm:
             pass
-        with local_path.open("rb") as source:
-            ftp.storbinary(f"STOR {relative.name}", source)
+        try:
+            with local_path.open("rb") as source:
+                ftp.storbinary(f"STOR {relative.name}", source)
+        except ftplib.error_perm:
+            # Show the remote folder permissions to diagnose the failure.
+            print(f"Remote folder for {relative.as_posix()}:")
+            ftp.retrlines("LIST -la", print)
+            ftp.cwd("/")
+            raise
     remote_size = ftp.size(relative.name)
     if remote_size != local_path.stat().st_size:
         raise OSError(f"Uploaded size mismatch for {relative.as_posix()}.")
