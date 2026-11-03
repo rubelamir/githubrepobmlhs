@@ -283,7 +283,7 @@ include __DIR__ . '/includes/layout-head.php';
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
-                  <table class="table table-striped table-stack mb-0 align-middle">
+                  <table class="table table-striped table-bordered text-nowrap mb-0 align-middle">
                     <thead><tr><th>Class</th><th>Section</th><th></th></tr></thead>
                     <tbody>
                       <?php if ($classTeacherSlots === []): ?>
