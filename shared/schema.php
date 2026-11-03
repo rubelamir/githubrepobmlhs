@@ -123,6 +123,7 @@ function ensureSchoolSchema(PDO $db): void
         ensureColumn($db, 'student_promotions', 'promotion_batch', 'VARCHAR(40) DEFAULT NULL');
     }
     ensureFilesSortOrder($db);
+    ensureFileFoldersSchema($db);
 
     // New tables / SSC candidate fields must run even when schema version is already current.
     ensureExamRoutineSchema($db);
@@ -686,6 +687,19 @@ function ensureTeacherSortOrder(PDO $db): void
     }
 
     recordSchemaMigration($db, 'teacher_sort_order_v15');
+}
+
+function ensureFileFoldersSchema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS file_folders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            folder_name VARCHAR(120) NOT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+    ensureColumn($db, 'files', 'folder_id', 'INT NULL DEFAULT NULL');
 }
 
 function ensureFilesSortOrder(PDO $db): void
