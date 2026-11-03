@@ -46,14 +46,6 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <p>Dashboard</p>
                 </a>
               </li>
-              <?php if (contactInboxAllowed()): ?>
-              <li class="nav-item">
-                <a href="<?= $basePath ?>pages/contact-inbox.php" class="nav-link<?= navActive('contact-inbox', $active) ?>">
-                  <i class="nav-icon bi bi-inbox"></i>
-                  <p>Contact inbox</p>
-                </a>
-              </li>
-              <?php endif; ?>
               <?php if (bulkSmsAllowed()): ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/bulk-sms.php" class="nav-link<?= navActive('bulk-sms', $active) ?>">
@@ -270,6 +262,14 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                 </a>
               </li>
               <?php endif; ?>
+              <?php endif; ?>
+              <?php if (contactInboxAllowed()): ?>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/contact-inbox.php" class="nav-link<?= navActive('contact-inbox', $active) ?>">
+                  <i class="nav-icon bi bi-inbox"></i>
+                  <p>Contact inbox</p>
+                </a>
+              </li>
               <?php endif; ?>
               <?php if ($can('school-settings')): ?>
               <li class="nav-item">
