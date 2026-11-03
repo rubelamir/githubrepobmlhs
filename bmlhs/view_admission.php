@@ -1,6 +1,6 @@
 <?php
 $pageAssets = [];
-$pageMeta = ['title' => 'আবেদনকারীর তালিকা'];
+$pageMeta = ['title' => 'আবেদনকারীর তালিকা', 'noindex' => true];
 include('header.php');
 include('navbar&marqueetag.php');
 

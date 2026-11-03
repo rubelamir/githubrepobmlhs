@@ -1,6 +1,6 @@
 <?php
 $pageAssets = [];
-$pageMeta = ['title' => 'পাসওয়ার্ড পরিবর্তন'];
+$pageMeta = ['title' => 'পাসওয়ার্ড পরিবর্তন', 'noindex' => true];
 include('header.php');
 include('navbar&marqueetag.php');
 if (isset($_SESSION['admission_login_id'])) {

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /bmlhs/
+Disallow: /dist/
+Disallow: /shared/
+Disallow: /bmlhs/admission_login
+Disallow: /bmlhs/admission_form_edit
+Disallow: /bmlhs/view_admission
+
+Sitemap: https://bmlhs.site/bmlhs/sitemap.xml

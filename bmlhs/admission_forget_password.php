@@ -1,6 +1,6 @@
 <?php
 $pageAssets = [];
-$pageMeta = ['title' => 'পাসওয়ার্ড পুনরুদ্ধার'];
+$pageMeta = ['title' => 'পাসওয়ার্ড পুনরুদ্ধার', 'noindex' => true];
 include('header.php');
 include('navbar&marqueetag.php');
 

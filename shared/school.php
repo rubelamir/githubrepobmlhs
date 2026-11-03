@@ -274,6 +274,8 @@ function schoolSettings(PDO $db): array
         'sms_provider' => '',
         'sms_api_token' => '',
         'sms_sid' => '',
+        'ga_measurement_id' => '',
+        'gsc_verification' => '',
     ];
 
     if (!tableExists($db, 'school_settings')) {
