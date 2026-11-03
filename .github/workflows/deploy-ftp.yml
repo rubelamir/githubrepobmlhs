@@ -3,6 +3,8 @@ name: Deploy to cPanel (FTP)
 on:
   push:
     branches: [main]
+    paths:
+      - 'bmlhs/**'
   workflow_dispatch:
 
 jobs:
@@ -19,20 +21,10 @@ jobs:
           protocol: ftp
           username: bmlhs@bmlhs.site
           password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./bmlhs/
           server-dir: ./
           exclude: |
             **/.git*
             **/.git*/**
-            .github/**
-            .cursor/**
-            tests/**
-            docs/**
-            android/**
-            node_modules/**
-            *.sql
-            *.csv
-            *.md
-            git.cmd
-            netlify.toml
-            .gitpod.yml
-            .lgtm.yml
+            **/*.sql
+            database/**
