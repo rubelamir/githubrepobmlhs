@@ -37,7 +37,7 @@ if ($step === 'new' && (int) ($state['verified_until'] ?? 0) < time()) {
 $error = '';
 $notice = '';
 $mobile = (string) ($state['mobile'] ?? '');
-$genericSentNotice = 'নম্বরটি নিবন্ধিত থাকলে একটি ৬ অঙ্কের কোড SMS-এ পাঠানো হয়েছে। কোডটি ' . bnDigits((string) (PASSWORD_RESET_CODE_TTL / 60)) . ' মিনিট কার্যকর থাকবে।';
+$genericSentNotice = 'একটি ৬ অঙ্কের কোড SMS-এ পাঠানো হয়েছে। কোডটি ' . bnDigits((string) (PASSWORD_RESET_CODE_TTL / 60)) . ' মিনিট কার্যকর থাকবে।';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db instanceof PDO) {
     $action = (string) ($_POST['action'] ?? '');
@@ -60,20 +60,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db instanceof PDO) {
                 $error = 'নতুন কোডের জন্য অনুগ্রহ করে ' . bnDigits((string) (PASSWORD_RESET_RESEND_SECONDS - $secondsSinceSend)) . ' সেকেন্ড অপেক্ষা করুন।';
                 $step = 'otp';
             } else {
-                $teacher = passwordResetFindTeacher($db, $mobile);
-                $result = $teacher !== null
-                    ? passwordResetSendCode($db, $teacher)
-                    : (smsGatewayReady($db) ? 'sent' : 'sms_unavailable');
+                $lookupIp = loginClientIp();
+                $teacher = isLoginRateLimited('pw-reset-lookup', $lookupIp, 10, 900)
+                    ? false
+                    : passwordResetFindTeacher($db, $mobile);
 
-                if ($result === 'sms_unavailable') {
+                if ($teacher === false) {
+                    $error = 'অনেকবার ভুল নম্বর দেওয়া হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।';
+                } elseif ($teacher === null) {
+                    recordLoginFailure('pw-reset-lookup', $lookupIp, 10, 900);
+                    $error = bnDigits($mobile) . ' মোবাইল নাম্বারটি সঠিক নয়।';
+                } elseif (($result = passwordResetSendCode($db, $teacher)) === 'sms_unavailable') {
                     $error = 'এই মুহূর্তে SMS সেবা চালু নেই। প্রধান শিক্ষক অথবা অফিস সহকারীর সাথে যোগাযোগ করুন।';
                 } else {
-                    // The reply is identical for unknown, throttled and failed sends so the form cannot reveal which numbers are registered.
+                    // Throttled or failed sends still show the generic notice so the reply does not expose send limits.
                     $state = [
                         'step' => 'otp',
                         'mobile' => $mobile,
-                        'teacher_id' => $teacher !== null ? (int) $teacher['id'] : 0,
-                        'teacher_mobile' => $teacher !== null ? (string) $teacher['teacher_mobile'] : '',
+                        'teacher_id' => (int) $teacher['id'],
+                        'teacher_mobile' => (string) $teacher['teacher_mobile'],
                         'sent_at' => time(),
                         'expires' => time() + 1800,
                     ];
