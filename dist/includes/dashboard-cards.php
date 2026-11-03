@@ -101,15 +101,15 @@ function dashboardSectionLabels(PDO $db): array
  * Attendance totals for the last seven days (oldest first).
  *
  * @param array<int, string> $rosterFilters SQL clauses on alias "s"; empty means the whole school
- * @return array{labels:array<int,string>,present:array<int,int>,absent:array<int,int>,late:array<int,int>}
+ * @return array{labels:array<int,string>,present:array<int,int>,absent:array<int,int>}
  */
 function dashboardAttendanceTrend(PDO $db, array $rosterFilters, array $rosterParams): array
 {
     $days = [];
     for ($offset = 6; $offset >= 0; $offset--) {
-        $days[date('Y-m-d', strtotime("-{$offset} day"))] = ['present' => 0, 'absent' => 0, 'late' => 0];
+        $days[date('Y-m-d', strtotime("-{$offset} day"))] = ['present' => 0, 'absent' => 0];
     }
-    $trend = ['labels' => [], 'present' => [], 'absent' => [], 'late' => []];
+    $trend = ['labels' => [], 'present' => [], 'absent' => []];
 
     if (tableExists($db, 'student_attendance')) {
         $join = '';
@@ -139,7 +139,6 @@ function dashboardAttendanceTrend(PDO $db, array $rosterFilters, array $rosterPa
         $trend['labels'][] = bnDigits(date('d/m', strtotime($day)));
         $trend['present'][] = $counts['present'];
         $trend['absent'][] = $counts['absent'];
-        $trend['late'][] = $counts['late'];
     }
 
     return $trend;
@@ -150,11 +149,11 @@ function dashboardAttendanceTrend(PDO $db, array $rosterFilters, array $rosterPa
  *
  * @param array<int, string> $rosterFilters
  * @param array<int, string> $classLabels
- * @return array{labels:array<int,string>,present:array<int,int>,absent:array<int,int>,late:array<int,int>}
+ * @return array{labels:array<int,string>,present:array<int,int>,absent:array<int,int>}
  */
 function dashboardClassAttendanceToday(PDO $db, array $rosterFilters, array $rosterParams, array $classLabels): array
 {
-    $result = ['labels' => [], 'present' => [], 'absent' => [], 'late' => []];
+    $result = ['labels' => [], 'present' => [], 'absent' => []];
     if (!tableExists($db, 'student_attendance') || !tableExists($db, 'students_info')) {
         return $result;
     }
@@ -174,7 +173,7 @@ function dashboardClassAttendanceToday(PDO $db, array $rosterFilters, array $ros
     $byClass = [];
     foreach ($rows as $row) {
         $classId = (int) $row['class_id'];
-        $byClass[$classId] ??= ['present' => 0, 'absent' => 0, 'late' => 0];
+        $byClass[$classId] ??= ['present' => 0, 'absent' => 0];
         if (isset($byClass[$classId][(string) $row['status']])) {
             $byClass[$classId][(string) $row['status']] = (int) $row['total'];
         }
@@ -185,7 +184,6 @@ function dashboardClassAttendanceToday(PDO $db, array $rosterFilters, array $ros
         $result['labels'][] = $classLabels[$classId] ?? (string) $classId;
         $result['present'][] = $counts['present'];
         $result['absent'][] = $counts['absent'];
-        $result['late'][] = $counts['late'];
     }
 
     return $result;

@@ -12,12 +12,12 @@
   }
 
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const colors = { present: '#198754', absent: '#dc3545', late: '#f0ad00' };
-  const names = { present: 'উপস্থিত', absent: 'অনুপস্থিত', late: 'দেরিতে' };
+  const colors = { present: '#198754', absent: '#dc3545' };
+  const names = { present: 'উপস্থিত', absent: 'অনুপস্থিত' };
   const charts = [];
 
   const datasets = (source, type) =>
-    ['present', 'absent', 'late'].map((key) => ({
+    ['present', 'absent'].map((key) => ({
       label: names[key],
       data: source[key],
       borderColor: colors[key],
