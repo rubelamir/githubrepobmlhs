@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 requireAuthentication('../examples/login-v2.php');
 
+// profile-edit.php sets $profileMode = 'edit' and includes this file.
+$isEditPage = ($profileMode ?? 'view') === 'edit';
 $requestedMobile = trim((string) ($_GET['teacher_mobile'] ?? ''));
 if ($requestedMobile !== '') {
     $teacherStatement = getDatabaseConnection()->prepare(
@@ -184,7 +186,7 @@ if (!$canEditStaffFields) {
 $errors = [];
 $roleSaved = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($isEditPage && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ((string) ($_POST['action'] ?? '') === 'delete') {
         if (!$canEditStaffFields) {
             denyPanelAccess();
@@ -382,7 +384,7 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
-  <title>Teacher Profile | AdminLTE</title>
+  <title><?= $isEditPage ? 'Edit Teacher Profile' : 'Teacher Profile' ?> | AdminLTE</title>
   <link rel="icon" href="<?= h($panelFavicon) ?>">
   <link rel="shortcut icon" href="<?= h($panelFavicon) ?>">
   <link rel="stylesheet" href="../css/adminlte.css">
@@ -555,10 +557,15 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
       <div class="app-content-header">
         <div class="container-fluid d-flex justify-content-between align-items-center">
           <div class="profile-header-title">
-            <h1 class="mb-1 fs-3">Teacher Profile</h1>
-            <p class="text-secondary mb-0">Personal and professional information</p>
+            <h1 class="mb-1 fs-3"><?= $isEditPage ? 'Edit Teacher Profile' : 'Teacher Profile' ?></h1>
+            <p class="text-secondary mb-0"><?= $isEditPage ? 'Update personal and professional information' : 'Personal and professional information' ?></p>
           </div>
           <div class="profile-actions no-print">
+            <?php if ($isEditPage): ?>
+            <a class="btn btn-outline-secondary" href="profile.php<?= h($profileQuery) ?>">
+              <i class="bi bi-arrow-left me-1"></i> Back to Profile
+            </a>
+            <?php else: ?>
             <a class="btn btn-outline-secondary" href="change-password.php">
               <i class="bi bi-key me-1"></i> Change Password
             </a>
@@ -568,17 +575,19 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
             <button class="btn btn-outline-secondary" type="button" onclick="window.print()">
               <i class="bi bi-printer me-1"></i> Print Profile
             </button>
-            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#editProfile">
+            <a class="btn btn-primary" href="profile-edit.php<?= h($profileQuery) ?>">
               <i class="bi bi-pencil-square me-1"></i> Edit Profile
-            </button>
+            </a>
+            <?php endif; ?>
           </div>
         </div>
       </div>
       <div class="app-content">
         <div class="container-fluid">
           <?php include __DIR__ . '/../includes/flash.php'; ?>
-          <?php if ($saved): ?><div id="profileUpdateAlert" class="alert alert-success fade show"><i class="bi bi-check-circle me-1"></i>Profile updated successfully.</div><?php endif; ?>
+          <?php if ($saved && !$isEditPage): ?><div id="profileUpdateAlert" class="alert alert-success fade show"><i class="bi bi-check-circle me-1"></i>Profile updated successfully.</div><?php endif; ?>
           <?php if ($errors !== []): ?><div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i>Please fill in all mandatory fields.</div><?php endif; ?>
+          <?php if (!$isEditPage): ?>
           <div class="row g-3">
             <div class="col-lg-4">
               <div class="card card-primary card-outline h-100">
@@ -664,8 +673,10 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
               </div>
             </div>
           </div>
-          <div class="collapse mt-3" id="editProfile">
-            <form method="post" action="profile.php<?= htmlspecialchars($profileQuery, ENT_QUOTES, 'UTF-8') ?>" id="profileForm" class="card card-outline card-warning">
+          <?php endif; ?>
+          <?php if ($isEditPage): ?>
+          <div id="editProfile">
+            <form method="post" action="profile-edit.php<?= htmlspecialchars($profileQuery, ENT_QUOTES, 'UTF-8') ?>" id="profileForm" class="card card-outline card-warning">
               <?= csrfField() ?>
               <div class="card-header"><h3 class="card-title">Edit Profile</h3></div>
               <div class="card-body"><div class="row g-3">
@@ -820,6 +831,7 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
             </form>
             <?php endif; ?>
           </div>
+          <?php endif; ?>
         </div>
       </div>
     </main>
