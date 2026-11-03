@@ -764,7 +764,15 @@ function saveCroppedJpeg(string $dataUrl, string $relativeDir, string $fileName 
     }
 
     $target = $directory . DIRECTORY_SEPARATOR . $fileName;
-    if (file_put_contents($target, $binary, LOCK_EX) === false) {
+    if (@file_put_contents($target, $binary, LOCK_EX) === false) {
+        $free = @disk_free_space($directory);
+        error_log('saveCroppedJpeg failed: dir=' . $directory . ' writable=' . (is_writable($directory) ? 'yes' : 'no') . ' free=' . ($free === false ? 'unknown' : (string) $free));
+        if (!is_writable($directory)) {
+            throw new RuntimeException('Unable to save the image: the "' . basename($directory) . '" folder on the server is not writable. Set its permission to 755 or 775 in cPanel File Manager.');
+        }
+        if ($free !== false && $free < strlen($binary) + 1048576) {
+            throw new RuntimeException('Unable to save the image: the server disk space is full. Free up space in cPanel (old backups, unused files).');
+        }
         throw new RuntimeException('Unable to save the cropped image.');
     }
     ensureWebpCompanion($relativeDir, $fileName);
