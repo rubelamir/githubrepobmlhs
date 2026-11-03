@@ -24,7 +24,25 @@ $years = array_values(array_unique(array_filter(array_map(
     $allAlbums
 ))));
 rsort($years, SORT_NUMERIC);
-$loosePhotos = $yearFilter === '' ? publicUngroupedGalleryPhotos($db) : [];
+$loosePhotos = publicUngroupedGalleryPhotos($db);
+$yearGroups = [];
+foreach ($albums as $album) {
+    $yearGroups[(string) ($album['album_year'] ?? '')]['albums'][] = $album;
+}
+foreach ($loosePhotos as $row) {
+    $photoYear = substr((string) ($row['image_gallery_creation_time'] ?? ''), 0, 4);
+    if (!ctype_digit($photoYear) || ($yearFilter !== '' && $photoYear !== $yearFilter)) {
+        if ($yearFilter !== '') {
+            continue;
+        }
+        $photoYear = '';
+    }
+    $yearGroups[$photoYear]['photos'][] = $row;
+}
+foreach ($yearGroups as $k => $g) {
+    $yearGroups[$k] = ['photos' => $g['photos'] ?? [], 'albums' => $g['albums'] ?? []];
+}
+uksort($yearGroups, static fn ($x, $y): int => ($x === '') <=> ($y === '') ?: (int) $y <=> (int) $x);
 ?>
 <div class="school-inner-page">
     <section class="reg_section sweet-mini-section">
@@ -43,43 +61,48 @@ $loosePhotos = $yearFilter === '' ? publicUngroupedGalleryPhotos($db) : [];
             </div>
         <?php endif; ?>
 
-        <?php if ($albums !== []): ?>
-            <div class="school-album-grid">
-                <?php foreach ($albums as $album):
-                    $cover = trim((string) ($album['cover_file'] ?? ''));
-                    $coverSrc = $cover !== '' ? schoolMediaUrl($cover, 'image_gallery_file') : 'image/1.jpg';
-                    $count = (int) ($album['photo_count'] ?? 0);
-                ?>
-                    <a class="school-album-card" href="<?= h(publicGalleryAlbumUrl((int) $album['id'])) ?>">
-                        <span class="school-album-cover"><img src="<?= h($coverSrc) ?>" alt="" loading="lazy"></span>
-                        <span class="school-album-body">
-                            <strong><?= h((string) $album['title']) ?></strong>
-                            <?php if (trim((string) ($album['event_name'] ?? '')) !== ''): ?>
-                                <em><?= h((string) $album['event_name']) ?></em>
-                            <?php endif; ?>
-                            <small>
-                                <?= $album['album_year'] ? h(bnDigits((string) $album['album_year'])) : '' ?>
-                                <?= $count > 0 ? ' · ' . h(bnDigits((string) $count)) . ' ছবি' : '' ?>
-                            </small>
-                        </span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+        <?php foreach ($yearGroups as $groupYear => $group): ?>
+            <?php if ($groupYear !== '' && count($yearGroups) > 1): ?>
+                <h3 class="school-section-title mt-4 mb-3"><?= h(bnDigits((string) $groupYear)) ?></h3>
+            <?php endif; ?>
+            <?php if ($group['photos'] !== []): ?>
+                <?php $loosePhotos = $group['photos']; ?>
+                <div class="school-photo-grid">
+                    <?php foreach ($loosePhotos as $row): ?>
+                        <a class="school-photo-card" data-fancybox="ungrouped-<?= h((string) $groupYear) ?>" href="<?= h(schoolMediaUrl((string) $row['image_gallery_file'], 'image_gallery_file')) ?>">
+                            <img src="<?= h(schoolMediaUrl((string) $row['image_gallery_file'], 'image_gallery_file')) ?>" alt="<?= h((string) $row['image_gallery_caption']) ?>" loading="lazy">
+                            <span><?= h((string) $row['image_gallery_caption']) ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($group['albums'] !== []): ?>
+                <?php $albums = $group['albums']; ?>
+                <div class="school-album-grid">
+                    <?php foreach ($albums as $album):
+                        $cover = trim((string) ($album['cover_file'] ?? ''));
+                        $coverSrc = $cover !== '' ? schoolMediaUrl($cover, 'image_gallery_file') : 'image/1.jpg';
+                        $count = (int) ($album['photo_count'] ?? 0);
+                    ?>
+                        <a class="school-album-card" href="<?= h(publicGalleryAlbumUrl((int) $album['id'])) ?>">
+                            <span class="school-album-cover"><img src="<?= h($coverSrc) ?>" alt="" loading="lazy"></span>
+                            <span class="school-album-body">
+                                <strong><?= h((string) $album['title']) ?></strong>
+                                <?php if (trim((string) ($album['event_name'] ?? '')) !== ''): ?>
+                                    <em><?= h((string) $album['event_name']) ?></em>
+                                <?php endif; ?>
+                                <small>
+                                    <?= $album['album_year'] ? h(bnDigits((string) $album['album_year'])) : '' ?>
+                                    <?= $count > 0 ? ' · ' . h(bnDigits((string) $count)) . ' ছবি' : '' ?>
+                                </small>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
 
-        <?php if ($loosePhotos !== []): ?>
-            <h3 class="school-section-title<?= $albums !== [] ? ' mt-4' : '' ?> mb-3">আনগ্রুপড ছবি</h3>
-            <div class="school-photo-grid">
-                <?php foreach ($loosePhotos as $row): ?>
-                    <a class="school-photo-card" data-fancybox="ungrouped" href="<?= h(schoolMediaUrl((string) $row['image_gallery_file'], 'image_gallery_file')) ?>">
-                        <img src="<?= h(schoolMediaUrl((string) $row['image_gallery_file'], 'image_gallery_file')) ?>" alt="<?= h((string) $row['image_gallery_caption']) ?>" loading="lazy">
-                        <span><?= h((string) $row['image_gallery_caption']) ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($albums === [] && $loosePhotos === []): ?>
+        <?php if ($yearGroups === []): ?>
             <div class="school-inner-empty">এই মুহূর্তে কোনো অ্যালবাম প্রকাশিত নেই।</div>
         <?php endif; ?>
     </div>
