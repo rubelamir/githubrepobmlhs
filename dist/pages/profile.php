@@ -166,6 +166,7 @@ $columnMap = [
     'salary_code' => 'teacher_salary_code',
     'account_no' => 'teacher_account_no',
     'first_joining_date' => 'first_joining_date',
+    'first_mpo_date' => 'teacher_mpo_date',
     'current_joining_date' => 'teacher_joining_date',
 ];
 $profile = array_fill_keys($profileFields, '');
@@ -224,6 +225,11 @@ if ($isEditPage && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if (array_key_exists($column, $teacher)) {
                 $changes[$column] = $value;
             }
+        }
+    }
+    foreach (['teacher_mpo_date', 'teacher_joining_date'] as $optionalDate) {
+        if (isset($changes[$optionalDate]) && $changes[$optionalDate] === '') {
+            $changes[$optionalDate] = null;
         }
     }
     if (!empty($_POST['teacher_pic_data']) && array_key_exists($pictureColumn, $teacher)) {
