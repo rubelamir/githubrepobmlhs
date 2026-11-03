@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $saved = 0;
         foreach ($marks as $studentRef => $status) {
             $studentId = idFromSignedRecordRef((string) $studentRef, 'student');
-            if (!isset($allowedStudents[$studentId]) || !in_array($status, ['present', 'absent', 'late'], true)) {
+            if (!isset($allowedStudents[$studentId]) || !in_array($status, ['present', 'absent'], true)) {
                 continue;
             }
             $statement->execute([
@@ -134,7 +134,7 @@ if ($students !== []) {
     }
 }
 
-$summary = ['present' => 0, 'absent' => 0, 'late' => 0];
+$summary = ['present' => 0, 'absent' => 0];
 foreach ($students as $student) {
     $current = (string) ($existing[(int) $student['id']] ?? '');
     if (isset($summary[$current])) {
@@ -142,6 +142,23 @@ foreach ($students as $student) {
     }
 }
 
+$pageStyles = <<<'CSS'
+.att-toggle { display: inline-flex; gap: .5rem; }
+.att-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  font-weight: 700; font-size: 1.05rem; cursor: pointer; user-select: none;
+  border: 2px solid var(--bs-border-color); color: var(--bs-secondary-color);
+  background: transparent; transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.att-btn:active { transform: scale(.92); }
+.att-p { border-color: #198754; color: #198754; }
+.att-a { border-color: #dc3545; color: #dc3545; }
+.btn-check:checked + .att-p { background: #198754; color: #fff; box-shadow: 0 0 0 .2rem rgba(25,135,84,.25); }
+.btn-check:checked + .att-a { background: #dc3545; color: #fff; box-shadow: 0 0 0 .2rem rgba(220,53,69,.25); }
+.btn-check:focus-visible + .att-btn { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+CSS;
 $pageScripts = [<<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
   const cls = document.getElementById('filterClass');
@@ -212,9 +229,8 @@ include __DIR__ . '/../includes/layout-head.php';
               </div>
             </form>
             <div class="row g-3 mb-3">
-              <div class="col-md-4"><div class="card stat-card"><div class="card-body">Present <strong><?= (int) $summary['present'] ?></strong></div></div></div>
-              <div class="col-md-4"><div class="card stat-card"><div class="card-body">Absent <strong><?= (int) $summary['absent'] ?></strong></div></div></div>
-              <div class="col-md-4"><div class="card stat-card"><div class="card-body">Late <strong><?= (int) $summary['late'] ?></strong></div></div></div>
+              <div class="col-6"><div class="card stat-card"><div class="card-body">Present <strong><?= (int) $summary['present'] ?></strong></div></div></div>
+              <div class="col-6"><div class="card stat-card"><div class="card-body">Absent <strong><?= (int) $summary['absent'] ?></strong></div></div></div>
             </div>
             <form method="post" class="card stat-card">
               <?= csrfField() ?>
@@ -225,11 +241,10 @@ include __DIR__ . '/../includes/layout-head.php';
               <div class="card-header d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-sm btn-success" data-mark-all="present">All present</button>
                 <button type="button" class="btn btn-sm btn-outline-danger" data-mark-all="absent">All absent</button>
-                <button type="button" class="btn btn-sm btn-outline-warning" data-mark-all="late">All late</button>
               </div>
               <div class="table-responsive">
                 <table class="table align-middle mb-0">
-                  <thead><tr><th>Roll</th><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>Remarks</th></tr></thead>
+                  <thead><tr><th>Roll</th><th>Student</th><th class="text-center">Attendance</th><th>Remarks</th></tr></thead>
                   <tbody>
                     <?php foreach ($students as $student): ?>
                       <?php
@@ -239,15 +254,18 @@ include __DIR__ . '/../includes/layout-head.php';
                       <tr>
                         <td><?= h((string) $student['cls_roll']) ?></td>
                         <td><?= h((string) $student['name_ban']) ?><div class="small text-secondary"><?= h((string) $student['name_eng']) ?></div></td>
-                        <?php foreach (['present', 'absent', 'late'] as $status): ?>
-                          <td>
-                            <input class="form-check-input" type="radio" data-status="<?= h($status) ?>" name="status[<?= h($studentRef) ?>]" value="<?= h($status) ?>" <?= $current === $status ? 'checked' : '' ?>>
-                          </td>
-                        <?php endforeach; ?>
+                        <td class="text-center text-nowrap">
+                          <div class="att-toggle" role="group" aria-label="Attendance">
+                            <input class="btn-check" type="radio" id="p-<?= h($studentRef) ?>" data-status="present" name="status[<?= h($studentRef) ?>]" value="present" <?= $current === 'present' ? 'checked' : '' ?>>
+                            <label class="att-btn att-p" for="p-<?= h($studentRef) ?>" title="Present">P</label>
+                            <input class="btn-check" type="radio" id="a-<?= h($studentRef) ?>" data-status="absent" name="status[<?= h($studentRef) ?>]" value="absent" <?= $current === 'absent' ? 'checked' : '' ?>>
+                            <label class="att-btn att-a" for="a-<?= h($studentRef) ?>" title="Absent">A</label>
+                          </div>
+                        </td>
                         <td><input class="form-control form-control-sm" name="remarks[<?= h($studentRef) ?>]" value="<?= h($remarks[(int) $student['id']] ?? '') ?>"></td>
                       </tr>
                     <?php endforeach; ?>
-                    <?php if ($students === []): ?><tr><td colspan="6" class="text-center text-secondary py-4">Select your assigned class<?= $hasEntireClass ? '' : ' and section' ?>, then load students.</td></tr><?php endif; ?>
+                    <?php if ($students === []): ?><tr><td colspan="4" class="text-center text-secondary py-4">Select your assigned class<?= $hasEntireClass ? '' : ' and section' ?>, then load students.</td></tr><?php endif; ?>
                   </tbody>
                 </table>
               </div>
