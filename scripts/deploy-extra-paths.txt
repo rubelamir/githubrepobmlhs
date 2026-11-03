@@ -1,0 +1,17 @@
+dist/assets/fonts/hind-siliguri/hind-siliguri-bengali-400-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-bengali-500-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-bengali-600-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-bengali-700-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-latin-400-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-latin-500-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-latin-600-normal.woff2
+dist/assets/fonts/hind-siliguri/hind-siliguri-latin-700-normal.woff2
+dist/assets/js/dashboard-charts.js
+dist/assets/vendor/chartjs/chart.umd.min.js
+dist/css/auth-pages.css
+dist/css/dashboard.css
+dist/examples/forgot-password.php
+dist/examples/login-v2.php
+dist/includes/dashboard-widgets.php
+dist/includes/password-reset.php
+dist/index.php
