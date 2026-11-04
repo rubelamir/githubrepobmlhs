@@ -475,6 +475,27 @@ function idCardsUiCss(): string
 #idCardSheets.seat-level-mode .id-card-foot {
   display: none;
 }
+@media screen and (max-width: 700px) {
+  .seat-level-page {
+    width: 100%;
+    padding: 3mm 0;
+    gap: 4mm;
+    overflow-x: auto;
+  }
+  .seat-level-sheet {
+    flex-direction: column;
+    align-items: center;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    gap: 4mm;
+  }
+  .seat-level-sheet .id-card-pair,
+  .seat-level-sheet .id-card-front-wrap { height: auto; }
+}
+@media screen and (max-width: 380px) {
+  #idCardSheets.seat-level-mode .id-card { zoom: .9; }
+}
 @media print {
   @page {
     size: A4 portrait;
