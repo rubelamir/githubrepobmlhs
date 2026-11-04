@@ -94,7 +94,6 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <p><?= $can('results') && !$showStructure && currentPanelRole() === 'teacher' ? 'My duties' : 'Student management' ?><i class="nav-arrow bi bi-chevron-right"></i></p>
                 </a>
                 <ul class="nav nav-treeview">
-                  <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/admissions.php" class="nav-link<?= navActive('admissions', $active) ?>"><i class="nav-icon bi bi-person-plus"></i><p>Admissions</p></a></li><?php endif; ?>
                   <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/admission-tokens.php" class="nav-link<?= navActive('admission-tokens', $active) ?>"><i class="nav-icon bi bi-key"></i><p>Admission tokens</p></a></li><?php endif; ?>
                   <?php if ($can('student-form')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-form.php" class="nav-link<?= navActive('student-form', $active) ?>"><i class="nav-icon bi bi-person-vcard"></i><p>New admission</p></a></li><?php endif; ?>
                   <?php if ($can('student-list')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/students.php" class="nav-link<?= in_array($active, ['students', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-people"></i><p>Student list</p></a></li><?php endif; ?>

@@ -178,7 +178,6 @@ include __DIR__ . '/includes/layout-head.php';
               <?php endif; ?>
               <?php if ($role !== 'teacher'): ?>
               <?= dashboardStatCard('pages/result-publication.php', 'Unpublished results', (string) $unpublishedExams, 'bi-clipboard-x', 'warning', 'col-sm-6 col-xl-3') ?>
-              <?= dashboardStatCard('pages/admissions.php', 'New admission applications', (string) $newApplications, 'bi-person-plus', 'primary', 'col-sm-6 col-xl-3') ?>
               <?php if (contactInboxAllowed()): ?>
               <?= dashboardStatCard('pages/contact-inbox.php', 'Unread messages', (string) $unreadMessages, 'bi-envelope', 'danger', 'col-sm-6 col-xl-3') ?>
               <?php endif; ?>
