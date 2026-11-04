@@ -72,6 +72,14 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
+            <?php $cronUrl = (((($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'bmlhs.site')) . '/dist/cron/database-backup.php?key=' . rawurlencode(databaseBackupCronSecret()); ?>
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="fw-semibold mb-1">Automatic 2:00 AM backup (cPanel Cron Job)</div>
+                <div class="text-secondary small mb-2">Add this command in cPanel &rarr; Cron Jobs, schedule <code>0 2 * * *</code> (server time zone must match; the script only runs during 02:00&ndash;02:59).</div>
+                <input type="text" class="form-control form-control-sm" readonly onclick="this.select()" value="<?= h('curl -s "' . $cronUrl . '" >/dev/null 2>&1') ?>">
+              </div>
+            </div>
             <div class="row g-3 mb-3">
               <div class="col-md-4">
                 <div class="card stat-card h-100">
