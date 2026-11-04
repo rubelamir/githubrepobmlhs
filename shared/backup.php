@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/deployment-config.php';
 
+// Backup schedule (2:00 AM window, daily file names) follows Bangladesh time.
+date_default_timezone_set('Asia/Dhaka');
+
 function databaseBackupKeepDays(): int
 {
     $env = getenv('ADMINLTE_BACKUP_KEEP_DAYS');

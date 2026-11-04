@@ -23,7 +23,7 @@ if ($key === '' || !hash_equals($expected, $key)) {
 
 $hour = (int) date('G');
 $minute = (int) date('i');
-// Allow the cron window 02:00–02:59, plus manual force=1 for testing.
+// Allow the cron window 02:00–02:59 Asia/Dhaka, plus manual force=1 for testing.
 $force = (string) ($_GET['force'] ?? '') === '1';
 if (!$force && ($hour !== 2)) {
     echo json_encode([
