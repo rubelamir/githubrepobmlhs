@@ -150,14 +150,9 @@ include __DIR__ . '/includes/layout-head.php';
         <div class="app-content-header">
           <div class="container-fluid">
             <div class="row">
-              <div class="col-sm-8">
+              <div class="col-12">
                 <h3 class="mb-0">Dashboard</h3>
                 <p class="text-secondary mb-0"><?= h($settings['school_name_bn']) ?> — <?= h((string) ($teacher['teacher_name'] ?? 'Admin')) ?> · <?= h(panelRoleOptions()[$role] ?? 'Teacher') ?></p>
-              </div>
-              <div class="col-sm-4 text-sm-end">
-                <a class="btn btn-outline-primary" href="<?= h(publicSiteUrl()) ?>" target="_blank" rel="noopener">
-                  <i class="bi bi-globe2 me-1"></i>View Website
-                </a>
               </div>
             </div>
           </div>
