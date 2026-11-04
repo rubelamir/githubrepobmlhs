@@ -930,7 +930,7 @@ function studentPhotoUrl(?string $file): string
         return publicSiteUrl(studentDefaultPhotoFile());
     }
 
-    return publicSiteUrl('student_pic/' . $basename);
+    return publicSiteUrl('student_pic/' . $basename) . '?v=' . (string) filemtime(publicSitePath('student_pic/' . $basename));
 }
 
 function studentStatusAdmitted(): int

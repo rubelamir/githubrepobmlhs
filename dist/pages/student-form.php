@@ -56,7 +56,7 @@ if (!$fullAdmission) {
 
 $sections = $values['cls'] !== '' ? schoolSections($db, (int) $values['cls']) : [];
 $birthRegDisplayUrl = $id > 0 && !empty($student['birth_reg_pic'])
-    ? signedRecordUrl('private-media.php', $id, 'student', ['kind' => 'student-birth'])
+    ? signedRecordUrl('private-media.php', $id, 'student', ['kind' => 'student-birth', 'v' => (string) time()])
     : '';
 $divisions = tableExists($db, 'divisions') ? fetchRows($db, 'SELECT id, name FROM divisions ORDER BY name') : [];
 $districtLabel = '';
