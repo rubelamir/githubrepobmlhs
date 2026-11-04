@@ -191,6 +191,27 @@ $pageStyles .= $lang === 'en'
     ? "\n.certificate-sheet.is-english .certificate-brand .h3 { font-size: 18pt; }\n"
     : '';
 
+// Phone screens only: shrink the fixed A4 sheet to fit; print/PDF keep full size.
+$pageScripts = [<<<'JS'
+(function () {
+  var sheetPx = 793.7;
+  function fit() {
+    var avail = document.documentElement.clientWidth - 16;
+    var zoom = avail < sheetPx ? avail / sheetPx : 1;
+    document.querySelectorAll('.certificate-sheet').forEach(function (el) {
+      el.style.zoom = zoom < 1 ? zoom : '';
+      el.style.marginLeft = zoom < 1 ? '0' : '';
+    });
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('beforeprint', function () {
+    document.querySelectorAll('.certificate-sheet').forEach(function (el) { el.style.zoom = ''; });
+  });
+  window.addEventListener('afterprint', fit);
+  fit();
+})();
+JS];
+
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header no-print">
