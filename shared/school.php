@@ -2032,7 +2032,14 @@ function schoolFileUrl(string $stored, string $directory = '', string $fallback 
         return $relative;
     }
 
-    return publicSiteUrl($relative);
+    $url = publicSiteUrl($relative);
+    $local = publicSitePath(strtok($relative, '?#') ?: '');
+    if (is_file($local)) {
+        // Cache-bust so a re-uploaded photo with the same filename shows immediately.
+        $url .= (str_contains($url, '?') ? '&' : '?') . 'v=' . (string) filemtime($local);
+    }
+
+    return $url;
 }
 
 function requestIsHttps(): bool

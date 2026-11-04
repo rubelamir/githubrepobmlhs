@@ -381,7 +381,7 @@ $fieldLabels = [
 $pictureDisplayUrl = schoolFileUrl($picturePath, 'teacher_pic');
 $panelFavicon = schoolFileUrl((string) (schoolSettings(getDatabaseConnection())['logo'] ?? ''), '', publicSiteUrl('image/school_logo.png'));
 $nidPictureDisplayUrl = $nidPicturePath !== ''
-    ? signedRecordUrl('private-media.php', (int) ($teacher['id'] ?? 0), 'teacher', ['kind' => 'teacher-nid'])
+    ? signedRecordUrl('private-media.php', (int) ($teacher['id'] ?? 0), 'teacher', ['kind' => 'teacher-nid', 'v' => (string) time()])
     : '';
 ?>
 <!doctype html>
