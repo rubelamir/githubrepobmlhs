@@ -175,6 +175,27 @@ function admitCardUiCss(): string
   margin-top: 8mm;
   font-weight: 700;
 }
+@media screen and (max-width: 640px) {
+  .admit-card { padding: 2mm; border-width: .8mm; }
+  .admit-card-inner { padding: 2.5mm; }
+  .admit-head { flex-direction: column; gap: 1.5mm; text-align: center; }
+  .admit-logo { width: 16mm; height: 16mm; }
+  .admit-school { font-size: 15pt; }
+  .admit-meta { font-size: 9.5pt; }
+  .admit-body { flex-direction: column; align-items: stretch; gap: 3mm; }
+  .admit-photo-wrap { order: -1; justify-content: center; }
+  .admit-fact {
+    grid-template-columns: 1fr;
+    gap: 0;
+    font-size: 11pt;
+    padding: 1.2mm 0;
+    border-bottom: .2mm dashed #cbd5e1;
+    margin-bottom: 0;
+  }
+  .admit-fact .v { overflow-wrap: anywhere; }
+  .admit-papers { display: block; overflow-x: auto; font-size: 9pt; }
+  .admit-sign { flex-direction: column; align-items: center; }
+}
 @media print {
   @page {
     size: A4 portrait;
