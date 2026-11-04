@@ -388,7 +388,7 @@ include __DIR__ . '/includes/layout-head.php';
                   </div>
                 </div>
                 <div class="card stat-card">
-                  <div class="card-header"><h3 class="card-title mb-0">Staff snapshot</h3></div>
+                  <div class="card-header d-flex justify-content-between align-items-center"><h3 class="card-title mb-0">Staff snapshot</h3><a href="pages/view_all_teacherlist.php" class="btn btn-sm btn-primary ms-auto">Staff List</a></div>
                   <div class="card-body">
                     <?php foreach ($teachers as $item): ?>
                       <?php $staffPhoto = schoolFileUrl((string) ($item['teacher_pic'] ?? ''), 'teacher_pic'); ?>
