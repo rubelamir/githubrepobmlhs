@@ -106,6 +106,19 @@ CSS
 CSS
     . certificateBorderCss('html') . <<<CSS
 .certificate-sheet, .certificate-sheet * { color: #000 !important; }
+.certificate-head,
+.certificate-title-row { table-layout: fixed; }
+.certificate-title-row .certificate-brand-side,
+.certificate-title-row .certificate-id-wrap { width: 26mm; }
+.certificate-title-row .certificate-type { text-align: center; }
+.certificate-signs td.certificate-sign-head {
+  text-align: right;
+  white-space: normal;
+}
+.certificate-signs .certificate-sign-block {
+  display: inline-block;
+  text-align: center;
+}
 CSS
     . certificateTestimonialContentCss();
 }
@@ -385,8 +398,10 @@ function certificateTestimonialSheetHtml(array $student, array $context, string 
     $foot = '<table class="certificate-signs"><tr>'
         . '<td class="certificate-sign-left">' . h((string) ($sheetCopy['date'] ?? 'Date')) . ': ' . h($issueDate) . '</td>'
         . '<td class="certificate-sign-head" nowrap="nowrap" style="white-space:nowrap;">'
+        . ($mode === 'html' ? '<span class="certificate-sign-block">' : '')
         . h((string) ($sheetCopy['headTeacher'] ?? 'Head Teacher'))
         . '<br><span class="certificate-sign-school" style="white-space:nowrap;">' . h($schoolNameDisplay) . '</span>'
+        . ($mode === 'html' ? '</span>' : '')
         . '</td>'
         . '</tr></table>';
 
