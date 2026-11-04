@@ -106,6 +106,13 @@ CSS
 CSS
     . certificateBorderCss('html') . <<<CSS
 .certificate-sheet, .certificate-sheet * { color: #000 !important; }
+/* responsive.css turns every .app-content table into display:block on narrow screens; keep sheet tables real tables. */
+.app-content .certificate-sheet table {
+  display: table !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
 .certificate-head,
 .certificate-title-row { table-layout: fixed; }
 .certificate-title-row .certificate-brand-side,
