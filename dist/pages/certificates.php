@@ -561,6 +561,24 @@ document.addEventListener('DOMContentLoaded', () => {
     rows.forEach((row) => sections.add(new Option(row.section_name_ban, row.id)));
   });
 });
+JS, <<<'JS'
+// Phone screens only: shrink the fixed A4 sheet to fit; print/PDF keep full size.
+(function () {
+  var sheetPx = 793.7;
+  function fit() {
+    var avail = document.documentElement.clientWidth - 16;
+    var zoom = avail < sheetPx ? avail / sheetPx : 1;
+    document.querySelectorAll('.certificate-sheet').forEach(function (el) {
+      el.style.zoom = zoom < 1 ? zoom : '';
+    });
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('beforeprint', function () {
+    document.querySelectorAll('.certificate-sheet').forEach(function (el) { el.style.zoom = ''; });
+  });
+  window.addEventListener('afterprint', fit);
+  fit();
+})();
 JS];
 } // end !usesIdCardUi styles/scripts
 
