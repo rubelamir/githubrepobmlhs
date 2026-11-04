@@ -629,6 +629,7 @@ function currentScriptPanelModule(): ?string
         'meritorious-students' => 'students',
         'syllabus' => 'downloads',
         'profile' => 'profile',
+        'profile-edit' => 'profile',
         'change-password' => 'change-password',
         // Own staff ID card is allowed for every logged-in teacher; page enforces own-or-teachers access.
         'teacher-id-card' => null,
