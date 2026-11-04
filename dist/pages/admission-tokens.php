@@ -158,7 +158,6 @@ include __DIR__ . '/../includes/layout-head.php';
               <p class="text-secondary mb-0">Issue unused tokens for the public admission form. Used tokens cannot be reused.</p>
             </div>
             <div class="no-print d-flex flex-wrap gap-2">
-              <a class="btn btn-outline-secondary" href="admissions.php">Applications</a>
               <button class="btn btn-outline-primary" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print list</button>
             </div>
           </div>
