@@ -717,8 +717,40 @@ html.school-loading body {
   transform-origin: center center;
 }
 
-.school-hero .carousel-item.active img {
-  animation: school-soft-zoom 18s ease-in-out infinite alternate;
+/* Ken Burns: each slide eases in to a zoom, then back out, over its 10s display time. */
+@keyframes school-kenburns-a {
+  0%   { transform: scale(1) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.12) translate3d(-1.2%, -0.8%, 0); }
+  100% { transform: scale(1) translate3d(0, 0, 0); }
+}
+@keyframes school-kenburns-b {
+  0%   { transform: scale(1.12) translate3d(1.2%, 0.8%, 0); }
+  50%  { transform: scale(1) translate3d(0, 0, 0); }
+  100% { transform: scale(1.12) translate3d(1.2%, 0.8%, 0); }
+}
+.school-hero .carousel-item img {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.school-hero .carousel-item.active img,
+.school-hero .carousel-item-next img,
+.school-hero .carousel-item-prev img {
+  animation: school-kenburns-a 10s ease-in-out both;
+}
+.school-hero .carousel-item:nth-child(even).active img,
+.school-hero .carousel-item:nth-child(even).carousel-item-next img,
+.school-hero .carousel-item:nth-child(even).carousel-item-prev img {
+  animation-name: school-kenburns-b;
+}
+.school-hero .carousel-fade .carousel-item {
+  transition-duration: 1.2s;
+}
+.school-hero .carousel-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 60%, rgba(8, 28, 22, 0.35) 100%);
 }
 
 .school-hero .carousel-caption span {
