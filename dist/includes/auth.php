@@ -9,6 +9,7 @@ require_once dirname(__DIR__, 2) . '/shared/security.php';
 require_once dirname(__DIR__, 2) . '/shared/deployment-config.php';
 require_once dirname(__DIR__, 2) . '/shared/sms.php';
 require_once dirname(__DIR__, 2) . '/shared/audit.php';
+require_once dirname(__DIR__, 2) . '/shared/card-punch.php';
 
 startAppSession();
 
@@ -630,6 +631,7 @@ function currentScriptPanelModule(): ?string
         'syllabus' => 'downloads',
         'profile' => 'profile',
         'profile-edit' => 'profile',
+        'card-punch' => 'attendance',
         'change-password' => 'change-password',
         // Own staff ID card is allowed for every logged-in teacher; page enforces own-or-teachers access.
         'teacher-id-card' => null,

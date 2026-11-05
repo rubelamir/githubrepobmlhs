@@ -128,6 +128,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payload['scholarship_stipend_info'] = 'not_applicable';
         }
         $payload['student_pic'] = $pictureName;
+        $cardNo = normalizeCardNo((string) ($_POST['card_no'] ?? ''));
+        if ($cardNo !== '') {
+            $dup = fetchRows($db, 'SELECT id FROM students_info WHERE card_no = :c AND id <> :id LIMIT 1', ['c' => $cardNo, 'id' => $id]);
+            if ($dup !== []) {
+                throw new RuntimeException('এই কার্ড নম্বর অন্য শিক্ষার্থীর সঙ্গে যুক্ত আছে।');
+            }
+        }
+        $payload['card_no'] = $cardNo !== '' ? $cardNo : null;
         $payload['birth_reg_pic'] = $birthName;
         $payload['cls'] = $payload['cls'] !== '' ? (int) $payload['cls'] : null;
         $payload['cls_roll'] = $payload['cls_roll'] !== '' ? (int) $payload['cls_roll'] : null;
@@ -295,6 +303,10 @@ include __DIR__ . '/../includes/layout-head.php';
                   <div class="col-md-2">
                     <label class="form-label">Class roll</label>
                     <input class="form-control" name="cls_roll" value="<?= h($values['cls_roll']) ?>">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">RFID card no. (card punch)</label>
+                    <input class="form-control" name="card_no" maxlength="40" autocomplete="off" value="<?= h((string) ($student['card_no'] ?? '')) ?>" placeholder="কার্ড স্ক্যান করুন">
                   </div>
                   <?php if ($id > 0 && $hasRegNo): ?>
                   <div class="col-md-3">

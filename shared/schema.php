@@ -127,6 +127,7 @@ function ensureSchoolSchema(PDO $db): void
     ensureFilesSortOrder($db);
     ensureFileFoldersSchema($db);
     purgeLateAttendance($db);
+    ensureCardPunchSchema($db);
 
     // New tables / SSC candidate fields must run even when schema version is already current.
     ensureExamRoutineSchema($db);
