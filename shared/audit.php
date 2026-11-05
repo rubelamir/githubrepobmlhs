@@ -6,6 +6,7 @@ function writeAuditLog(PDO $db, string $action, string $entity, ?int $entityId, 
     if (!function_exists('tableExists') || !tableExists($db, 'audit_log')) {
         return;
     }
+    $GLOBALS['bmlhsAuditWritten'] = true;
     $actorName = '';
     $actorId = 0;
     if (function_exists('getAuthenticatedTeacher')) {

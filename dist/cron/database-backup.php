@@ -23,9 +23,10 @@ if ($key === '' || !hash_equals($expected, $key)) {
 
 $hour = (int) date('G');
 $minute = (int) date('i');
-// Allow the cron window 02:00–02:59, plus manual force=1 for testing.
+// Run once per Asia/Dhaka day from 02:00 on, so the result does not depend on the
+// server time zone the cPanel cron uses; a manual force=1 skips both checks.
 $force = (string) ($_GET['force'] ?? '') === '1';
-if (!$force && ($hour !== 2)) {
+if (!$force && ($hour < 2)) {
     echo json_encode([
         'ok' => true,
         'ran' => false,
