@@ -24,6 +24,37 @@ include __DIR__ . '/footer.php';
         <script><?= $script ?></script>
       <?php endforeach; ?>
     <?php endif; ?>
+    <?php
+    $preloaderPages = ['student-form', 'add_teacher', 'committee', 'retirement-teachers', 'notices', 'events', 'carousel', 'cms-gallery', 'meritorious-students', 'downloads', 'syllabus', 'homepage-cards'];
+    if (in_array(basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '.php'), $preloaderPages, true)):
+    ?>
+    <style>
+      #savePreloader { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: .75rem; background: rgba(15, 23, 42, .55); color: #fff; text-align: center; padding: 1rem; }
+      #savePreloader.is-active { display: flex; }
+      #savePreloader .spinner-border { width: 3rem; height: 3rem; }
+    </style>
+    <div id="savePreloader" role="status" aria-live="polite">
+      <div class="spinner-border text-light" aria-hidden="true"></div>
+      <div class="fw-semibold">সংরক্ষণ হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</div>
+    </div>
+    <script>
+      (function () {
+        var overlay = document.getElementById('savePreloader');
+        if (!overlay) return;
+        // Bubble phase on document: runs after confirm()/validation handlers, which cancel the submit.
+        document.addEventListener('submit', function (event) {
+          var form = event.target;
+          if (event.defaultPrevented || !(form instanceof HTMLFormElement)) return;
+          if ((form.getAttribute('method') || '').toLowerCase() !== 'post') return;
+          overlay.classList.add('is-active');
+          form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+            setTimeout(function () { btn.disabled = true; }, 0);
+          });
+        });
+        window.addEventListener('pageshow', function () { overlay.classList.remove('is-active'); });
+      })();
+    </script>
+    <?php endif; ?>
     <script>
       document.addEventListener('click', function (event) {
         const target = event.target;
