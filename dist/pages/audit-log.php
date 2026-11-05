@@ -10,9 +10,16 @@ if (!auditLogAllowed()) {
 $db = getDatabaseConnection();
 $basePath = '../';
 $pageTitle = 'Audit log | School Admin';
-$rows = tableExists($db, 'audit_log')
-    ? fetchRows($db, 'SELECT * FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 200')
-    : [];
+$rows = [];
+$loadError = '';
+try {
+    $rows = tableExists($db, 'audit_log')
+        ? fetchRows($db, 'SELECT * FROM audit_log ORDER BY created_at DESC, id DESC LIMIT 200')
+        : [];
+} catch (Throwable $exception) {
+    error_log('Audit log load failed: ' . $exception->getMessage());
+    $loadError = 'Audit log could not be loaded.';
+}
 
 include __DIR__ . '/../includes/layout-head.php';
 ?>
@@ -25,6 +32,7 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
+            <?php if ($loadError !== ''): ?><div class="alert alert-danger"><?= h($loadError) ?></div><?php endif; ?>
             <div class="card stat-card">
               <div class="table-responsive">
                 <table class="table align-middle mb-0">

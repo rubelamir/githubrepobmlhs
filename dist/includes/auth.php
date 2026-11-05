@@ -730,4 +730,32 @@ function requireAuthentication(string $loginPath): void
     if ($module !== null && $module !== 'dashboard' && $module !== 'profile' && $module !== 'change-password' && $module !== 'exam-routine') {
         requirePanelModule($module);
     }
+
+    registerAuditFallbackForPost($module);
+}
+
+/**
+ * Pages that already call writeAuditLog() keep their own detailed entry; every other
+ * successful-looking POST gets a generic entry so the audit log is never silently empty.
+ */
+function registerAuditFallbackForPost(?string $module): void
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+        return;
+    }
+    $page = pathinfo(basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), PATHINFO_FILENAME);
+    if ($page === '' || in_array($page, ['audit-log', 'academic-api', 'private-media', 'mobile-session'], true)) {
+        return;
+    }
+    $action = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_POST['action'] ?? '')) ?: 'save';
+    register_shutdown_function(static function () use ($page, $action, $module): void {
+        if (!empty($GLOBALS['bmlhsAuditWritten'])) {
+            return;
+        }
+        try {
+            writeAuditLog(getDatabaseConnection(), $action, $module ?? $page, null, 'POST ' . $page . '.php (' . $action . ')');
+        } catch (Throwable $exception) {
+            error_log('Audit fallback failed: ' . $exception->getMessage());
+        }
+    });
 }
