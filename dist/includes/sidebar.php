@@ -12,7 +12,7 @@ function navActive(string $name, string $active): string
 {
     return $active === $name ? ' active' : '';
 }
-$academicPages = ['students', 'student-form', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'promotions', 'results', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
+$academicPages = ['students', 'student-form', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'student-attendance-report', 'promotions', 'results', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
 $academicOpen = in_array($active, $academicPages, true);
 $structureOpen = in_array($active, ['classes', 'sections', 'subjects', 'exams', 'periods'], true);
 $can = static fn (string $module): bool => canAccessModule($module);
@@ -100,6 +100,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <?php if ($showStudentDetailMenus && !$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-details-list.php" class="nav-link<?= navActive('student-details-list', $active) ?>"><i class="nav-icon bi bi-card-list"></i><p>Student Details List</p></a></li><?php endif; ?>
                   <?php if ($showStudentDetailMenus && !$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-profiles.php" class="nav-link<?= in_array($active, ['student-profiles', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-person-lines-fill"></i><p>Student Profile</p></a></li><?php endif; ?>
                   <?php if ($can('attendance')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/attendance.php" class="nav-link<?= navActive('attendance', $active) ?>"><i class="nav-icon bi bi-calendar-check"></i><p>Attendance</p></a></li><?php endif; ?>
+                  <?php if ($can('attendance')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-attendance-report.php" class="nav-link<?= navActive('student-attendance-report', $active) ?>"><i class="nav-icon bi bi-file-earmark-bar-graph"></i><p>Attendance report</p></a></li><?php endif; ?>
                   <?php if ($can('promotions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/promotions.php" class="nav-link<?= navActive('promotions', $active) ?>"><i class="nav-icon bi bi-arrow-up-right-circle"></i><p>Class promotion</p></a></li><?php endif; ?>
                   <?php if ($can('results')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/results.php" class="nav-link<?= navActive('results', $active) ?>"><i class="nav-icon bi bi-clipboard-data"></i><p>Mark Entry</p></a></li><?php endif; ?>
                   <?php if ($can('result-publication')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/result-publication.php" class="nav-link<?= navActive('result-publication', $active) ?>"><i class="nav-icon bi bi-megaphone"></i><p>Public result publication</p></a></li><?php endif; ?>

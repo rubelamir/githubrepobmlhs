@@ -630,6 +630,7 @@ function currentScriptPanelModule(): ?string
         'syllabus' => 'downloads',
         'profile' => 'profile',
         'profile-edit' => 'profile',
+        'student-attendance-report' => 'attendance',
         'change-password' => 'change-password',
         // Own staff ID card is allowed for every logged-in teacher; page enforces own-or-teachers access.
         'teacher-id-card' => null,
