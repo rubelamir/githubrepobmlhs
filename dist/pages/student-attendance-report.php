@@ -19,11 +19,11 @@ $validDate = static fn (string $d): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{
 $from = $validDate((string) ($_GET['from'] ?? '')) ? (string) $_GET['from'] : date('Y-m-01');
 $to = $validDate((string) ($_GET['to'] ?? '')) ? (string) $_GET['to'] : date('Y-m-d');
 
-$classes = classesForAttendance($db, $teacher, $sessionYear);
-$sections = $classId > 0 ? sectionsForAttendance($db, $classId, $teacher, $sessionYear) : [];
+$classes = schoolClasses($db);
+$sections = $classId > 0 ? schoolSections($db, $classId) : [];
 
 $students = [];
-if ($classId > 0 && canTakeAttendanceForClass($db, $classId, $sectionId, $sessionYear, $teacher)) {
+if ($classId > 0) {
     $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll FROM students_info s'
         . studentsListJoinSql() . ' WHERE s.status = 1 AND s.cls = :cls AND s.session_year = :sy';
     $params = ['cls' => $classId, 'sy' => $sessionYear];

@@ -277,7 +277,7 @@ function canAccessModule(string $module, ?array $teacher = null): bool
     }
 
     $module = trim($module);
-    if ($module === '' || $module === 'dashboard' || $module === 'profile' || $module === 'change-password' || $module === 'exam-routine') {
+    if ($module === '' || $module === 'dashboard' || $module === 'profile' || $module === 'change-password' || $module === 'exam-routine' || $module === 'student-attendance-report') {
         return true;
     }
 
@@ -630,7 +630,7 @@ function currentScriptPanelModule(): ?string
         'syllabus' => 'downloads',
         'profile' => 'profile',
         'profile-edit' => 'profile',
-        'student-attendance-report' => 'attendance',
+        'student-attendance-report' => 'student-attendance-report',
         'change-password' => 'change-password',
         // Own staff ID card is allowed for every logged-in teacher; page enforces own-or-teachers access.
         'teacher-id-card' => null,
@@ -728,7 +728,7 @@ function requireAuthentication(string $loginPath): void
     }
 
     $module = currentScriptPanelModule();
-    if ($module !== null && $module !== 'dashboard' && $module !== 'profile' && $module !== 'change-password' && $module !== 'exam-routine') {
+    if ($module !== null && $module !== 'dashboard' && $module !== 'profile' && $module !== 'change-password' && $module !== 'exam-routine' && $module !== 'student-attendance-report') {
         requirePanelModule($module);
     }
 
