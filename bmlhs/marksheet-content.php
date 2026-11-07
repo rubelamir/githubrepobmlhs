@@ -48,6 +48,9 @@
     <?php else: ?>
     <div class="school-marksheet-meta">
         <img class="school-marksheet-photo" src="<?= h($photo) ?>" alt="">
+        <?php if ($marksheetQr !== ''): ?>
+        <img class="school-marksheet-qr-mobile" src="<?= h($marksheetQr) ?>" alt="মার্কশিট যাচাইয়ের QR কোড">
+        <?php endif; ?>
         <dl>
             <div><dt>নাম</dt><dd><?= h((string) $student['name_ban']) ?></dd></div>
             <div><dt>রোল</dt><dd><?= h(bnDigits((string) $student['cls_roll'])) ?></dd></div>

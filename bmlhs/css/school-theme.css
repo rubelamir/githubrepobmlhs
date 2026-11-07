@@ -4576,6 +4576,7 @@ html.school-loading body {
   gap: 0.45rem 1rem;
   margin: 0;
 }
+.school-marksheet-qr-mobile { display: none; }
 .school-marksheet-meta dt { font-size: 0.78rem; color: var(--school-muted); }
 .school-marksheet-meta dd { margin: 0; font-weight: 600; }
 .school-marksheet-meta dd small { display: block; font-weight: 400; color: var(--school-muted); }
@@ -7267,10 +7268,6 @@ body.school-site {
   .school-result-list-card .school-result-table th,
   .school-result-list-card .school-result-table td { padding: 0.5rem 0.4rem; }
 }
-@media screen and (max-width: 420px) {
-  .school-marksheet-meta { grid-template-columns: 1fr; justify-items: center; }
-  .school-marksheet-meta dl { width: 100%; }
-}
 @media screen and (max-width: 575px) {
   .school-marksheet .table.school-marksheet-table thead { display: none; }
   .school-marksheet .table.school-marksheet-table,
@@ -7294,4 +7291,12 @@ body.school-site {
   .school-marksheet .table.school-marksheet-table tfoot th { display: block; text-align: center !important; border: 0; padding: 0; background: transparent; font-size: 0.95rem; }
   .school-marksheet .table.school-marksheet-table tfoot th:first-child { grid-column: 1 / -1; }
   .school-marksheet .table.school-marksheet-table tfoot th[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 400; color: var(--school-muted); }
+}
+
+/* Mobile: QR code sits to the right of the student photo. */
+@media screen and (max-width: 767px) {
+  .school-marksheet-head img.school-marksheet-qr { display: none; }
+  .school-marksheet-meta { grid-template-columns: 72px 1fr; align-items: start; }
+  .school-marksheet-qr-mobile { display: block; justify-self: end; width: 84px; height: 84px; object-fit: contain; }
+  .school-marksheet-meta dl { grid-column: 1 / -1; }
 }
