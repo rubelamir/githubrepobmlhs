@@ -7234,3 +7234,64 @@ body.school-site {
   color: #fff;
   background: #1877f2;
 }
+
+/* Mobile screen view of the result list and marksheet (print and PDF untouched). */
+@media screen and (max-width: 767px) {
+  .school-marksheet { padding: 0.8rem 0.65rem 1rem; }
+  .school-marksheet-head { gap: 0.5rem; padding-bottom: 0.7rem; margin-bottom: 0.8rem; }
+  .school-marksheet-head img { width: 56px; height: 56px; }
+  .school-marksheet-head h1 { font-size: 1.1rem; }
+  .school-marksheet-head p { font-size: 0.78rem; overflow-wrap: anywhere; }
+  .school-marksheet-title { padding: 0.5rem 0.65rem; gap: 0.15rem; }
+  .school-marksheet-title h2 { font-size: 1.05rem; }
+  .school-marksheet-meta { grid-template-columns: 72px 1fr; gap: 0.65rem; }
+  .school-marksheet-photo { width: 72px; height: 90px; }
+  .school-marksheet-meta dl { grid-template-columns: 1fr 1fr; gap: 0.4rem 0.6rem; }
+  .school-marksheet-meta dt { font-size: 0.7rem; }
+  .school-marksheet-meta dd { font-size: 0.85rem; overflow-wrap: anywhere; }
+  .school-marksheet-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+  .school-marksheet-summary > div { padding: 0.4rem 0.45rem; }
+  .school-marksheet-summary span { font-size: 0.68rem; }
+  .school-marksheet-summary strong { font-size: 0.88rem; }
+  .school-site .school-marksheet .table-responsive table.school-marksheet-table { min-width: 0; }
+  .school-marksheet .table-responsive { overflow-x: visible; }
+  .school-marksheet-table { font-size: 0.7rem; }
+  .school-marksheet .table.school-marksheet-table thead th { white-space: normal; padding: 0.35rem 0.1rem; font-size: 0.66rem; line-height: 1.15; text-align: center; }
+  .school-marksheet-table thead th:first-child { text-align: left; }
+  .school-marksheet .table.school-marksheet-table > :not(caption) > * > * { padding: 0.35rem 0.15rem; }
+  .school-marksheet .table.school-marksheet-table td:first-child, .school-marksheet .table.school-marksheet-table th:first-child { padding-left: 0.35rem; overflow-wrap: anywhere; }
+  .school-marksheet-table .school-grade-pill { padding: 0.1rem 0.35rem; font-size: 0.68rem; }
+  .school-grade-scale { font-size: 0.7rem; padding: 0.5rem; }
+  .school-site .school-result-list-card .table-responsive table.school-result-table { min-width: 0; font-size: 0.82rem; }
+  .school-result-list-card .school-result-table thead th { white-space: normal; }
+  .school-result-list-card .school-result-table th,
+  .school-result-list-card .school-result-table td { padding: 0.5rem 0.4rem; }
+}
+@media screen and (max-width: 420px) {
+  .school-marksheet-meta { grid-template-columns: 1fr; justify-items: center; }
+  .school-marksheet-meta dl { width: 100%; }
+}
+@media screen and (max-width: 575px) {
+  .school-marksheet .table.school-marksheet-table thead { display: none; }
+  .school-marksheet .table.school-marksheet-table,
+  .school-marksheet .table.school-marksheet-table tbody { display: block; width: 100%; }
+  .school-marksheet .table.school-marksheet-table tbody tr {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.15rem 0.75rem;
+    padding: 0.55rem 0.6rem; border: 1px solid #dbe7e0; border-radius: 0.5rem; margin-bottom: 0.55rem; background: #fbfdfc;
+  }
+  .school-marksheet .table.school-marksheet-table tbody td {
+    display: flex; justify-content: space-between; gap: 0.4rem; border: 0; padding: 0.1rem 0; text-align: right; font-size: 0.8rem; background: transparent;
+  }
+  .school-marksheet .table.school-marksheet-table tbody td::before { content: attr(data-label); color: var(--school-muted); font-weight: 400; font-size: 0.72rem; text-align: left; }
+  .school-marksheet .table.school-marksheet-table tbody td:first-child {
+    grid-column: 1 / -1; display: block; text-align: left; font-size: 0.95rem; padding: 0 0 0.3rem; margin-bottom: 0.2rem; border-bottom: 1px dashed #cfdcd4;
+  }
+  .school-marksheet .table.school-marksheet-table tbody td:first-child::before { content: none; }
+  .school-marksheet .table.school-marksheet-table tfoot { display: block; }
+  .school-marksheet .table.school-marksheet-table tfoot tr {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; padding: 0.55rem; background: #e8f1eb; border-radius: 0.5rem;
+  }
+  .school-marksheet .table.school-marksheet-table tfoot th { display: block; text-align: center !important; border: 0; padding: 0; background: transparent; font-size: 0.95rem; }
+  .school-marksheet .table.school-marksheet-table tfoot th:first-child { grid-column: 1 / -1; }
+  .school-marksheet .table.school-marksheet-table tfoot th[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; font-weight: 400; color: var(--school-muted); }
+}
