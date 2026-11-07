@@ -215,3 +215,11 @@ body {
     left: auto;
   }
 }
+
+/* Dark mode must never print a black background. */
+@media print {
+  html, body, .app-wrapper, .app-main, .app-content, .card, .table, .modal-content {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

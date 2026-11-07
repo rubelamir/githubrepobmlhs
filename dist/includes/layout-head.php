@@ -47,6 +47,30 @@ $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publi
         if (resolved !== authored) root.setAttribute('data-lte-theme-resolved', '');
       })();
     </script>
+    <script>
+      (function () {
+        var root = document.documentElement, saved = null;
+        function toLight() {
+          if (saved !== null) return;
+          saved = root.getAttribute('data-bs-theme') || 'light';
+          root.setAttribute('data-bs-theme', 'light');
+          root.style.colorScheme = 'light';
+        }
+        function restore() {
+          if (saved === null) return;
+          root.setAttribute('data-bs-theme', saved);
+          root.style.colorScheme = saved;
+          saved = null;
+        }
+        window.addEventListener('beforeprint', toLight);
+        window.addEventListener('afterprint', restore);
+        if (window.matchMedia) {
+          var mq = window.matchMedia('print');
+          var h = function (e) { e.matches ? toLight() : restore(); };
+          if (mq.addEventListener) mq.addEventListener('change', h); else if (mq.addListener) mq.addListener(h);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <meta name="color-scheme" content="light dark" />
     <meta name="csrf-token" content="<?= h(csrfToken()) ?>" />
