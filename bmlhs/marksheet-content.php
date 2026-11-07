@@ -99,29 +99,29 @@
                 <?php foreach ($sheet['rows'] as $paper): ?>
                     <?php $subject = $paper['subject']; ?>
                     <tr>
-                        <td>
+                        <td data-label="বিষয়">
                             <?= h((string) ($subject['subject_name_ban'] ?: $subject['subject_name'])) ?>
                             <?php if ((int) ($subject['is_optional'] ?? 0) === 1): ?>
                                 <small class="school-subject-note">চতুর্থ বিষয়</small>
                             <?php endif; ?>
                         </td>
-                        <td><?= h(bnDigits((string) (int) ($subject['full_marks'] ?? 100))) ?></td>
-                        <td><?= h(bnDigits((string) (int) round((float) ($subjectHighestMarks[(int) $subject['id']] ?? 0)))) ?></td>
-                        <td><?= $paper['mcq'] === null || $paper['mcq'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['mcq']))) ?></td>
-                        <td><?= ((int) ($subject['has_cq'] ?? 1) === 1) ? ($paper['cq'] === null || $paper['cq'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['cq'])))) : '—' ?></td>
-                        <td><?= ((int) ($subject['has_practical'] ?? 0) === 1) ? ($paper['practical'] === null || $paper['practical'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['practical'])))) : '—' ?></td>
-                        <td><?= h(bnDigits((string) (int) round((float) $paper['total']))) ?></td>
-                        <td><?php if (!empty($marksheetPdf)): ?><table class="marksheet-pdf-grade-pill"><tr><td class="<?= resultGradeClass((string) $paper['grade']) ?>"><?= h((string) $paper['grade']) ?></td></tr></table><?php else: ?><span class="school-grade-pill <?= resultGradeClass((string) $paper['grade']) ?>"><?= h((string) $paper['grade']) ?></span><?php endif; ?></td>
-                        <td><?= h(bnDigits(number_format(gradePoint((string) $paper['grade']), 2))) ?></td>
+                        <td data-label="পূর্ণমান"><?= h(bnDigits((string) (int) ($subject['full_marks'] ?? 100))) ?></td>
+                        <td data-label="সর্বোচ্চ"><?= h(bnDigits((string) (int) round((float) ($subjectHighestMarks[(int) $subject['id']] ?? 0)))) ?></td>
+                        <td data-label="MCQ"><?= $paper['mcq'] === null || $paper['mcq'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['mcq']))) ?></td>
+                        <td data-label="CQ"><?= ((int) ($subject['has_cq'] ?? 1) === 1) ? ($paper['cq'] === null || $paper['cq'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['cq'])))) : '—' ?></td>
+                        <td data-label="Pr"><?= ((int) ($subject['has_practical'] ?? 0) === 1) ? ($paper['practical'] === null || $paper['practical'] === '' ? '—' : h(bnDigits(formatMarkValue($paper['practical'])))) : '—' ?></td>
+                        <td data-label="প্রাপ্ত নম্বর"><?= h(bnDigits((string) (int) round((float) $paper['total']))) ?></td>
+                        <td data-label="গ্রেড"><?php if (!empty($marksheetPdf)): ?><table class="marksheet-pdf-grade-pill"><tr><td class="<?= resultGradeClass((string) $paper['grade']) ?>"><?= h((string) $paper['grade']) ?></td></tr></table><?php else: ?><span class="school-grade-pill <?= resultGradeClass((string) $paper['grade']) ?>"><?= h((string) $paper['grade']) ?></span><?php endif; ?></td>
+                        <td data-label="জিপি"><?= h(bnDigits(number_format(gradePoint((string) $paper['grade']), 2))) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
             <tfoot>
                 <tr>
                     <th colspan="6" class="text-end">সর্বমোট</th>
-                    <th><?= h(bnDigits((string) (int) round((float) $sheet['total']))) ?></th>
-                    <th><?= h((string) $sheet['letter']) ?></th>
-                    <th><?= h(bnDigits(number_format((float) $sheet['gpa'], 2))) ?></th>
+                    <th data-label="প্রাপ্ত নম্বর"><?= h(bnDigits((string) (int) round((float) $sheet['total']))) ?></th>
+                    <th data-label="গ্রেড"><?= h((string) $sheet['letter']) ?></th>
+                    <th data-label="জিপিএ"><?= h(bnDigits(number_format((float) $sheet['gpa'], 2))) ?></th>
                 </tr>
             </tfoot>
         </table>
