@@ -140,7 +140,7 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
-            <form method="get" class="card stat-card mb-3">
+            <form method="get" class="card stat-card mb-3" data-student-filter data-sf-title="শিক্ষার্থী খুঁজুন"<?= $loadList ? ' data-sf-result-count="' . count($students) . '"' : '' ?>>
               <div class="card-body">
                 <input type="hidden" name="load" value="1">
                 <div class="row g-2 align-items-end">
@@ -208,7 +208,7 @@ include __DIR__ . '/../includes/layout-head.php';
                 <strong><?= count($students) ?></strong> records
               </div>
               <div class="table-responsive">
-                <table class="table table-striped align-middle mb-0">
+                <table class="table table-striped align-middle mb-0" data-sf-table="নাম, রোল (যেমন ৫ বা ১-১০) বা মোবাইল দিয়ে খুঁজুন…" data-sf-roll-col="3">
                   <thead><tr><th>Photo</th><th>Name</th><th>Class</th><th>Roll</th><th>Session</th><th>Mobile</th><th>Status</th><th></th></tr></thead>
                   <tbody>
                     <?php foreach ($students as $student): ?>

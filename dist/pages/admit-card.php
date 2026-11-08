@@ -208,7 +208,7 @@ include __DIR__ . '/../includes/layout-head.php';
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
 
-            <form method="get" class="card stat-card mb-3 no-print">
+            <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="প্রবেশপত্রের ফিল্টার"<?= $loadList ? ' data-sf-applied="1" data-sf-result-count="' . count($students) . '"' : '' ?>>
               <div class="card-body">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-2">
@@ -253,8 +253,8 @@ include __DIR__ . '/../includes/layout-head.php';
                     </select>
                   </div>
                   <div class="col-md-2">
-                    <label class="form-label">রোল (ঐচ্ছিক)</label>
-                    <input class="form-control" type="text" name="cls_roll" value="<?= h($rollFilter) ?>" placeholder="১, ৫, ৮-১২">
+                    <label class="form-label" for="filterRoll">রোল <span class="text-secondary fw-normal">(ঐচ্ছিক)</span></label>
+                    <input class="form-control" type="text" name="cls_roll" id="filterRoll" value="<?= h($rollFilter) ?>" placeholder="১, ৫, ৮-১২">
                   </div>
                   <div class="col-md-1">
                     <input type="hidden" name="load" value="1">

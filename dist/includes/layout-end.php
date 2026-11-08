@@ -10,6 +10,7 @@ include __DIR__ . '/footer.php';
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
     <script src="<?= h($basePath) ?>js/adminlte.js"></script>
+    <script src="<?= h($basePath) ?>js/student-filter.js?v=<?= (int) @filemtime(__DIR__ . '/../js/student-filter.js') ?>"></script>
     <?php if (!empty($includeCropper)): ?>
     <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
     <script src="<?= h($basePath) ?>js/image-cropper.js"></script>

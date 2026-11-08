@@ -152,7 +152,7 @@ include __DIR__ . '/../includes/layout-head.php';
         </div>        <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
-            <form method="get" class="card stat-card mb-3 no-print">
+            <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="প্রোফাইল ফিল্টার"<?= $loadList ? ' data-sf-result-count="' . count($sheets) . '"' : '' ?>>
               <div class="card-body">
                 <input type="hidden" name="load" value="1">
                 <div class="row g-2 align-items-end">

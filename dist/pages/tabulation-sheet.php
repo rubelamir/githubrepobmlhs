@@ -327,7 +327,7 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <div class="no-print"><?php include __DIR__ . '/../includes/flash.php'; ?></div>
-            <form method="get" class="card stat-card mb-3 no-print">
+            <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="টেবুলেশন শীটের ফিল্টার"<?= $loadSheet ? ' data-sf-result-count="' . count($sheetRows) . '"' : '' ?>>
               <div class="card-body row g-2 align-items-end">
                 <div class="col-md-3">
                   <label class="form-label">পরীক্ষা</label>

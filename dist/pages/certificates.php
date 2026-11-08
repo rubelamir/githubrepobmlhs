@@ -630,7 +630,7 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
-            <form method="get" action="<?= h($certificateFormAction) ?>" class="card stat-card mb-3 no-print">
+            <form method="get" action="<?= h($certificateFormAction) ?>" class="card stat-card mb-3 no-print" data-student-filter data-sf-keep="type" data-sf-title="<?= h($isSeatLevel ? 'সিট লেবেলের ফিল্টার' : ($isIdCard ? 'আইডি কার্ডের ফিল্টার' : 'সার্টিফিকেটের ফিল্টার')) ?>"<?= $loadList ? ' data-sf-applied="1" data-sf-result-count="' . count($certificateStudents) . '"' : '' ?>>
               <div class="card-body">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-<?= $isSeatLevel ? '3' : '4' ?>">

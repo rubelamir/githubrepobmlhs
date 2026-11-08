@@ -89,6 +89,7 @@ $panelFavicon = schoolFileUrl((string) ($panelSettings['logo'] ?? ''), '', publi
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
     <?php endif; ?>
     <link rel="stylesheet" href="<?= h($basePath) ?>css/responsive.css?v=<?= (int) @filemtime(__DIR__ . '/../css/responsive.css') ?>" />
+    <link rel="stylesheet" href="<?= h($basePath) ?>css/student-filter.css?v=<?= (int) @filemtime(__DIR__ . '/../css/student-filter.css') ?>" />
     <style>
       .stat-card { border: 0; box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .08); }
       .stat-card .icon-wrap { width: 3rem; height: 3rem; border-radius: .9rem; display: grid; place-items: center; font-size: 1.35rem; }
