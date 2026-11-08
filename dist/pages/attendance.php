@@ -11,6 +11,9 @@ $date = (string) ($_GET['date'] ?? date('Y-m-d'));
 $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $classId = trim((string) ($_GET['cls'] ?? ''));
 $sectionId = trim((string) ($_GET['sections'] ?? ''));
+if ($sectionId === '0') {
+    $sectionId = '';
+}
 $teacher = getAuthenticatedTeacher();
 $seeAll = canViewAllAttendance($teacher);
 $classes = classesForAttendance($db, $teacher, $sessionYear);
@@ -30,11 +33,11 @@ if (!$seeAll && $classId !== '') {
 }
 
 $sections = $classId !== '' ? sectionsForAttendance($db, (int) $classId, $teacher, $sessionYear) : [];
-if (!$seeAll && !$hasEntireClass && $sectionId === '' && count($sections) === 1) {
-    $sectionId = (string) (int) $sections[0]['id'];
-}
+$resolvedSection = studentFilterSectionId($sections, (int) $classId, (int) $sectionId);
+$sectionId = $resolvedSection > 0 ? (string) $resolvedSection : '';
+$filterNotice = isset($_GET['cls']) ? studentFilterSelectionNotice($sections, (int) $classId, $resolvedSection) : '';
 
-$allowedClass = $classId !== '' && canTakeAttendanceForClass(
+$allowedClass = $filterNotice === '' && $classId !== '' && canTakeAttendanceForClass(
     $db,
     (int) $classId,
     $sectionId === '' ? 0 : (int) $sectionId,
@@ -161,15 +164,6 @@ $pageStyles = <<<'CSS'
 CSS;
 $pageScripts = [<<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
-  const cls = document.getElementById('filterClass');
-  const sections = document.getElementById('filterSection');
-  cls?.addEventListener('change', async () => {
-    sections.innerHTML = sections.dataset.allowAll === '1' ? '<option value="">All sections</option>' : '<option value="">Select</option>';
-    if (!cls.value) return;
-    const session = document.querySelector('input[name="session_year"]')?.value || '';
-    const rows = await (await fetch('academic-api.php?type=sections&for=attendance&class_id=' + encodeURIComponent(cls.value) + '&session_year=' + encodeURIComponent(session))).json();
-    rows.forEach((row) => sections.add(new Option(row.section_name_ban || row.section_name, row.id)));
-  });
   document.querySelectorAll('[data-mark-all]').forEach((button) => {
     button.addEventListener('click', () => {
       document.querySelectorAll('input[data-status="' + button.dataset.markAll + '"]').forEach((input) => { input.checked = true; });
@@ -204,9 +198,8 @@ include __DIR__ . '/../includes/layout-head.php';
                 <div class="col-md-2"><label class="form-label" for="filterSession">Session</label><input class="form-control" name="session_year" id="filterSession" value="<?= h($sessionYear) ?>" inputmode="numeric"></div>
                 <div class="col-md-3">
                   <label class="form-label">Class</label>
-                  <select class="form-select" name="cls" id="filterClass" <?= $seeAll ? '' : 'required' ?>>
-                    <?php if ($seeAll): ?><option value="">All</option><?php endif; ?>
-                    <?php if (!$seeAll): ?><option value="">Select</option><?php endif; ?>
+                  <select class="form-select" name="cls" id="filterClass" required>
+                    <option value="">শ্রেণী নির্বাচন করুন</option>
                     <?php foreach ($classes as $class): ?>
                       <option value="<?= (int) $class['id'] ?>" <?= $classId === (string) $class['id'] ? 'selected' : '' ?>><?= h((string) ($class['class_name_ban'] ?: $class['class_name'])) ?></option>
                     <?php endforeach; ?>
@@ -214,20 +207,16 @@ include __DIR__ . '/../includes/layout-head.php';
                 </div>
                 <div class="col-md-3">
                   <label class="form-label">Section</label>
-                  <select class="form-select" name="sections" id="filterSection" data-allow-all="<?= $hasEntireClass ? '1' : '0' ?>">
-                    <?php if ($hasEntireClass): ?>
-                      <option value="" <?= $sectionId === '' ? 'selected' : '' ?>>All sections</option>
-                    <?php else: ?>
-                      <option value="">Select</option>
-                    <?php endif; ?>
-                    <?php foreach ($sections as $section): ?>
-                      <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (string) $section['id'] ? 'selected' : '' ?>><?= h((string) ($section['section_name_ban'] ?: $section['section_name'])) ?></option>
-                    <?php endforeach; ?>
+                  <select class="form-select" name="sections" id="filterSection" required data-sf-sections="for=attendance">
+                    <?= studentFilterSectionOptionsHtml($sections, (int) $classId, $sectionId) ?>
                   </select>
                 </div>
                 <div class="col-md-2"><button class="btn btn-outline-primary w-100">Load</button></div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+              <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
             <div class="row g-3 mb-3">
               <div class="col-6"><div class="card stat-card"><div class="card-body">Present <strong><?= (int) $summary['present'] ?></strong></div></div></div>
               <div class="col-6"><div class="card stat-card"><div class="card-body">Absent <strong><?= (int) $summary['absent'] ?></strong></div></div></div>
@@ -265,7 +254,7 @@ include __DIR__ . '/../includes/layout-head.php';
                         <td><input class="form-control form-control-sm" name="remarks[<?= h($studentRef) ?>]" value="<?= h($remarks[(int) $student['id']] ?? '') ?>"></td>
                       </tr>
                     <?php endforeach; ?>
-                    <?php if ($students === []): ?><tr><td colspan="4" class="text-center text-secondary py-4">Select your assigned class<?= $hasEntireClass ? '' : ' and section' ?>, then load students.</td></tr><?php endif; ?>
+                    <?php if ($students === []): ?><tr><td colspan="4" class="text-center text-secondary py-4">শ্রেণী ও শাখা নির্বাচন করে Load চাপুন।</td></tr><?php endif; ?>
                   </tbody>
                 </table>
               </div>

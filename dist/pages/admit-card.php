@@ -53,6 +53,11 @@ if (!$seeAllClasses && $classId > 0 && !isset($scope['entire'][$classId])) {
         $sectionId = 0;
     }
 }
+$sectionId = studentFilterSectionId($sections, $classId, $sectionId);
+$filterNotice = $loadList && $studentId < 1 ? studentFilterSelectionNotice($sections, $classId, $sectionId) : '';
+if ($filterNotice !== '') {
+    $loadList = false;
+}
 
 $examName = '';
 foreach ($exams as $exam) {
@@ -243,13 +248,8 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">শাখা</label>
-                    <select class="form-select" name="sections" id="filterSection">
-                      <option value="0">সকল শাখা</option>
-                      <?php foreach ($sections as $section): ?>
-                        <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (int) $section['id'] ? 'selected' : '' ?>>
-                          <?= h((string) ($section['section_name_ban'] ?? $section['section_name'] ?? '')) ?>
-                        </option>
-                      <?php endforeach; ?>
+                    <select class="form-select" name="sections" id="filterSection" required data-sf-sections>
+                      <?= studentFilterSectionOptionsHtml($sections, $classId, $sectionId > 0 ? (string) $sectionId : '') ?>
                     </select>
                   </div>
                   <div class="col-md-2">
@@ -264,6 +264,9 @@ include __DIR__ . '/../includes/layout-head.php';
                 <div class="form-text mt-2">বিষয়ের তালিকা <strong>Exam routine</strong> থেকে আসবে। আগে রুটিন তৈরি করুন।</div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+              <div class="alert alert-warning no-print"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
 
             <?php
               renderAdmitCardSheets(

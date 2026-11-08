@@ -45,6 +45,62 @@ function h(?string $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+const STUDENT_FILTER_SECTION_UNASSIGNED = 'none';
+
+/**
+ * Student filters always target one class and one section. A class without sections
+ * is filtered as a whole (section value "0"). Auto-picks the only section of a class.
+ */
+function studentFilterSectionId(array $sections, int $classId, int $sectionId, bool $autoPickSingle = true): int
+{
+    if ($classId < 1 || $sections === []) {
+        return 0;
+    }
+    $ids = array_map(static fn (array $section): int => (int) ($section['id'] ?? 0), $sections);
+    if (in_array($sectionId, $ids, true)) {
+        return $sectionId;
+    }
+
+    return $autoPickSingle && count($ids) === 1 ? $ids[0] : 0;
+}
+
+function studentFilterSelectionNotice(array $sections, int $classId, int $sectionId, bool $unassigned = false): string
+{
+    if ($classId < 1) {
+        return 'প্রথমে একটি শ্রেণী নির্বাচন করুন।';
+    }
+    if ($sections !== [] && $sectionId < 1 && !$unassigned) {
+        return 'এই শ্রেণীতে শাখা আছে—একটি শাখা নির্বাচন করুন।';
+    }
+
+    return '';
+}
+
+function studentFilterSectionOptionsHtml(array $sections, int $classId, string $selected, string $unassignedLabel = ''): string
+{
+    if ($classId < 1) {
+        return '<option value="">আগে শ্রেণী নির্বাচন করুন</option>';
+    }
+    if ($sections === []) {
+        return '<option value="0" selected>শাখা নেই—পুরো শ্রেণী</option>';
+    }
+    $html = '<option value=""' . ($selected === '' || $selected === '0' ? ' selected' : '') . '>শাখা নির্বাচন করুন</option>';
+    foreach ($sections as $section) {
+        $id = (string) (int) ($section['id'] ?? 0);
+        $label = trim((string) ($section['section_name_ban'] ?? ''));
+        if ($label === '') {
+            $label = trim((string) ($section['section_name'] ?? ''));
+        }
+        $html .= '<option value="' . $id . '"' . ($selected === $id ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+    if ($unassignedLabel !== '') {
+        $html .= '<option value="' . STUDENT_FILTER_SECTION_UNASSIGNED . '"'
+            . ($selected === STUDENT_FILTER_SECTION_UNASSIGNED ? ' selected' : '') . '>' . h($unassignedLabel) . '</option>';
+    }
+
+    return $html;
+}
+
 function hText(?string $value): string
 {
     $decoded = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');

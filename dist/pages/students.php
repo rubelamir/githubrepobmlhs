@@ -40,6 +40,15 @@ if (!$seeAllClasses && $classId > 0 && !isset($scope['entire'][$classId])) {
         $sectionId = 0;
     }
 }
+// Online applications are saved without a real section, so admins can list them separately.
+$unassignedLabel = $seeAllClasses ? 'শাখা নির্ধারিত হয়নি (নতুন আবেদন)' : '';
+$unassignedSection = $seeAllClasses && $sections !== []
+    && trim((string) ($_GET['sections'] ?? '')) === STUDENT_FILTER_SECTION_UNASSIGNED;
+$sectionId = $unassignedSection ? 0 : studentFilterSectionId($sections, $classId, $sectionId, !$seeAllClasses);
+$filterNotice = $loadList ? studentFilterSelectionNotice($sections, $classId, $sectionId, $unassignedSection) : '';
+if ($filterNotice !== '') {
+    $loadList = false;
+}
 $sessionYears = [];
 for ($year = (int) date('Y') + 1; $year >= 2015; $year--) {
     $sessionYears[] = (string) $year;
@@ -77,6 +86,10 @@ if ($loadList) {
             LEFT JOIN cls c ON s.cls = c.id
             LEFT JOIN sections sec ON s.sections = sec.id';
     [$where, $params] = studentsQueryFilters($filterGet);
+    if ($unassignedSection) {
+        $sectionIds = array_map(static fn (array $section): string => "'" . (int) $section['id'] . "'", $sections);
+        $where[] = '(s.sections IS NULL OR s.sections NOT IN (' . implode(', ', $sectionIds) . '))';
+    }
     if (!$seeAllClasses) {
         if ($classId < 1) {
             $where[] = '1 = 0';
@@ -104,24 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
         redirectWithMessage('students.php', 'danger', userFacingError($exception));
     }
 }
-
-$pageScripts = [<<<'JS'
-document.addEventListener('DOMContentLoaded', () => {
-  const cls = document.getElementById('filterClass');
-  const sections = document.getElementById('filterSection');
-  const selected = sections?.dataset.selected || '';
-  cls?.addEventListener('change', async () => {
-    sections.innerHTML = '<option value="">সকল শাখা</option>';
-    if (!cls.value) return;
-    const rows = await (await fetch('academic-api.php?type=sections&class_id=' + encodeURIComponent(cls.value))).json();
-    rows.forEach((row) => {
-      const option = new Option(row.section_name_ban, row.id);
-      if (String(row.id) === String(selected)) option.selected = true;
-      sections.add(option);
-    });
-  });
-});
-JS];
 
 include __DIR__ . '/../includes/layout-head.php';
 ?>
@@ -154,8 +149,8 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-4">
                     <label class="form-label" for="filterClass">শ্রেণী</label>
-                    <select class="form-select" name="cls" id="filterClass">
-                      <option value="">সকল শ্রেণী</option>
+                    <select class="form-select" name="cls" id="filterClass" required>
+                      <option value="">শ্রেণী নির্বাচন করুন</option>
                       <?php foreach ($classes as $class): ?>
                         <option value="<?= (int) $class['id'] ?>" <?= $classId === (int) $class['id'] ? 'selected' : '' ?>><?= h($class['class_name_ban']) ?></option>
                       <?php endforeach; ?>
@@ -163,11 +158,8 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-4">
                     <label class="form-label" for="filterSection">শাখা</label>
-                    <select class="form-select" name="sections" id="filterSection" data-selected="<?= $sectionId > 0 ? (string) $sectionId : '' ?>">
-                      <option value="">সকল শাখা</option>
-                      <?php foreach ($sections as $section): ?>
-                        <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (int) $section['id'] ? 'selected' : '' ?>><?= h($section['section_name_ban']) ?></option>
-                      <?php endforeach; ?>
+                    <select class="form-select" name="sections" id="filterSection" required data-sf-sections<?= $unassignedLabel !== '' ? ' data-sf-unassigned="' . h($unassignedLabel) . '"' : '' ?>>
+                      <?= studentFilterSectionOptionsHtml($sections, $classId, $unassignedSection ? STUDENT_FILTER_SECTION_UNASSIGNED : ($sectionId > 0 ? (string) $sectionId : ''), $unassignedLabel) ?>
                     </select>
                   </div>
                 </div>
@@ -198,6 +190,9 @@ include __DIR__ . '/../includes/layout-head.php';
                 </div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+            <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
             <?php if ($listMode === 'idle'): ?>
             <div class="card stat-card">
               <div class="card-body text-secondary">ফিল্টার করুন—মিল থাকা শিক্ষার্থীদের তালিকা এখানে দেখাবে।</div>

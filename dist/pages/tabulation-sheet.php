@@ -19,6 +19,11 @@ $sectionId = (int) ($_GET['sections'] ?? 0);
 $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $loadSheet = (string) ($_GET['load'] ?? '') === '1';
 $sections = $classId > 0 ? schoolSections($db, $classId, true) : [];
+$sectionId = studentFilterSectionId($sections, $classId, $sectionId);
+$filterNotice = $loadSheet ? studentFilterSelectionNotice($sections, $classId, $sectionId) : '';
+if ($filterNotice !== '') {
+    $loadSheet = false;
+}
 $subjects = [];
 $students = [];
 $sheetRows = [];
@@ -268,54 +273,6 @@ $pageStyles = <<<'CSS'
 }
 CSS;
 
-$pageScripts = [<<<'JS'
-document.addEventListener('DOMContentLoaded', () => {
-  const classSelect = document.getElementById('tabulationClass');
-  const sectionSelect = document.getElementById('tabulationSection');
-  const sectionStatus = document.getElementById('tabulationSectionStatus');
-  let requestController;
-
-  classSelect?.addEventListener('change', async () => {
-    if (!sectionSelect) return;
-    requestController?.abort();
-    const controller = new AbortController();
-    requestController = controller;
-    sectionSelect.replaceChildren(new Option('সকল শাখা', '0', true, true));
-    sectionSelect.disabled = !classSelect.value;
-    if (sectionStatus) sectionStatus.textContent = '';
-    if (!classSelect.value) {
-      sectionSelect.disabled = false;
-      return;
-    }
-
-    const params = new URLSearchParams({
-      type: 'sections',
-      class_id: classSelect.value,
-      active: '1'
-    });
-    try {
-      const response = await fetch('academic-api.php?' + params.toString(), {
-        signal: controller.signal
-      });
-      if (!response.ok) throw new Error('শাখার তালিকা লোড করা যায়নি।');
-      const sections = await response.json();
-      if (!Array.isArray(sections)) throw new Error('শাখার তালিকার তথ্য সঠিক নয়।');
-      sections.forEach((section) => {
-        const label = section.section_name_ban || section.section_name;
-        if (label) sectionSelect.add(new Option(label, section.id));
-      });
-      if (sectionStatus) sectionStatus.textContent = sections.length ? '' : 'এই শ্রেণিতে কোনো সক্রিয় শাখা নেই।';
-    } catch (error) {
-      if (error.name !== 'AbortError' && sectionStatus) {
-        sectionStatus.textContent = error.message || 'শাখার তালিকা লোড করা যায়নি।';
-      }
-    } finally {
-      if (requestController === controller && !controller.signal.aborted) sectionSelect.disabled = false;
-    }
-  });
-});
-JS];
-
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header no-print">
@@ -353,17 +310,16 @@ include __DIR__ . '/../includes/layout-head.php';
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">শাখা</label>
-                  <select class="form-select" name="sections" id="tabulationSection">
-                    <option value="0" <?= $sectionId === 0 ? 'selected' : '' ?>>সকল শাখা</option>
-                    <?php foreach ($sections as $section): ?>
-                      <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (int) $section['id'] ? 'selected' : '' ?>><?= h((string) ($section['section_name_ban'] ?: $section['section_name'])) ?></option>
-                    <?php endforeach; ?>
+                  <select class="form-select" name="sections" id="tabulationSection" required data-sf-sections="active=1">
+                    <?= studentFilterSectionOptionsHtml($sections, $classId, $sectionId > 0 ? (string) $sectionId : '') ?>
                   </select>
-                  <div class="form-text text-danger" id="tabulationSectionStatus" role="status" aria-live="polite"></div>
                 </div>
                 <div class="col-md-2"><button class="btn btn-primary w-100" name="load" value="1">শীট তৈরি করুন</button></div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+              <div class="alert alert-warning no-print"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
 
             <?php if ($loadSheet): ?>
               <?php if ($sheetRows === []): ?>
