@@ -34,10 +34,9 @@ $sectionId = (int) ($_GET['sections'] ?? 0);
 $subjectId = (int) ($_GET['subject_id'] ?? 0);
 $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $sections = $classId > 0 ? schoolSections($db, $classId) : [];
-if ($classId > 0 && $sectionId === 0 && $sections !== [] && classSubjects($db, $classId, 0) === []) {
-    $sectionId = (int) $sections[0]['id'];
-}
-$subjects = ($classId > 0) ? classSubjects($db, $classId, $sectionId) : [];
+$sectionId = studentFilterSectionId($sections, $classId, $sectionId);
+$filterNotice = isset($_GET['cls']) ? studentFilterSelectionNotice($sections, $classId, $sectionId) : '';
+$subjects = ($classId > 0 && $filterNotice === '') ? classSubjects($db, $classId, $sectionId) : [];
 if (!$seeAll) {
     $subjects = filterSubjectsForTeacher($subjects, $teacherMobile);
 }
@@ -75,7 +74,7 @@ if ($classId > 0 && $sessionYear !== '' && $selectedSubject !== null && $examId 
     $students = fetchRows($db, $sql, $params);
     // The teacher who owns this subject can always see their own draft work;
     // everyone else (head/admin viewers) only sees marks after Final Submit.
-    $markMap = marksByStudentForSubject($db, $classId, $sectionId, $sessionYear, $examId, $subjectId, !$isOwnerTeacher);
+    $markMap = marksByStudentForSubject($db, $classId, $sectionId, $sessionYear, $examId, $subjectId, !$isOwnerTeacher, true);
 }
 
 $canEditMarks = $isOwnerTeacher && !$isFinal;
@@ -310,6 +309,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!canEditClassSubject($subject, $teacher)) {
             throw new RuntimeException('Only the assigned subject teacher can enter or change marks.');
         }
+        if ($sectionId < 1 && schoolSections($db, $classId) !== []) {
+            throw new RuntimeException('এই শ্রেণীতে শাখা আছে—একটি শাখা নির্বাচন করে নম্বর এন্ট্রি করুন।');
+        }
 
         if (isMarkSubmissionFinal($db, $classId, $sectionId, $sessionYear, $examId, $subjectId)) {
             throw new RuntimeException('এই বিষয়ের ফলাফল ইতিমধ্যে Final Submit করা হয়েছে; আর সম্পাদনা করা যাবে না।');
@@ -536,7 +538,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const previous = subject.value;
     subject.innerHTML = '<option value="">Select</option>';
     if (!cls?.value) return;
-    const sectionId = sections?.value || '0';
+    const sectionId = sections?.value || '';
+    if (sectionId === '') return;
     const url = 'academic-api.php?type=subjects&for=marks&class_id=' + encodeURIComponent(cls.value)
       + '&section_id=' + encodeURIComponent(sectionId);
     try {
@@ -552,24 +555,8 @@ document.addEventListener('DOMContentLoaded', () => {
       subject.innerHTML = '<option value="">Select</option>';
     }
   };
-  cls?.addEventListener('change', async () => {
-    if (sections) {
-      sections.innerHTML = '<option value="0">Entire class</option>';
-      if (cls.value) {
-        try {
-          const rows = await (await fetch('academic-api.php?type=sections&class_id=' + encodeURIComponent(cls.value))).json();
-          if (Array.isArray(rows)) {
-            rows.forEach((row) => sections.add(new Option(row.section_name_ban || row.section_name, row.id)));
-            if (rows.length > 0) {
-              sections.value = String(rows[0].id);
-            }
-          }
-        } catch (error) {
-          sections.innerHTML = '<option value="0">Entire class</option>';
-        }
-      }
-    }
-    await reloadSubjects();
+  cls?.addEventListener('change', () => {
+    if (subject) subject.innerHTML = '<option value="">Select</option>';
   });
   sections?.addEventListener('change', reloadSubjects);
 });
@@ -714,12 +701,9 @@ include __DIR__ . '/../includes/layout-head.php';
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <label class="form-label">Section / group</label>
-                  <select class="form-select" name="sections" id="filterSection">
-                    <option value="0" <?= $sectionId === 0 ? 'selected' : '' ?>>Entire class</option>
-                    <?php foreach ($sections as $section): ?>
-                      <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (int) $section['id'] ? 'selected' : '' ?>><?= h((string) ($section['section_name_ban'] ?: $section['section_name'])) ?></option>
-                    <?php endforeach; ?>
+                  <label class="form-label">শাখা / Section</label>
+                  <select class="form-select" name="sections" id="filterSection" required data-sf-sections>
+                    <?= studentFilterSectionOptionsHtml($sections, $classId, $sectionId > 0 ? (string) $sectionId : '') ?>
                   </select>
                 </div>
                 <div class="col-md-2">
@@ -730,13 +714,16 @@ include __DIR__ . '/../includes/layout-head.php';
                       <option value="<?= (int) $subject['id'] ?>" <?= $subjectId === (int) $subject['id'] ? 'selected' : '' ?>><?= h((string) ($subject['subject_name_ban'] ?: $subject['subject_name'])) ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <?php if ($classId > 0 && $subjects === []): ?>
+                  <?php if ($classId > 0 && $filterNotice === '' && $subjects === []): ?>
                     <div class="form-text text-danger"><?= $seeAll ? 'এই শাখায় কোনো বিষয় নেই। একটি শাখা নির্বাচন করুন।' : 'এই শাখায় আপনার কোনো বিষয় নেই। অন্য শিক্ষকের বিষয় দেখা যাবে না।' ?></div>
                   <?php endif; ?>
                 </div>
                 <div class="col-md-1"><button class="btn btn-outline-primary w-100">Load</button></div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+              <div class="alert alert-warning results-filters"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
 
             <?php if ($selectedSubject && $examId > 0 && $students !== []): ?>
               <?php

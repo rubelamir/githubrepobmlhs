@@ -3178,10 +3178,21 @@ function marksByStudentForSubject(
     string $sessionYear,
     int $examId,
     int $subjectId,
-    bool $requireFinal = false
+    bool $requireFinal = false,
+    bool $includeClassWide = false
 ): array {
     if (!tableExists($db, 'student_marks')) {
         return [];
+    }
+    // Marks saved earlier under "Entire class" (section 0) fill gaps in a section view.
+    // Matched by student id only: roll numbers repeat across sections.
+    $classWide = [];
+    if ($includeClassWide && $sectionId > 0) {
+        foreach (marksByStudentForSubject($db, $classId, 0, $sessionYear, $examId, $subjectId, $requireFinal) as $key => $row) {
+            if (str_starts_with((string) $key, 'id:')) {
+                $classWide[$key] = $row;
+            }
+        }
     }
     // Marks a teacher only "temporarily saved" (draft) must stay invisible to
     // everyone except the entering teacher until Final Submit. A missing row
@@ -3214,6 +3225,13 @@ function marksByStudentForSubject(
             $map['id:' . $studentId] = $row;
         }
         $map['roll:' . (string) $row['cls_roll']] = $row;
+    }
+    foreach ($classWide as $key => $row) {
+        $rollKey = 'roll:' . (string) $row['cls_roll'];
+        $sectionRowStudent = isset($map[$rollKey]) ? (int) ($map[$rollKey]['student_id'] ?? 0) : -1;
+        if (!isset($map[$key]) && $sectionRowStudent !== 0 && $sectionRowStudent !== (int) substr($key, 3)) {
+            $map[$key] = $row;
+        }
     }
 
     return $map;
