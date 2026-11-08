@@ -692,7 +692,7 @@ include __DIR__ . '/../includes/layout-head.php';
                 </div>
               </div>
             <?php endif; ?>
-            <form method="get" class="card stat-card mb-3 results-filters">
+            <form method="get" class="card stat-card mb-3 results-filters" data-student-filter data-sf-title="মার্কশিট নির্বাচন"<?= $selectedSubject && $examId > 0 ? ' data-sf-result-count="' . count($students) . '"' : '' ?>>
               <div class="card-body row g-2 align-items-end">
                 <div class="col-md-3">
                   <label class="form-label">Exam</label>
@@ -813,7 +813,7 @@ include __DIR__ . '/../includes/layout-head.php';
                 </div>
                 <div class="card-body p-0">
                   <div class="table-responsive">
-                    <table class="table table-sm table-striped align-middle mb-0">
+                    <table class="table table-sm table-striped align-middle mb-0" data-sf-table="রোল (যেমন ৫ বা ১-১০) বা নাম দিয়ে খুঁজুন…" data-sf-cols="0,1" data-sf-roll-col="0">
                       <thead>
                         <tr>
                           <th style="width:4rem">Roll</th>

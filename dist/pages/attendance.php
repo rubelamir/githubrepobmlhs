@@ -198,10 +198,10 @@ include __DIR__ . '/../includes/layout-head.php';
             <?php if (!$seeAll && $classes === []): ?>
               <div class="alert alert-warning">You are not assigned as a class teacher for this session. Ask the Head Teacher to appoint you under Class teachers.</div>
             <?php endif; ?>
-            <form method="get" class="card stat-card mb-3">
+            <form method="get" class="card stat-card mb-3" data-student-filter data-sf-title="হাজিরার শ্রেণী নির্বাচন"<?= $allowedClass ? ' data-sf-result-count="' . count($students) . '"' : '' ?>>
               <div class="card-body row g-2 align-items-end">
-                <div class="col-md-2"><label class="form-label">Date</label><input class="form-control" type="date" name="date" value="<?= h($date) ?>"></div>
-                <div class="col-md-2"><label class="form-label">Session</label><input class="form-control" name="session_year" value="<?= h($sessionYear) ?>"></div>
+                <div class="col-md-2"><label class="form-label" for="filterDate">Date</label><input class="form-control" type="date" name="date" id="filterDate" value="<?= h($date) ?>"></div>
+                <div class="col-md-2"><label class="form-label" for="filterSession">Session</label><input class="form-control" name="session_year" id="filterSession" value="<?= h($sessionYear) ?>" inputmode="numeric"></div>
                 <div class="col-md-3">
                   <label class="form-label">Class</label>
                   <select class="form-select" name="cls" id="filterClass" <?= $seeAll ? '' : 'required' ?>>
@@ -243,7 +243,7 @@ include __DIR__ . '/../includes/layout-head.php';
                 <button type="button" class="btn btn-sm btn-outline-danger" data-mark-all="absent">All absent</button>
               </div>
               <div class="table-responsive">
-                <table class="table align-middle mb-0">
+                <table class="table align-middle mb-0" data-sf-table="রোল (যেমন ৫ বা ১-১০) বা নাম দিয়ে খুঁজুন…" data-sf-roll-col="0">
                   <thead><tr><th>Roll</th><th>Student</th><th class="text-center">Attendance</th><th>Remarks</th></tr></thead>
                   <tbody>
                     <?php foreach ($students as $student): ?>

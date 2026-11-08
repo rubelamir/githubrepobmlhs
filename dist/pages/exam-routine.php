@@ -420,7 +420,7 @@ include __DIR__ . '/../includes/layout-head.php';
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
 
-            <form method="get" class="card stat-card mb-3 no-print">
+            <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="রুটিনের ফিল্টার"<?= $loadList ? ' data-sf-applied="1"' : '' ?>>
               <div class="card-body">
                 <div class="row g-2 align-items-end">
                   <div class="col-md-2">
