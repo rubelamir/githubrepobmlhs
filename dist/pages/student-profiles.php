@@ -40,6 +40,11 @@ if (!$seeAllClasses && $classId > 0 && !isset($scope['entire'][$classId])) {
         $sectionId = 0;
     }
 }
+$sectionId = studentFilterSectionId($sections, $classId, $sectionId);
+$filterNotice = $loadList ? studentFilterSelectionNotice($sections, $classId, $sectionId) : '';
+if ($filterNotice !== '') {
+    $loadList = false;
+}
 $sessionYears = [];
 for ($year = (int) date('Y') + 1; $year >= 2015; $year--) {
     $sessionYears[] = (string) $year;
@@ -110,26 +115,6 @@ $pageStyles = <<<'CSS'
   .sp-sheet-item:last-child { break-after: auto; page-break-after: auto; }
 }
 CSS;
-$pageScripts = [<<<'JS'
-document.addEventListener('DOMContentLoaded', () => {
-  const cls = document.getElementById('filterClass');
-  const sections = document.getElementById('filterSection');
-  const selected = sections?.dataset.selected || '';
-  cls?.addEventListener('change', async () => {
-    sections.innerHTML = '<option value="">All sections</option>';
-    if (!cls.value) return;
-    const response = await fetch('academic-api.php?type=sections&class_id=' + encodeURIComponent(cls.value));
-    if (!response.ok) throw new Error('Could not load sections.');
-    const rows = await response.json();
-    rows.forEach((row) => {
-      const option = new Option(row.section_name_ban, row.id);
-      if (String(row.id) === String(selected)) option.selected = true;
-      sections.add(option);
-    });
-  });
-});
-JS];
-
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header no-print">
@@ -166,8 +151,8 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-4">
                     <label class="form-label" for="filterClass">Class</label>
-                    <select class="form-select" name="cls" id="filterClass">
-                      <option value="">All classes</option>
+                    <select class="form-select" name="cls" id="filterClass" required>
+                      <option value="">শ্রেণী নির্বাচন করুন</option>
                       <?php foreach ($classes as $class): ?>
                         <option value="<?= (int) $class['id'] ?>" <?= $classId === (int) $class['id'] ? 'selected' : '' ?>><?= h((string) $class['class_name_ban']) ?></option>
                       <?php endforeach; ?>
@@ -175,11 +160,8 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-4">
                     <label class="form-label" for="filterSection">Section</label>
-                    <select class="form-select" name="sections" id="filterSection" data-selected="<?= $sectionId > 0 ? (string) $sectionId : '' ?>">
-                      <option value="">All sections</option>
-                      <?php foreach ($sections as $section): ?>
-                        <option value="<?= (int) $section['id'] ?>" <?= $sectionId === (int) $section['id'] ? 'selected' : '' ?>><?= h((string) $section['section_name_ban']) ?></option>
-                      <?php endforeach; ?>
+                    <select class="form-select" name="sections" id="filterSection" required data-sf-sections>
+                      <?= studentFilterSectionOptionsHtml($sections, $classId, $sectionId > 0 ? (string) $sectionId : '') ?>
                     </select>
                   </div>
                 </div>
@@ -199,6 +181,9 @@ include __DIR__ . '/../includes/layout-head.php';
                 <div class="form-text mt-2">Use commas for specific rolls and a hyphen for a range, e.g. 1, 5, 8-12.</div>
               </div>
             </form>
+            <?php if ($filterNotice !== ''): ?>
+              <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
 
             <?php if (!$loadList): ?>
               <div class="card stat-card"><div class="card-body text-secondary">Apply filters to display matching students.</div></div>

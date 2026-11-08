@@ -388,6 +388,65 @@
     };
   }
 
+  // Mirrors studentFilterSectionOptionsHtml(): one class + one section; a class without
+  // sections is filtered as a whole with section value "0".
+  function initSectionLoader(form) {
+    var cls = form.querySelector('select[name="cls"]');
+    var sec = form.querySelector('select[name="sections"][data-sf-sections]');
+    if (!cls || !sec) return;
+    var extra = sec.getAttribute('data-sf-sections') || '';
+    var unassigned = sec.getAttribute('data-sf-unassigned') || '';
+    var controller = null;
+
+    function setOptions(options, selected) {
+      sec.innerHTML = '';
+      options.forEach(function (o) { sec.add(new Option(o[1], o[0], false, o[0] === selected)); });
+      sec.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    cls.addEventListener('change', function () {
+      if (controller) controller.abort();
+      if (!cls.value) {
+        setOptions([['', 'আগে শ্রেণী নির্বাচন করুন']], '');
+        return;
+      }
+      controller = typeof AbortController === 'function' ? new AbortController() : null;
+      var current = controller;
+      sec.innerHTML = '';
+      sec.add(new Option('শাখা লোড হচ্ছে…', ''));
+      var params = new URLSearchParams(extra);
+      params.set('type', 'sections');
+      params.set('class_id', cls.value);
+      var session = form.querySelector('[name="session_year"]');
+      if (session && session.value) params.set('session_year', session.value);
+      fetch('academic-api.php?' + params.toString(), current ? { signal: current.signal } : undefined)
+        .then(function (response) {
+          if (!response.ok) throw new Error('load failed');
+          return response.json();
+        })
+        .then(function (rows) {
+          if (current !== controller) return;
+          rows = Array.isArray(rows) ? rows : [];
+          if (rows.length === 0) {
+            setOptions([['0', 'শাখা নেই—পুরো শ্রেণী']], '0');
+            return;
+          }
+          var options = [['', 'শাখা নির্বাচন করুন']];
+          rows.forEach(function (row) {
+            var label = row.section_name_ban || row.section_name || '';
+            if (label) options.push([String(row.id), label]);
+          });
+          if (unassigned) options.push(['none', unassigned]);
+          var auto = options.length === 2 ? options[1][0] : '';
+          setOptions(options, auto);
+        })
+        .catch(function (error) {
+          if (error && error.name === 'AbortError') return;
+          setOptions([['', 'শাখা লোড করা যায়নি—আবার শ্রেণী বাছাই করুন']], '');
+        });
+    });
+  }
+
   function enhanceTable(table) {
     if (table.dataset.sfReady) return;
     var tbody = table.tBodies[0];
@@ -459,7 +518,10 @@
   }
 
   function init() {
-    document.querySelectorAll('form[data-student-filter]').forEach(enhanceForm);
+    document.querySelectorAll('form[data-student-filter]').forEach(function (form) {
+      initSectionLoader(form);
+      enhanceForm(form);
+    });
     document.querySelectorAll('table[data-sf-table]').forEach(enhanceTable);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

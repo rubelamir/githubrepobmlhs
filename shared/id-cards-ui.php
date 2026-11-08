@@ -529,16 +529,6 @@ function idCardsUiScripts(): string
 {
     return <<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
-  const cls = document.getElementById('filterClass');
-  const sections = document.getElementById('filterSection');
-  cls?.addEventListener('change', async () => {
-    sections.innerHTML = '<option value="">সকল শাখা</option>';
-    if (!cls.value) return;
-    const rows = await (await fetch('academic-api.php?type=sections&class_id=' + encodeURIComponent(cls.value))).json();
-    if (!Array.isArray(rows)) return;
-    rows.forEach((row) => sections.add(new Option(row.section_name_ban, row.id)));
-  });
-
   const clearPrintMode = () => {
     document.body.classList.remove('print-id-fronts', 'print-id-backs');
   };
