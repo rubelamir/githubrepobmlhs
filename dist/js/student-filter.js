@@ -189,7 +189,7 @@
     resetBtn.title = 'সব ফিল্টার মুছে নতুন করে শুরু করুন';
     tools.appendChild(resetBtn);
 
-    var toggleBtn = el('button', 'btn btn-sm btn-light sf-tool sf-toggle', '<i class="bi bi-chevron-up" aria-hidden="true"></i>');
+    var toggleBtn = el('button', 'btn btn-sm btn-outline-secondary sf-tool sf-toggle', '<i class="bi bi-chevron-up" aria-hidden="true"></i>');
     toggleBtn.type = 'button';
     toggleBtn.setAttribute('aria-label', 'ফিল্টার দেখান/লুকান');
     tools.appendChild(toggleBtn);
