@@ -645,7 +645,7 @@ function replacePublicMediaFile(string $relativeDir, ?string $previous, ?string 
 
 function privateMediaDirectoryPath(string $directory): string
 {
-    if (!in_array($directory, ['birth_reg_pic', 'teacher_nid_pic'], true)) {
+    if (!in_array($directory, ['birth_reg_pic', 'teacher_nid_pic', 'acc_attachments'], true)) {
         throw new RuntimeException('The private media directory is invalid.');
     }
 
