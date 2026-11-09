@@ -23,6 +23,17 @@ $showStudents = $can('student-attendance-report') || $can('admissions') || $can(
 $canIdCards = $can('id-cards') || $can('certificates');
 $canSeatLevel = $can('seat-level') || $can('id-cards') || $can('certificates');
 $canTestimonials = $can('testimonials') || $can('certificates') || $can('promotions');
+require_once dirname(__DIR__, 2) . '/shared/Accounting/bootstrap.php';
+$accActive = accCurrentPage();
+try {
+    $accNavItems = accNavItems(accAccess());
+} catch (Throwable $exception) {
+    error_log('Accounting menu: ' . $exception->getMessage());
+    $accNavItems = [];
+}
+if ($accActive !== '') {
+    $active = '';
+}
 $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can('events') || $can('carousel') || $can('cms-gallery') || $can('downloads') || $can('history') || $can('messages') || $can('homepage-cards') || $can('homepage-links') || $can('ssc-results') || $can('students');
 ?>
       <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark" id="admin-sidebar">
@@ -67,6 +78,18 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <p>Class teachers</p>
                 </a>
               </li>
+              <?php endif; ?>
+
+              <?php if ($accNavItems !== []): ?>
+              <li class="nav-header">হিসাব ও ফি</li>
+              <?php foreach ($accNavItems as $accItem): ?>
+              <li class="nav-item">
+                <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
+                  <i class="nav-icon bi <?= h($accItem['icon']) ?>"></i>
+                  <p><?= h($accItem['label']) ?></p>
+                </a>
+              </li>
+              <?php endforeach; ?>
               <?php endif; ?>
 
               <?php if ($showStructure || $showStudents || $can('teachers') || $can('committee') || $can('retirement-teachers')): ?>

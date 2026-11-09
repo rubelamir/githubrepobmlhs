@@ -609,6 +609,10 @@ function canEditClassSubject(array $subject, ?array $teacher = null): bool
 
 function currentScriptPanelModule(): ?string
 {
+    // Accounting pages enforce their own capabilities (shared/Accounting/functions.php accBootPage()).
+    if (str_contains(str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '')), '/pages/accounts/')) {
+        return null;
+    }
     $name = pathinfo(basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')), PATHINFO_FILENAME);
     $map = [
         'index' => 'dashboard',
