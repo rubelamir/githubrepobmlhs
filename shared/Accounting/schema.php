@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 5;
+const ACC_SCHEMA_VERSION = 6;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -299,7 +299,7 @@ function accMigrationV2(PDO $db): void
          VALUES (:code, :name, :kind, :late_fine, :sort_order, 1, :now, :now2)'
     );
     foreach ([
-        ['TUITION', 'মাসিক বেতন', 'monthly', 1, 10],
+        ['TUITION', 'মাসিক বেতন', 'monthly', 0, 10],
         ['ADMISSION', 'ভর্তি ফি', 'session', 0, 20],
         ['SESSION', 'সেশন ফি', 'session', 0, 30],
         ['EXAM', 'পরীক্ষার ফি', 'exam', 0, 40],
@@ -803,4 +803,53 @@ function accMigrationV5(PDO $db): void
     foreach (['bkash', 'nagad'] as $gateway) {
         $insert->execute(['gateway' => $gateway, 'bearer' => 'school', 'now' => $now]);
     }
+}
+
+/**
+ * Late fines are not used. Outstanding fine lines stop being collectable.
+ * A fine that was already paid stays, so the receipt is unchanged.
+ */
+function accMigrationV6(PDO $db): void
+{
+    $db->exec('UPDATE acc_fee_heads SET late_fine_allowed = 0 WHERE late_fine_allowed <> 0');
+    $db->exec('UPDATE acc_fee_structures SET late_fine_amount = 0, grace_days = 0 WHERE late_fine_amount <> 0 OR grace_days <> 0');
+    $db->exec("UPDATE acc_invoice_items SET late_fine_amount = 0, grace_days = 0 WHERE late_fine_amount <> 0 OR grace_days <> 0");
+    $db->exec(
+        "UPDATE acc_invoice_items
+         SET standard_amount = paid, amount = paid, net = paid
+         WHERE line_kind = 'late_fine' AND (net > paid OR amount > paid)"
+    );
+    $db->exec(
+        "UPDATE acc_invoices inv
+         INNER JOIN (
+            SELECT invoice_id,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN standard_amount ELSE 0 END), 0) AS standard_total,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN category_concession ELSE 0 END), 0) AS category_concession,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN amount ELSE 0 END), 0) AS gross,
+                COALESCE(SUM(CASE WHEN line_kind = 'late_fine' THEN amount ELSE 0 END), 0) AS fine,
+                COALESCE(SUM(discount), 0) AS discount,
+                COALESCE(SUM(waived), 0) AS waived,
+                COALESCE(SUM(net), 0) AS net,
+                COALESCE(SUM(paid), 0) AS paid
+            FROM acc_invoice_items
+            GROUP BY invoice_id
+         ) s ON s.invoice_id = inv.id
+         INNER JOIN (
+            SELECT DISTINCT invoice_id FROM acc_invoice_items WHERE line_kind = 'late_fine'
+         ) f ON f.invoice_id = inv.id
+         SET inv.standard_total = s.standard_total,
+             inv.category_concession = s.category_concession,
+             inv.gross = s.gross,
+             inv.fine = s.fine,
+             inv.discount = s.discount,
+             inv.waived = s.waived,
+             inv.net = s.net,
+             inv.paid = s.paid,
+             inv.status = CASE
+                WHEN inv.status = 'cancelled' THEN 'cancelled'
+                WHEN s.net <= s.paid THEN 'paid'
+                WHEN s.paid > 0 THEN 'partial'
+                ELSE 'unpaid'
+             END"
+    );
 }

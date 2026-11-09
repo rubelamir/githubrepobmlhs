@@ -86,7 +86,7 @@ final class FeeCatalog
             'code' => $code,
             'name_bn' => $name,
             'billing_kind' => $kind,
-            'late_fine_allowed' => !empty($input['late_fine_allowed']) ? 1 : 0,
+            'late_fine_allowed' => 0,
             'income_account_id' => $this->incomeAccountInput($input['income_account_id'] ?? null),
             'sort_order' => max(0, min(9999, (int) ($input['sort_order'] ?? 0))),
         ];

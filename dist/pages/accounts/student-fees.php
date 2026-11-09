@@ -167,6 +167,9 @@ include __DIR__ . '/../../includes/layout-head.php';
                             $itemId = (int) $line['id'];
                             $outstanding = Money::fromDb($line['net']) - Money::fromDb($line['paid']);
                             $isFine = $line['line_kind'] === InvoiceService::LINE_LATE_FINE;
+                            if ($isFine && $outstanding <= 0 && Money::fromDb($line['paid']) === 0) {
+                                continue;
+                            }
                             ?>
                             <tr>
                               <td data-label="খাত"><?= h((string) $line['description']) ?><?= $isFine ? ' <span class="badge text-bg-warning">জরিমানা</span>' : '' ?></td>

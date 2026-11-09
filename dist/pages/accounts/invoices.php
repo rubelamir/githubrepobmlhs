@@ -84,13 +84,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
             redirectWithMessage($back, $result['created'] > 0 ? 'success' : 'warning', $message . '।');
         }
-        if ($action === 'late_fines') {
-            if (!$ready) {
-                throw new RuntimeException('শ্রেণী ও শাখা নির্বাচন করুন।');
-            }
-            $added = $invoices->applyLateFines($access, accAudit(), $today, $sessionYear, $classId, $sectionId);
-            redirectWithMessage($back, 'success', $added > 0 ? bnDigits((string) $added) . 'টি বিলম্ব জরিমানা যোগ হয়েছে।' : 'নতুন কোনো বিলম্ব জরিমানা প্রযোজ্য নয়।');
-        }
         if ($action === 'cancel') {
             $invoices->cancel($access, accAudit(), postedRecordId('acc_invoice'), (string) ($_POST['reason'] ?? ''));
             redirectWithMessage($back, 'success', 'ইনভয়েস বাতিল হয়েছে।');
@@ -151,7 +144,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 
             <?php if ($ready): ?>
               <div class="row g-3 mb-3">
-                <div class="col-lg-8">
+                <div class="col-lg-12">
                   <form method="post" class="card h-100" data-acc-confirm="নির্বাচিত শ্রেণী/শাখার সব ভর্তি শিক্ষার্থীর ইনভয়েস তৈরি হবে। চালিয়ে যাবেন?">
                     <?= csrfField() ?>
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
@@ -200,16 +193,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                       </div>
                     </div>
                     <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt me-1"></i>ইনভয়েস তৈরি করুন</button></div>
-                  </form>
-                </div>
-                <div class="col-lg-4">
-                  <form method="post" class="card h-100" data-acc-confirm="মেয়াদোত্তীর্ণ বকেয়া ফিতে নির্ধারিত বিলম্ব জরিমানা যোগ হবে। চালিয়ে যাবেন?">
-                    <?= csrfField() ?>
-                    <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
-                    <input type="hidden" name="action" value="late_fines">
-                    <div class="card-header"><h3 class="card-title mb-0">বিলম্ব জরিমানা</h3></div>
-                    <div class="card-body small text-secondary">পরিশোধের শেষ তারিখ ও অতিরিক্ত দিন পার হওয়া বকেয়া ফি-লাইনে ফি কাঠামোয় নির্ধারিত জরিমানা একবার যোগ হবে। আবার চালালেও দ্বিতীয়বার যোগ হবে না। প্রয়োজনে মওকুফের মাধ্যমে কমানো যায়।</div>
-                    <div class="card-footer text-end"><button class="btn btn-outline-warning" type="submit"><i class="bi bi-alarm me-1"></i>জরিমানা প্রয়োগ</button></div>
                   </form>
                 </div>
               </div>
