@@ -166,6 +166,75 @@
     });
   });
 
+  // Voucher form: add/remove lines and keep the debit/credit totals in view.
+  const toPaisa = (value) => {
+    const text = String(value || '').replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d))).replace(/[,৳\s]/g, '');
+    if (!/^\d+(\.\d{1,2})?$/.test(text)) {
+      return 0;
+    }
+    const [whole, fraction = ''] = text.split('.');
+    return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+  };
+  document.querySelectorAll('form[data-acc-voucher-form]').forEach((form) => {
+    const body = form.querySelector('[data-acc-vlines]');
+    const template = form.querySelector('template[data-acc-vtemplate]');
+    const debitOut = form.querySelector('[data-acc-vtotal-debit]');
+    const creditOut = form.querySelector('[data-acc-vtotal-credit]');
+    const status = form.querySelector('[data-acc-vstatus]');
+    let next = body.querySelectorAll('[data-acc-vline]').length;
+    const update = () => {
+      let debit = 0;
+      let credit = 0;
+      body.querySelectorAll('[data-acc-vline]').forEach((row) => {
+        debit += toPaisa(row.querySelector('[data-acc-vdebit]').value);
+        credit += toPaisa(row.querySelector('[data-acc-vcredit]').value);
+      });
+      debitOut.textContent = formatTaka(debit);
+      creditOut.textContent = formatTaka(credit);
+      if (debit === 0 && credit === 0) {
+        status.textContent = '';
+        status.className = 'small';
+      } else if (debit === credit) {
+        status.textContent = '✓ ডেবিট ও ক্রেডিট সমান';
+        status.className = 'small text-success';
+      } else {
+        status.textContent = `পার্থক্য ${formatTaka(Math.abs(debit - credit))}`;
+        status.className = 'small text-danger';
+      }
+    };
+    form.querySelector('[data-acc-vadd]')?.addEventListener('click', () => {
+      if (body.querySelectorAll('[data-acc-vline]').length >= 30) {
+        return;
+      }
+      const html = template.innerHTML.replaceAll('__i__', String(next));
+      next += 1;
+      body.insertAdjacentHTML('beforeend', html);
+      body.lastElementChild.querySelector('select')?.focus();
+    });
+    body.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-acc-vremove]');
+      if (!button) {
+        return;
+      }
+      if (body.querySelectorAll('[data-acc-vline]').length > 2) {
+        button.closest('[data-acc-vline]').remove();
+      } else {
+        button.closest('[data-acc-vline]').querySelectorAll('input, select').forEach((field) => {
+          field.value = '';
+        });
+      }
+      update();
+    });
+    body.addEventListener('input', (event) => {
+      const row = event.target.closest('[data-acc-vline]');
+      if (row && event.target.matches('[data-acc-vdebit], [data-acc-vcredit]') && event.target.value !== '') {
+        row.querySelector(event.target.matches('[data-acc-vdebit]') ? '[data-acc-vcredit]' : '[data-acc-vdebit]').value = '';
+      }
+      update();
+    });
+    update();
+  });
+
   // bfcache restores a locked form when the user navigates back.
   window.addEventListener('pageshow', () => {
     document.querySelectorAll('form[data-acc-submitting="1"]').forEach((form) => {

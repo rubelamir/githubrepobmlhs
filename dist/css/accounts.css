@@ -120,3 +120,32 @@
 .acc-invoice-lines th {
   font-size: 0.875rem;
 }
+
+.acc-coa-table .acc-coa-group td {
+  background: var(--bs-tertiary-bg);
+  font-weight: 600;
+}
+
+.acc-voucher-lines td {
+  vertical-align: top;
+}
+
+@media print {
+  .app-sidebar,
+  .app-header,
+  .app-footer,
+  .d-print-none {
+    display: none !important;
+  }
+
+  .app-main,
+  .app-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .acc-voucher-print {
+    border: 0;
+    box-shadow: none;
+  }
+}

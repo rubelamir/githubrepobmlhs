@@ -14,6 +14,7 @@ use School\Accounting\Audit\AuditTrail;
 use School\Accounting\Billing\FeeCatalog;
 use School\Accounting\Billing\InvoiceService;
 use School\Accounting\Billing\StudentDirectory;
+use School\Accounting\Ledger\PostingService;
 use School\Accounting\Support\Money;
 use School\Accounting\Support\Sequence;
 
@@ -42,7 +43,12 @@ final class PaymentService
     public const METHOD_LABELS = ['cash' => 'নগদ', 'bkash' => 'bKash', 'nagad' => 'Nagad', 'bank' => 'ব্যাংক'];
     public const CUSTODY_LABELS = [self::CUSTODY_TEACHER => 'শিক্ষকের কাছে', self::CUSTODY_OFFICE => 'অফিসে'];
 
-    public function __construct(private PDO $db, private InvoiceService $invoices, private StudentDirectory $students)
+    public function __construct(
+        private PDO $db,
+        private InvoiceService $invoices,
+        private StudentDirectory $students,
+        private ?PostingService $posting = null
+    )
     {
     }
 
@@ -162,9 +168,9 @@ final class PaymentService
             $this->db->prepare(
                 'INSERT INTO acc_payments
                     (receipt_no, idempotency_key, student_id, session_year, class_id, section_id, roll_snapshot, name_snapshot,
-                     amount, method, status, custody, collected_by, collected_at, payer_name, note)
+                     amount, method, status, custody, collected_custody, collected_by, collected_at, payer_name, note)
                  VALUES (:receipt, :key, :student, :session, :class, :section, :roll, :name,
-                         :amount, :method, :status, :custody, :actor, :now, :payer, :note)'
+                         :amount, :method, :status, :custody, :custody2, :actor, :now, :payer, :note)'
             )->execute([
                 'receipt' => $receiptNo,
                 'key' => $idempotencyKey,
@@ -178,6 +184,7 @@ final class PaymentService
                 'method' => self::METHOD_CASH,
                 'status' => self::CONFIRMED,
                 'custody' => $custody,
+                'custody2' => $custody,
                 'actor' => $actor->teacherId(),
                 'now' => $now->format('Y-m-d H:i:s'),
                 'payer' => $payerName,
@@ -200,6 +207,7 @@ final class PaymentService
             foreach (array_keys($touched) as $invoiceId) {
                 $this->invoices->recompute($invoiceId);
             }
+            $this->posting?->postPayment($paymentId);
             $audit->record(
                 'payment.collect',
                 'payment',
@@ -266,6 +274,7 @@ final class PaymentService
             ], $lines);
             $applied = 0;
             $touched = [];
+            $creditedPayments = [];
             foreach ($credits as $credit) {
                 $paymentId = (int) $credit['payment_id'];
                 $split = Allocator::allocate($remaining, Money::fromDb($credit['balance']));
@@ -276,6 +285,7 @@ final class PaymentService
                             $this->allocate($paymentId, $studentId, $itemId, $line['invoice_id'], $paisa, self::KIND_ADVANCE_APPLIED, $actor);
                             $this->allocate($paymentId, $studentId, null, null, -$paisa, self::KIND_ADVANCE_APPLIED, $actor);
                             $touched[$line['invoice_id']] = true;
+                            $creditedPayments[$paymentId] = true;
                         }
                     }
                     unset($line);
@@ -284,6 +294,9 @@ final class PaymentService
             }
             foreach (array_keys($touched) as $invoiceId) {
                 $this->invoices->recompute($invoiceId);
+            }
+            foreach (array_keys($creditedPayments) as $creditedPayment) {
+                $this->posting?->postPayment($creditedPayment);
             }
             if ($applied > 0) {
                 $audit->record(
@@ -363,6 +376,7 @@ final class PaymentService
             $this->db->prepare(
                 'UPDATE acc_payments SET status = :status, reversed_by = :actor, reversed_at = :now, reversal_reason = :reason WHERE id = :id'
             )->execute(['status' => self::REVERSED, 'actor' => $actor->teacherId(), 'now' => $now, 'reason' => $reason, 'id' => $paymentId]);
+            $this->posting?->postPayment($paymentId);
             $audit->record(
                 'payment.reverse',
                 'payment',

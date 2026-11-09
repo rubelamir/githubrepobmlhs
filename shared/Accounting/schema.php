@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 3;
+const ACC_SCHEMA_VERSION = 4;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -403,5 +403,218 @@ function accMigrationV3(PDO $db): void
             CONSTRAINT fk_acc_hi_handover FOREIGN KEY (handover_id) REFERENCES acc_handovers (id),
             CONSTRAINT fk_acc_hi_payment FOREIGN KEY (payment_id) REFERENCES acc_payments (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+}
+
+/**
+ * Phase 4: chart of accounts, double-entry vouchers (manual with approval and
+ * system postings from collections), attachments, bank deposits,
+ * bank reconciliation and month closing.
+ */
+function accMigrationV4(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_accounts (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(10) NOT NULL,
+            name_bn VARCHAR(120) NOT NULL,
+            account_type VARCHAR(20) NOT NULL,
+            money_kind VARCHAR(20) NOT NULL DEFAULT 'none',
+            parent_id INT UNSIGNED NULL DEFAULT NULL,
+            is_group TINYINT(1) NOT NULL DEFAULT 0,
+            is_system TINYINT(1) NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            description VARCHAR(255) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY uniq_acc_account_code (code),
+            KEY idx_acc_account_parent (parent_id),
+            KEY idx_acc_account_type (account_type, is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    // voucher_no is assigned on approval so rejected/cancelled drafts leave no gaps.
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_vouchers (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            voucher_no VARCHAR(30) NULL DEFAULT NULL,
+            voucher_type VARCHAR(20) NOT NULL,
+            voucher_date DATE NOT NULL,
+            period CHAR(7) NOT NULL,
+            narration VARCHAR(255) NOT NULL,
+            total DECIMAL(14,2) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            source_key VARCHAR(60) NULL DEFAULT NULL,
+            idempotency_key CHAR(32) NULL DEFAULT NULL,
+            created_by INT NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            submitted_at DATETIME NULL DEFAULT NULL,
+            decided_by INT NULL DEFAULT NULL,
+            decided_at DATETIME NULL DEFAULT NULL,
+            decision_remark VARCHAR(255) NULL DEFAULT NULL,
+            reversal_of_id INT UNSIGNED NULL DEFAULT NULL,
+            reversed_by_id INT UNSIGNED NULL DEFAULT NULL,
+            reversal_reason VARCHAR(255) NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_voucher_no (voucher_no),
+            UNIQUE KEY uniq_acc_voucher_source (source_key),
+            UNIQUE KEY uniq_acc_voucher_idempotency (idempotency_key),
+            UNIQUE KEY uniq_acc_voucher_reversal (reversal_of_id),
+            KEY idx_acc_voucher_status (status, voucher_date),
+            KEY idx_acc_voucher_period (period, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_voucher_lines (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            voucher_id INT UNSIGNED NOT NULL,
+            line_no SMALLINT UNSIGNED NOT NULL,
+            account_id INT UNSIGNED NOT NULL,
+            debit DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+            credit DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+            party_type VARCHAR(20) NOT NULL DEFAULT '',
+            party_id INT NULL DEFAULT NULL,
+            memo VARCHAR(160) NOT NULL DEFAULT '',
+            KEY idx_acc_vline_voucher (voucher_id),
+            KEY idx_acc_vline_account (account_id, voucher_id),
+            CONSTRAINT fk_acc_vline_voucher FOREIGN KEY (voucher_id) REFERENCES acc_vouchers (id),
+            CONSTRAINT fk_acc_vline_account FOREIGN KEY (account_id) REFERENCES acc_accounts (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_attachments (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            owner_type VARCHAR(20) NOT NULL,
+            owner_id INT UNSIGNED NOT NULL,
+            stored_name VARCHAR(80) NOT NULL,
+            original_name VARCHAR(150) NOT NULL,
+            mime VARCHAR(60) NOT NULL,
+            size_bytes INT UNSIGNED NOT NULL,
+            sha256 CHAR(64) NOT NULL,
+            uploaded_by INT NOT NULL,
+            uploaded_at DATETIME NOT NULL,
+            UNIQUE KEY uniq_acc_attachment_stored (stored_name),
+            KEY idx_acc_attachment_owner (owner_type, owner_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_bank_deposits (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            deposit_no VARCHAR(30) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            bank_account_id INT UNSIGNED NOT NULL,
+            deposit_date DATE NOT NULL,
+            amount DECIMAL(14,2) NOT NULL,
+            slip_no VARCHAR(60) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            note VARCHAR(255) NOT NULL DEFAULT '',
+            submitted_by INT NOT NULL,
+            submitted_at DATETIME NOT NULL,
+            decided_by INT NULL DEFAULT NULL,
+            decided_at DATETIME NULL DEFAULT NULL,
+            remark VARCHAR(255) NULL DEFAULT NULL,
+            voucher_id INT UNSIGNED NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_deposit_no (deposit_no),
+            UNIQUE KEY uniq_acc_deposit_idempotency (idempotency_key),
+            KEY idx_acc_deposit_status (status, deposit_date),
+            CONSTRAINT fk_acc_deposit_account FOREIGN KEY (bank_account_id) REFERENCES acc_accounts (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_bank_reconciliations (
+            voucher_line_id INT UNSIGNED NOT NULL PRIMARY KEY,
+            statement_date DATE NOT NULL,
+            reconciled_by INT NOT NULL,
+            reconciled_at DATETIME NOT NULL,
+            CONSTRAINT fk_acc_recon_line FOREIGN KEY (voucher_line_id) REFERENCES acc_voucher_lines (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_period_closings (
+            period CHAR(7) NOT NULL PRIMARY KEY,
+            status VARCHAR(20) NOT NULL,
+            closed_by INT NOT NULL,
+            closed_at DATETIME NOT NULL,
+            close_note VARCHAR(255) NOT NULL DEFAULT '',
+            reopened_by INT NULL DEFAULT NULL,
+            reopened_at DATETIME NULL DEFAULT NULL,
+            reopen_reason VARCHAR(255) NULL DEFAULT NULL,
+            balances_json LONGTEXT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    if (!columnExists($db, 'acc_payment_allocations', 'voucher_id')) {
+        $db->exec('ALTER TABLE acc_payment_allocations ADD COLUMN voucher_id INT UNSIGNED NULL DEFAULT NULL, ADD KEY idx_acc_alloc_voucher (voucher_id)');
+    }
+    // Where the cash went at the moment of collection (custody moves on handover).
+    if (!columnExists($db, 'acc_payments', 'collected_custody')) {
+        $db->exec("ALTER TABLE acc_payments ADD COLUMN collected_custody VARCHAR(20) NOT NULL DEFAULT '' AFTER custody");
+        $db->exec(
+            "UPDATE acc_payments p
+             SET p.collected_custody = CASE
+                 WHEN p.custody = 'teacher' OR EXISTS (SELECT 1 FROM acc_handover_items hi WHERE hi.payment_id = p.id) THEN 'teacher'
+                 ELSE 'office' END"
+        );
+    }
+
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $insert = $db->prepare(
+        'INSERT IGNORE INTO acc_accounts (code, name_bn, account_type, money_kind, parent_id, is_group, is_system, is_active, created_at, updated_at)
+         VALUES (:code, :name, :type, :money, (SELECT id FROM (SELECT id FROM acc_accounts WHERE code = :parent) AS p), :is_group, :is_system, 1, :now, :now2)'
+    );
+    foreach ([
+        ['1000', 'সম্পদ', 'asset', 'none', '', 1],
+        ['1100', 'নগদ ও ব্যাংক', 'asset', 'none', '1000', 1],
+        ['1110', 'নগদ তহবিল (অফিস)', 'asset', 'cash', '1100', 0],
+        ['1120', 'শিক্ষকের কাছে অনিষ্পন্ন আদায়', 'asset', 'teacher_custody', '1100', 0],
+        ['1130', 'bKash মার্চেন্ট হিসাব', 'asset', 'bkash', '1100', 0],
+        ['1140', 'Nagad মার্চেন্ট হিসাব', 'asset', 'nagad', '1100', 0],
+        ['1150', 'ব্যাংক হিসাবসমূহ', 'asset', 'bank', '1100', 1],
+        ['2000', 'দায়', 'liability', 'none', '', 1],
+        ['2110', 'অগ্রিম প্রাপ্ত ফি', 'liability', 'none', '2000', 0],
+        ['2120', 'রিফান্ড প্রদেয়', 'liability', 'none', '2000', 0],
+        ['3000', 'তহবিল', 'fund', 'none', '', 1],
+        ['3100', 'সাধারণ তহবিল', 'fund', 'none', '3000', 0],
+        ['4000', 'আয়', 'income', 'none', '', 1],
+        ['4100', 'ফি আয়', 'income', 'none', '4000', 1],
+        ['4110', 'মাসিক বেতন', 'income', 'none', '4100', 0],
+        ['4120', 'ভর্তি ফি', 'income', 'none', '4100', 0],
+        ['4125', 'সেশন ফি', 'income', 'none', '4100', 0],
+        ['4130', 'পরীক্ষার ফি', 'income', 'none', '4100', 0],
+        ['4140', 'বিলম্ব জরিমানা', 'income', 'none', '4100', 0],
+        ['4190', 'অন্যান্য ফি', 'income', 'none', '4100', 0],
+        ['4200', 'সরকারি অনুদান', 'income', 'none', '4000', 0],
+        ['4300', 'দান', 'income', 'none', '4000', 0],
+        ['4400', 'ব্যাংক সুদ', 'income', 'none', '4000', 0],
+        ['5000', 'ব্যয়', 'expense', 'none', '', 1],
+        ['5110', 'বেতন ও সম্মানী', 'expense', 'none', '5000', 0],
+        ['5120', 'বিদ্যুৎ ও পানি', 'expense', 'none', '5000', 0],
+        ['5130', 'মুদ্রণ ও স্টেশনারি', 'expense', 'none', '5000', 0],
+        ['5140', 'পরীক্ষা ব্যয়', 'expense', 'none', '5000', 0],
+        ['5150', 'মেরামত ও রক্ষণাবেক্ষণ', 'expense', 'none', '5000', 0],
+        ['5160', 'গেটওয়ে চার্জ', 'expense', 'none', '5000', 0],
+        ['5170', 'ব্যাংক চার্জ', 'expense', 'none', '5000', 0],
+        ['5190', 'বিবিধ ব্যয়', 'expense', 'none', '5000', 0],
+    ] as [$code, $name, $type, $money, $parent, $isGroup]) {
+        $insert->execute([
+            'code' => $code, 'name' => $name, 'type' => $type, 'money' => $money, 'parent' => $parent,
+            'is_group' => $isGroup, 'is_system' => 1, 'now' => $now, 'now2' => $now,
+        ]);
+    }
+
+    $db->exec(
+        "UPDATE acc_fee_heads h JOIN acc_accounts a ON a.code = CASE
+             WHEN h.code = 'TUITION' OR h.billing_kind = 'monthly' THEN '4110'
+             WHEN h.code = 'ADMISSION' THEN '4120'
+             WHEN h.code = 'SESSION' OR h.billing_kind = 'session' THEN '4125'
+             WHEN h.billing_kind = 'exam' THEN '4130'
+             ELSE '4190' END
+         SET h.income_account_id = a.id
+         WHERE h.income_account_id IS NULL"
     );
 }
