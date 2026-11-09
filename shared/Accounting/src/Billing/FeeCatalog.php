@@ -87,6 +87,7 @@ final class FeeCatalog
             'name_bn' => $name,
             'billing_kind' => $kind,
             'late_fine_allowed' => !empty($input['late_fine_allowed']) ? 1 : 0,
+            'income_account_id' => $this->incomeAccountInput($input['income_account_id'] ?? null),
             'sort_order' => max(0, min(9999, (int) ($input['sort_order'] ?? 0))),
         ];
 
@@ -207,6 +208,21 @@ final class FeeCatalog
         }
 
         return $row;
+    }
+
+    /** Leaf income account chosen for a fee head; empty keeps the default (other fees). */
+    private function incomeAccountInput(mixed $value): ?int
+    {
+        $id = (int) $value;
+        if ($id === 0 || !\tableExists($this->db, 'acc_accounts')) {
+            return null;
+        }
+        $rows = \fetchRows($this->db, "SELECT id FROM acc_accounts WHERE id = :id AND account_type = 'income' AND is_group = 0 AND is_active = 1", ['id' => $id]);
+        if ($rows === []) {
+            throw new RuntimeException('আয়ের হিসাব সঠিক নয়।');
+        }
+
+        return $id;
     }
 
     private function assertCanManage(AccessContext $actor): void

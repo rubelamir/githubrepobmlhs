@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use School\Accounting\Access\Capability;
 use School\Accounting\Access\Role;
+use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -30,6 +31,16 @@ $myCustody = $access->can(Capability::HANDOVER_SUBMIT)
     ? array_sum(array_map(static fn (array $row): int => Money::fromDb($row['amount']), accHandovers()->pendingPayments($access->teacherId())))
     : null;
 $handoversWaiting = $access->can(Capability::HANDOVER_RECEIVE) ? accHandovers()->submittedCount() : null;
+$cashBalance = null;
+$bankBalance = null;
+if ($access->can(Capability::REPORTS_VIEW_ALL)) {
+    $cashBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::CASH));
+    $bankBalance = 0;
+    foreach (accChart()->bankAccounts() as $bankAccount) {
+        $bankBalance += accChart()->balance((int) $bankAccount['id']);
+    }
+}
+$vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() + accBank()->submittedCount() : null;
 
 $classNames = [];
 foreach (schoolClasses($db) as $class) {
@@ -57,7 +68,7 @@ $phases = [
     ['ধাপ ১ — অথেন্টিকেশন ও ভূমিকা', true],
     ['ধাপ ২ — ফি কাঠামো (সাধারণ ও বৃত্তি/উপবৃত্তি হার), ছাড় ও ইনভয়েস', true],
     ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', true],
-    ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস ও ভাউচার', false],
+    ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস, ভাউচার, ব্যাংক ও মাস সমাপনী', true],
     ['ধাপ ৫ — bKash / Nagad (sandbox)', false],
     ['ধাপ ৬ — রিপোর্ট ও ড্যাশবোর্ড চার্ট', false],
     ['ধাপ ৭ — নিরাপত্তা যাচাই ও টেস্ট', false],
@@ -126,6 +137,28 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <a class="acc-stat d-block text-decoration-none text-body" href="handovers.php">
                   <div class="acc-stat-label">গ্রহণের অপেক্ষায় হস্তান্তর</div>
                   <div class="acc-stat-value<?= $handoversWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $handoversWaiting)) ?>টি</div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($cashBalance !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="ledger.php">
+                  <div class="acc-stat-label">অফিসের নগদ তহবিল</div>
+                  <div class="acc-stat-value"><?= h(Money::format($cashBalance)) ?></div>
+                </a>
+              </div>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="bank.php">
+                  <div class="acc-stat-label">ব্যাংক স্থিতি</div>
+                  <div class="acc-stat-value"><?= h(Money::format($bankBalance)) ?></div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($vouchersWaiting !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="vouchers.php?status=submitted">
+                  <div class="acc-stat-label">অনুমোদনের অপেক্ষায় ভাউচার ও ব্যাংক জমা</div>
+                  <div class="acc-stat-value<?= $vouchersWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $vouchersWaiting)) ?>টি</div>
                 </a>
               </div>
               <?php endif; ?>

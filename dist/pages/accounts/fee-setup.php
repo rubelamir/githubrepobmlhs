@@ -46,6 +46,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $heads = $catalog->heads();
+$incomeAccounts = array_values(array_filter(accChart()->postable(), static fn (array $row): bool => $row['account_type'] === 'income'));
+$incomeNames = [];
+foreach (accChart()->all() as $account) {
+    $incomeNames[(int) $account['id']] = $account['code'] . ' ' . $account['name_bn'];
+}
 $categories = $catalog->categories();
 $editHead = null;
 $editCategory = null;
@@ -93,6 +98,16 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <?php endforeach; ?>
                       </select>
                     </div>
+                    <div class="mb-2">
+                      <label class="form-label" for="head-income">আয়ের হিসাব (লেজারে কোথায় যাবে)</label>
+                      <select class="form-select" id="head-income" name="income_account_id">
+                        <option value="">৪১৯০ — অন্যান্য ফি (ডিফল্ট)</option>
+                        <?php foreach ($incomeAccounts as $incomeAccount): ?>
+                          <option value="<?= (int) $incomeAccount['id'] ?>"<?= (int) ($editHead['income_account_id'] ?? 0) === (int) $incomeAccount['id'] ? ' selected' : '' ?>><?= h($incomeAccount['code'] . ' — ' . $incomeAccount['name_bn']) ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                      <div class="form-text">বিলম্ব জরিমানা সবসময় "৪১৪০ বিলম্ব জরিমানা" হিসাবে যায়।</div>
+                    </div>
                     <div class="row g-2 mb-3">
                       <div class="col-6">
                         <label class="form-label" for="head-sort">ক্রম</label>
@@ -125,7 +140,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <tr class="<?= $active ? '' : 'text-secondary' ?>">
                               <td data-label="নাম"><strong><?= h((string) $head['name_bn']) ?></strong></td>
                               <td data-label="কোড"><code><?= h((string) $head['code']) ?></code></td>
-                              <td data-label="বিলের ধরন"><?= h(BillingPeriod::KIND_LABELS[$head['billing_kind']] ?? (string) $head['billing_kind']) ?></td>
+                              <td data-label="বিলের ধরন"><?= h(BillingPeriod::KIND_LABELS[$head['billing_kind']] ?? (string) $head['billing_kind']) ?><?php if (isset($incomeNames[(int) $head['income_account_id']])): ?><div class="small text-secondary">আয়: <?= h($incomeNames[(int) $head['income_account_id']]) ?></div><?php endif; ?></td>
                               <td data-label="বিলম্ব জরিমানা"><?= (int) $head['late_fine_allowed'] === 1 ? 'হ্যাঁ' : 'না' ?></td>
                               <td data-label="অবস্থা"><span class="badge <?= $active ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= $active ? 'সক্রিয়' : 'নিষ্ক্রিয়' ?></span></td>
                               <td class="text-end text-nowrap" data-label="কার্যক্রম">
