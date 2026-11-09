@@ -130,6 +130,9 @@ $useAsset['jquery'] = $useAsset['jquery'] || $useAsset['owl'] || $useAsset['data
         <link rel="stylesheet" href="vendor/apexcharts/apexcharts.css">
         <?php endif; ?>
         <link rel="stylesheet" href="css/school-theme.css?v=<?= (int) @filemtime(__DIR__ . '/css/school-theme.css') ?>">
+        <?php foreach ((isset($pageStylesheets) && is_array($pageStylesheets) ? $pageStylesheets : []) as $pageStylesheet): ?>
+        <link rel="stylesheet" href="<?= h((string) $pageStylesheet) ?>?v=<?= (int) @filemtime(__DIR__ . '/' . ltrim((string) $pageStylesheet, '/')) ?>">
+        <?php endforeach; ?>
         <link rel="shortcut icon" href="<?= h($logo) ?>" type="image/x-icon">
         <noscript>
             <style>.school-preloader { display: none !important; }</style>
