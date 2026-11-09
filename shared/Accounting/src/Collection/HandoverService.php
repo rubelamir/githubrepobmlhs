@@ -12,6 +12,7 @@ use School\Accounting\Access\AccessDeniedException;
 use School\Accounting\Access\Capability;
 use School\Accounting\Audit\AuditTrail;
 use School\Accounting\Billing\FeeCatalog;
+use School\Accounting\Ledger\PostingService;
 use School\Accounting\Support\Money;
 use School\Accounting\Support\Sequence;
 
@@ -29,7 +30,7 @@ final class HandoverService
     public const STATUS_LABELS = [self::SUBMITTED => 'গ্রহণের অপেক্ষায়', self::RECEIVED => 'গৃহীত', self::REJECTED => 'ফেরত'];
     public const STATUS_BADGES = [self::SUBMITTED => 'text-bg-warning', self::RECEIVED => 'text-bg-success', self::REJECTED => 'text-bg-danger'];
 
-    public function __construct(private PDO $db)
+    public function __construct(private PDO $db, private ?PostingService $posting = null)
     {
     }
 
@@ -173,6 +174,9 @@ final class HandoverService
             $status = $receive ? self::RECEIVED : self::REJECTED;
             $this->db->prepare('UPDATE acc_handovers SET status = :status, decided_by = :actor, decided_at = :now, remark = :remark WHERE id = :id')
                 ->execute(['status' => $status, 'actor' => $actor->teacherId(), 'now' => $now, 'remark' => $remark, 'id' => $handoverId]);
+            if ($receive) {
+                $this->posting?->postHandover($handoverId);
+            }
             $audit->record(
                 $receive ? 'handover.receive' : 'handover.reject',
                 'handover',

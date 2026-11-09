@@ -17,6 +17,12 @@ use School\Accounting\Billing\StudentDirectory;
 use School\Accounting\Billing\WaiverService;
 use School\Accounting\Collection\HandoverService;
 use School\Accounting\Collection\PaymentService;
+use School\Accounting\Ledger\AttachmentStore;
+use School\Accounting\Ledger\BankService;
+use School\Accounting\Ledger\ChartOfAccounts;
+use School\Accounting\Ledger\PeriodClosing;
+use School\Accounting\Ledger\PostingService;
+use School\Accounting\Ledger\VoucherService;
 
 /**
  * Thin procedural helpers so admin pages and the sidebar can use the
@@ -109,14 +115,56 @@ function accPayments(): PaymentService
 {
     static $service = null;
 
-    return $service ??= new PaymentService(getDatabaseConnection(), accInvoices(), accStudents());
+    return $service ??= new PaymentService(getDatabaseConnection(), accInvoices(), accStudents(), accPosting());
 }
 
 function accHandovers(): HandoverService
 {
     static $service = null;
 
-    return $service ??= new HandoverService(getDatabaseConnection());
+    return $service ??= new HandoverService(getDatabaseConnection(), accPosting());
+}
+
+function accChart(): ChartOfAccounts
+{
+    static $service = null;
+
+    return $service ??= new ChartOfAccounts(getDatabaseConnection());
+}
+
+function accPeriods(): PeriodClosing
+{
+    static $service = null;
+
+    return $service ??= new PeriodClosing(getDatabaseConnection(), accChart());
+}
+
+function accVouchers(): VoucherService
+{
+    static $service = null;
+
+    return $service ??= new VoucherService(getDatabaseConnection(), accChart(), accPeriods());
+}
+
+function accPosting(): PostingService
+{
+    static $service = null;
+
+    return $service ??= new PostingService(getDatabaseConnection(), accChart(), accVouchers());
+}
+
+function accBank(): BankService
+{
+    static $service = null;
+
+    return $service ??= new BankService(getDatabaseConnection(), accChart(), accVouchers(), accPeriods());
+}
+
+function accAttachments(): AttachmentStore
+{
+    static $service = null;
+
+    return $service ??= new AttachmentStore(getDatabaseConnection());
 }
 
 function accToday(): DateTimeImmutable
@@ -269,8 +317,27 @@ function accBootPage(string $capability): AccessContext
             : adminUrl('index.php');
         redirectWithMessage($target, 'danger', 'এই পাতার অনুমতি আপনার নেই: ' . Capability::label($capability) . '।');
     }
+    accSyncPostings();
 
     return $access;
+}
+
+/** Posts collections and handovers that have no voucher yet (e.g. recorded before the ledger existed). */
+function accSyncPostings(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $db = getDatabaseConnection();
+    $pending = $db->query(
+        "SELECT EXISTS (SELECT 1 FROM acc_payment_allocations WHERE voucher_id IS NULL)
+             OR EXISTS (SELECT 1 FROM acc_handovers WHERE status = 'received' AND voucher_id IS NULL)"
+    )->fetchColumn();
+    if ((int) $pending === 1) {
+        accPosting()->syncAll();
+    }
 }
 
 /** Cache-busted URL of a dist/ asset for pages that set $basePath. */
@@ -309,6 +376,11 @@ function accNavItems(AccessContext $access): array
         ['page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
         ['page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'আদায় তালিকা ও রসিদ', 'capability' => Capability::FEES_COLLECT],
         ['page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা হস্তান্তর', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE]],
+        ['page' => 'vouchers', 'icon' => 'bi-journal-check', 'label' => 'ভাউচার', 'capability' => Capability::VOUCHER_CREATE],
+        ['page' => 'bank', 'icon' => 'bi-bank', 'label' => 'ব্যাংক জমা ও মিলকরণ', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
+        ['page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'খতিয়ান (লেজার)', 'capability' => Capability::REPORTS_VIEW_ALL],
+        ['page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'হিসাবের খাত', 'capability' => Capability::REPORTS_VIEW_ALL],
+        ['page' => 'period-closing', 'icon' => 'bi-calendar2-check', 'label' => 'মাস সমাপনী', 'capability' => Capability::PERIOD_CLOSE],
         ['page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
         ['page' => 'invoices', 'icon' => 'bi-receipt', 'label' => 'ইনভয়েস', 'capability' => Capability::INVOICE_MANAGE],
         ['page' => 'student-categories', 'icon' => 'bi-mortarboard', 'label' => 'বৃত্তি/উপবৃত্তি শ্রেণী', 'capability' => Capability::CONCESSION_REQUEST],
@@ -329,6 +401,8 @@ function accNavItems(AccessContext $access): array
             $item['badge'] = match ($item['page']) {
                 'approvals' => accPendingApprovalCount(),
                 'handovers' => $access->can(Capability::HANDOVER_RECEIVE) && tableExists(getDatabaseConnection(), 'acc_handovers') ? accHandovers()->submittedCount() : 0,
+                'vouchers' => $access->can(Capability::VOUCHER_APPROVE) && tableExists(getDatabaseConnection(), 'acc_vouchers') ? accVouchers()->submittedCount() : 0,
+                'bank' => $access->can(Capability::VOUCHER_APPROVE) && tableExists(getDatabaseConnection(), 'acc_bank_deposits') ? accBank()->submittedCount() : 0,
                 default => 0,
             };
             $visible[] = $item;
