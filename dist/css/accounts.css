@@ -106,3 +106,17 @@
     display: none !important;
   }
 }
+
+.acc-fee-grid th,
+.acc-fee-grid td {
+  white-space: nowrap;
+}
+
+.acc-fee-grid .acc-money {
+  min-width: 7rem;
+}
+
+.acc-invoice-lines td,
+.acc-invoice-lines th {
+  font-size: 0.875rem;
+}

@@ -8,6 +8,13 @@ use School\Accounting\Access\Capability;
 use School\Accounting\Access\OfficerRepository;
 use School\Accounting\Access\Role;
 use School\Accounting\Audit\AuditTrail;
+use School\Accounting\Billing\ConcessionService;
+use School\Accounting\Billing\FeeCatalog;
+use School\Accounting\Billing\FeeStructureRepository;
+use School\Accounting\Billing\InvoiceService;
+use School\Accounting\Billing\StudentCategoryService;
+use School\Accounting\Billing\StudentDirectory;
+use School\Accounting\Billing\WaiverService;
 
 /**
  * Thin procedural helpers so admin pages and the sidebar can use the
@@ -38,6 +45,192 @@ function accAudit(): AuditTrail
     static $audit = null;
 
     return $audit ??= new AuditTrail(getDatabaseConnection(), accAccess());
+}
+
+function accCatalog(): FeeCatalog
+{
+    static $service = null;
+
+    return $service ??= new FeeCatalog(getDatabaseConnection());
+}
+
+function accStructures(): FeeStructureRepository
+{
+    static $service = null;
+
+    return $service ??= new FeeStructureRepository(getDatabaseConnection(), accCatalog());
+}
+
+function accStudents(): StudentDirectory
+{
+    static $service = null;
+
+    return $service ??= new StudentDirectory(getDatabaseConnection());
+}
+
+function accStudentCategories(): StudentCategoryService
+{
+    static $service = null;
+
+    return $service ??= new StudentCategoryService(getDatabaseConnection(), accCatalog(), accStudents());
+}
+
+function accConcessions(): ConcessionService
+{
+    static $service = null;
+
+    return $service ??= new ConcessionService(getDatabaseConnection(), accCatalog(), accStudents());
+}
+
+function accInvoices(): InvoiceService
+{
+    static $service = null;
+
+    return $service ??= new InvoiceService(
+        getDatabaseConnection(),
+        accCatalog(),
+        accStructures(),
+        accStudents(),
+        accStudentCategories(),
+        accConcessions()
+    );
+}
+
+function accWaivers(): WaiverService
+{
+    static $service = null;
+
+    return $service ??= new WaiverService(getDatabaseConnection(), accInvoices(), accStudents());
+}
+
+function accToday(): DateTimeImmutable
+{
+    return new DateTimeImmutable(AuditTrail::now()->format('Y-m-d'));
+}
+
+/** @return list<string> */
+function accSessionYears(): array
+{
+    $years = [];
+    for ($year = (int) AuditTrail::now()->format('Y') + 1; $year >= 2015; $year--) {
+        $years[] = (string) $year;
+    }
+
+    return $years;
+}
+
+/**
+ * Classes the user may work with: all active classes for head/officer,
+ * only assigned classes for a class teacher.
+ *
+ * @return list<array<string, mixed>>
+ */
+function accClassesFor(AccessContext $access): array
+{
+    $classes = schoolClasses(getDatabaseConnection(), true);
+    if ($access->hasSchoolWideScope()) {
+        return $classes;
+    }
+    $scope = $access->classScope();
+
+    return array_values(array_filter(
+        $classes,
+        static fn (array $class): bool => isset($scope['entire'][(int) $class['id']]) || isset($scope['sections'][(int) $class['id']])
+    ));
+}
+
+/** @return list<array<string, mixed>> */
+function accSectionsFor(AccessContext $access, int $classId): array
+{
+    if ($classId < 1) {
+        return [];
+    }
+    $sections = schoolSections(getDatabaseConnection(), $classId, true);
+    $scope = $access->classScope();
+    if ($access->hasSchoolWideScope() || isset($scope['entire'][$classId])) {
+        return $sections;
+    }
+
+    return array_values(array_filter(
+        $sections,
+        static fn (array $section): bool => isset($scope['sections'][$classId][(int) $section['id']])
+    ));
+}
+
+/**
+ * Validated class/section selection for a filter form (strict: a class with
+ * sections needs one; a class without sections uses section 0).
+ *
+ * @return array{class_id: int, section_id: int, sections: list<array<string, mixed>>, notice: string, classes: list<array<string, mixed>>}
+ */
+function accClassSelection(AccessContext $access, int $classId, int $sectionId): array
+{
+    $classes = accClassesFor($access);
+    $classIds = array_map(static fn (array $class): int => (int) $class['id'], $classes);
+    if (!in_array($classId, $classIds, true)) {
+        $classId = 0;
+    }
+    $sections = accSectionsFor($access, $classId);
+    $sectionId = studentFilterSectionId($sections, $classId, $sectionId, true);
+    $notice = studentFilterSelectionNotice($sections, $classId, $sectionId);
+    $allSections = $classId > 0 ? schoolSections(getDatabaseConnection(), $classId, true) : [];
+    if ($notice === '' && $sectionId === 0 && $allSections !== []) {
+        $notice = 'এই শ্রেণীতে আপনার জন্য কোনো শাখা নির্ধারিত নেই।';
+    }
+
+    return ['class_id' => $classId, 'section_id' => $sectionId, 'sections' => $sections, 'notice' => $notice, 'classes' => $classes];
+}
+
+/**
+ * Session, class and section selects for a GET filter form marked data-student-filter.
+ * The section list is reloaded from accounts/academic-api.php when the class changes.
+ */
+function accClassFilterFields(array $selection, string $sessionYear, string $columnClass = 'col-sm-4'): string
+{
+    $html = '<div class="' . h($columnClass) . '"><label class="form-label" for="acc-f-session">সেশন</label>'
+        . '<select class="form-select" name="session_year" id="acc-f-session">';
+    foreach (accSessionYears() as $year) {
+        $html .= '<option value="' . h($year) . '"' . ($year === $sessionYear ? ' selected' : '') . '>' . h(bnDigits($year)) . '</option>';
+    }
+    $html .= '</select></div>';
+    $html .= '<div class="' . h($columnClass) . '"><label class="form-label" for="acc-f-class">শ্রেণী</label>'
+        . '<select class="form-select" name="cls" id="acc-f-class" required><option value="">শ্রেণী নির্বাচন করুন</option>';
+    foreach ($selection['classes'] as $class) {
+        $id = (int) $class['id'];
+        $html .= '<option value="' . $id . '"' . ($id === $selection['class_id'] ? ' selected' : '') . '>' . h(accClassLabel($class)) . '</option>';
+    }
+    $html .= '</select></div>';
+    $html .= '<div class="' . h($columnClass) . '"><label class="form-label" for="acc-f-section">শাখা</label>'
+        . '<select class="form-select" name="sections" id="acc-f-section" required data-sf-sections>'
+        . studentFilterSectionOptionsHtml($selection['sections'], $selection['class_id'], $selection['section_id'] > 0 ? (string) $selection['section_id'] : '')
+        . '</select></div>';
+
+    return $html;
+}
+
+function accClassLabel(array $class): string
+{
+    return trim((string) ($class['class_name_ban'] ?? '')) ?: (string) ($class['class_name'] ?? '');
+}
+
+function accSectionLabel(array $section): string
+{
+    return trim((string) ($section['section_name_ban'] ?? '')) ?: (string) ($section['section_name'] ?? '');
+}
+
+/** Pending approvals for the head (sidebar badge, dashboard). */
+function accPendingApprovalCount(): int
+{
+    $db = getDatabaseConnection();
+    if (!tableExists($db, 'acc_waivers')) {
+        return 0;
+    }
+    $total = 0;
+    foreach (['acc_student_fee_categories', 'acc_concessions', 'acc_waivers'] as $table) {
+        $total += (int) $db->query("SELECT COUNT(*) FROM {$table} WHERE status = 'pending'")->fetchColumn();
+    }
+
+    return $total;
 }
 
 /**
@@ -91,12 +284,18 @@ function accCurrentPage(): string
 /**
  * Sidebar entries the current user may open.
  *
- * @return list<array{page: string, icon: string, label: string}>
+ * @return list<array{page: string, icon: string, label: string, badge: int}>
  */
 function accNavItems(AccessContext $access): array
 {
     $items = [
         ['page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'হিসাব ড্যাশবোর্ড', 'capability' => Capability::DASHBOARD_VIEW],
+        ['page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
+        ['page' => 'invoices', 'icon' => 'bi-receipt', 'label' => 'ইনভয়েস', 'capability' => Capability::INVOICE_MANAGE],
+        ['page' => 'student-categories', 'icon' => 'bi-mortarboard', 'label' => 'বৃত্তি/উপবৃত্তি শ্রেণী', 'capability' => Capability::CONCESSION_REQUEST],
+        ['page' => 'approvals', 'icon' => 'bi-check2-square', 'label' => 'অনুমোদন', 'capability' => Capability::CONCESSION_APPROVE],
+        ['page' => 'fee-structure', 'icon' => 'bi-grid-3x3-gap', 'label' => 'ফি কাঠামো', 'capability' => Capability::FEES_VIEW_ALL],
+        ['page' => 'fee-setup', 'icon' => 'bi-sliders', 'label' => 'ফি হেড ও ফি-শ্রেণী', 'capability' => Capability::FEE_STRUCTURE_MANAGE],
         ['page' => 'officers', 'icon' => 'bi-person-gear', 'label' => 'অ্যাকাউন্টস অফিসার', 'capability' => Capability::OFFICERS_MANAGE],
         ['page' => 'audit', 'icon' => 'bi-journal-text', 'label' => 'হিসাব অডিট লগ', 'capability' => Capability::AUDIT_VIEW],
     ];
@@ -104,6 +303,7 @@ function accNavItems(AccessContext $access): array
     foreach ($items as $item) {
         if ($access->can($item['capability'])) {
             unset($item['capability']);
+            $item['badge'] = $item['page'] === 'approvals' ? accPendingApprovalCount() : 0;
             $visible[] = $item;
         }
     }
