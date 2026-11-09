@@ -133,6 +133,39 @@
     });
   });
 
+  // Collection form: checkboxes with data-acc-due (paisa) drive the selected total and,
+  // until the collector types an amount, the amount field.
+  const bnDigits = (text) => text.replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+  const formatTaka = (paisa) => {
+    const taka = String(Math.floor(paisa / 100));
+    const head = taka.length > 3 ? `${taka.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')},` : '';
+    const fraction = String(paisa % 100).padStart(2, '0');
+    return `৳ ${bnDigits(`${head}${taka.slice(-3)}.${fraction}`)}`;
+  };
+  document.querySelectorAll('[data-acc-selected-due]').forEach((output) => {
+    const form = output.closest('form');
+    const amount = form.querySelector('[data-acc-amount]');
+    let typed = false;
+    amount?.addEventListener('input', () => {
+      typed = true;
+    });
+    const update = () => {
+      let paisa = 0;
+      form.querySelectorAll('input[data-acc-due]:checked').forEach((box) => {
+        paisa += Number(box.dataset.accDue) || 0;
+      });
+      output.textContent = formatTaka(paisa);
+      if (amount && !typed) {
+        amount.value = paisa > 0 ? (paisa % 100 === 0 ? String(paisa / 100) : (paisa / 100).toFixed(2)) : '';
+      }
+    };
+    form.addEventListener('change', (event) => {
+      if (event.target.matches('input[data-acc-due], input[data-acc-check-all]')) {
+        setTimeout(update, 0);
+      }
+    });
+  });
+
   // bfcache restores a locked form when the user navigates back.
   window.addEventListener('pageshow', () => {
     document.querySelectorAll('form[data-acc-submitting="1"]').forEach((form) => {

@@ -1,0 +1,239 @@
+/* Printable fee receipt (dist/pages/accounts/receipt.php): two copies per A4 page. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #eef1f5;
+  color: #111;
+  font-family: "Hind Siliguri", "Noto Sans Bengali", "SolaimanLipi", system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.receipt-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+}
+
+.receipt-toolbar a,
+.receipt-toolbar button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #0d6efd;
+  background: #fff;
+  color: #0d6efd;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.receipt-toolbar button {
+  background: #0d6efd;
+  color: #fff;
+}
+
+.receipt-flash {
+  max-width: 210mm;
+  margin: 0 auto 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.receipt-flash-danger {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.receipt-flash-info,
+.receipt-flash-warning {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.receipt-sheet {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto 2rem;
+  background: #fff;
+  padding: 8mm 10mm;
+}
+
+.receipt {
+  position: relative;
+  min-height: 132mm;
+  padding: 4mm 0;
+  overflow: hidden;
+}
+
+.receipt + .receipt {
+  border-top: 1px dashed #777;
+  margin-top: 4mm;
+  padding-top: 8mm;
+}
+
+.receipt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #111;
+  padding-bottom: 6px;
+}
+
+.receipt-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.receipt-school {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.receipt-address {
+  font-size: 12px;
+  color: #444;
+}
+
+.receipt-copy {
+  margin-left: auto;
+  border: 1px solid #111;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.receipt-title {
+  text-align: center;
+  font-size: 17px;
+  margin: 8px 0;
+}
+
+.receipt-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 16px;
+  margin: 0 0 8px;
+}
+
+.receipt-meta div {
+  display: flex;
+  gap: 6px;
+}
+
+.receipt-meta dt {
+  color: #555;
+  white-space: nowrap;
+}
+
+.receipt-meta dt::after {
+  content: ":";
+}
+
+.receipt-meta dd {
+  margin: 0;
+}
+
+.receipt-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.receipt-lines th,
+.receipt-lines td {
+  border: 1px solid #999;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.receipt-lines thead th {
+  background: #f1f3f5;
+}
+
+.receipt-lines .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-words,
+.receipt-note {
+  margin: 6px 0 0;
+}
+
+.receipt-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 26px;
+}
+
+.receipt-sign {
+  border-top: 1px solid #111;
+  min-width: 140px;
+  text-align: center;
+  padding-top: 2px;
+}
+
+.receipt-fine {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666;
+}
+
+.receipt-stamp {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  border: 4px solid rgba(200, 0, 0, 0.55);
+  color: rgba(200, 0, 0, 0.55);
+  font-size: 34px;
+  font-weight: 700;
+  padding: 4px 18px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .receipt-sheet {
+    padding: 4mm;
+  }
+
+  .receipt-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .receipt-toolbar,
+  .receipt-flash {
+    display: none;
+  }
+
+  .receipt-sheet {
+    margin: 0;
+    width: 210mm;
+  }
+
+  .receipt-lines thead th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
