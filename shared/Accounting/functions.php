@@ -15,6 +15,8 @@ use School\Accounting\Billing\InvoiceService;
 use School\Accounting\Billing\StudentCategoryService;
 use School\Accounting\Billing\StudentDirectory;
 use School\Accounting\Billing\WaiverService;
+use School\Accounting\Collection\HandoverService;
+use School\Accounting\Collection\PaymentService;
 
 /**
  * Thin procedural helpers so admin pages and the sidebar can use the
@@ -101,6 +103,20 @@ function accWaivers(): WaiverService
     static $service = null;
 
     return $service ??= new WaiverService(getDatabaseConnection(), accInvoices(), accStudents());
+}
+
+function accPayments(): PaymentService
+{
+    static $service = null;
+
+    return $service ??= new PaymentService(getDatabaseConnection(), accInvoices(), accStudents());
+}
+
+function accHandovers(): HandoverService
+{
+    static $service = null;
+
+    return $service ??= new HandoverService(getDatabaseConnection());
 }
 
 function accToday(): DateTimeImmutable
@@ -290,6 +306,9 @@ function accNavItems(AccessContext $access): array
 {
     $items = [
         ['page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'হিসাব ড্যাশবোর্ড', 'capability' => Capability::DASHBOARD_VIEW],
+        ['page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
+        ['page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'আদায় তালিকা ও রসিদ', 'capability' => Capability::FEES_COLLECT],
+        ['page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা হস্তান্তর', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE]],
         ['page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
         ['page' => 'invoices', 'icon' => 'bi-receipt', 'label' => 'ইনভয়েস', 'capability' => Capability::INVOICE_MANAGE],
         ['page' => 'student-categories', 'icon' => 'bi-mortarboard', 'label' => 'বৃত্তি/উপবৃত্তি শ্রেণী', 'capability' => Capability::CONCESSION_REQUEST],
@@ -301,9 +320,17 @@ function accNavItems(AccessContext $access): array
     ];
     $visible = [];
     foreach ($items as $item) {
-        if ($access->can($item['capability'])) {
+        $allowed = false;
+        foreach ((array) $item['capability'] as $capability) {
+            $allowed = $allowed || $access->can($capability);
+        }
+        if ($allowed) {
             unset($item['capability']);
-            $item['badge'] = $item['page'] === 'approvals' ? accPendingApprovalCount() : 0;
+            $item['badge'] = match ($item['page']) {
+                'approvals' => accPendingApprovalCount(),
+                'handovers' => $access->can(Capability::HANDOVER_RECEIVE) && tableExists(getDatabaseConnection(), 'acc_handovers') ? accHandovers()->submittedCount() : 0,
+                default => 0,
+            };
             $visible[] = $item;
         }
     }

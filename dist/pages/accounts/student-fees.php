@@ -6,6 +6,7 @@ use School\Accounting\Billing\ApprovalStatus;
 use School\Accounting\Billing\ConcessionService;
 use School\Accounting\Billing\InvoiceService;
 use School\Accounting\Billing\StudentDirectory;
+use School\Accounting\Collection\PaymentService;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -66,6 +67,9 @@ $categoryHistory = accStudentCategories()->history($studentId);
 $concessions = accConcessions()->forStudent($studentId);
 $invoiceRows = accInvoices()->forStudent($studentId);
 $waivers = accWaivers()->forStudent($studentId);
+$receipts = accPayments()->forStudent($studentId);
+$advance = accPayments()->advanceBalance($studentId);
+$canCollect = $access->canForClass(Capability::FEES_COLLECT, (int) $student['cls'], StudentDirectory::sectionIdOf($student));
 $dues = accInvoices()->duesByStudent([$studentId], $sessionYear, $today)[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0, 'overdue' => 0];
 $heads = accCatalog()->heads(true);
 $pendingWaiverItems = [];
@@ -88,7 +92,10 @@ include __DIR__ . '/../../includes/layout-head.php';
                 · ফি-শ্রেণী: <span class="badge <?= $currentCategory ? 'text-bg-info' : 'text-bg-light border' ?>"><?= h((string) ($currentCategory['category_name'] ?? 'সাধারণ')) ?></span>
               </p>
             </div>
+            <div class="d-flex gap-1">
+            <?php if ($canCollect): ?><a class="btn btn-primary btn-sm" href="<?= h(signedRecordUrl('collect.php', $studentId, 'acc_student')) ?>"><i class="bi bi-cash-stack"></i> আদায়</a><?php endif; ?>
             <a class="btn btn-outline-secondary btn-sm" href="dues.php?<?= h(http_build_query(['session_year' => $sessionYear, 'cls' => (int) $student['cls'], 'sections' => StudentDirectory::sectionIdOf($student)])) ?>"><i class="bi bi-arrow-left"></i> বকেয়া তালিকা</a>
+            </div>
           </div>
         </div>
         <div class="app-content">
@@ -98,7 +105,35 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মোট প্রাপ্য</div><div class="acc-stat-value"><?= h(Money::format($dues['net'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">আদায়</div><div class="acc-stat-value text-success"><?= h(Money::format($dues['paid'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বকেয়া</div><div class="acc-stat-value text-danger"><?= h(Money::format($dues['due'])) ?></div></div></div>
-              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মেয়াদোত্তীর্ণ</div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($dues['overdue'])) ?></div></div></div>
+              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মেয়াদোত্তীর্ণ<?= $advance > 0 ? ' · অগ্রিম জমা ' . h(Money::format($advance)) : '' ?></div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($dues['overdue'])) ?></div></div></div>
+            </div>
+
+            <div class="card mb-3" id="receipts">
+              <div class="card-header"><h3 class="card-title mb-0">রসিদ</h3></div>
+              <div class="card-body p-0">
+                <?php if ($receipts === []): ?>
+                  <p class="text-secondary p-3 mb-0">এখনো কোনো আদায় হয়নি।</p>
+                <?php else: ?>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 acc-table-stack">
+                      <thead><tr><th>রসিদ নং</th><th>সময়</th><th class="text-end">টাকা</th><th>আদায়কারী</th><th>অবস্থা</th><th></th></tr></thead>
+                      <tbody>
+                        <?php foreach ($receipts as $row): ?>
+                          <?php $confirmed = $row['status'] === PaymentService::CONFIRMED; ?>
+                          <tr class="<?= $confirmed ? '' : 'text-secondary' ?>">
+                            <td data-label="রসিদ নং"><code><?= h((string) $row['receipt_no']) ?></code></td>
+                            <td data-label="সময়"><?= h(accFormatDateTime((string) $row['collected_at'])) ?></td>
+                            <td class="text-end" data-label="টাকা"><?= h(Money::format(Money::fromDb($row['amount']))) ?></td>
+                            <td data-label="আদায়কারী"><?= h((string) $row['collected_by_name']) ?></td>
+                            <td data-label="অবস্থা"><span class="badge <?= $confirmed ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= h(PaymentService::STATUS_LABELS[$row['status']] ?? (string) $row['status']) ?></span></td>
+                            <td class="text-end" data-label="রসিদ"><a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('receipt.php', (int) $row['id'], 'acc_payment')) ?>"><i class="bi bi-printer"></i></a></td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                <?php endif; ?>
+              </div>
             </div>
 
             <div class="card mb-3" id="invoices">

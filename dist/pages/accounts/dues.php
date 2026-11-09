@@ -27,6 +27,7 @@ $ready = $classId > 0
     && ($selection['sections'] === [] || $sectionId > 0)
     && $selection['notice'] === ''
     && $access->canForClass(Capability::FEES_VIEW_CLASS, $classId, $sectionId);
+$canCollect = $ready && $access->canForClass(Capability::FEES_COLLECT, $classId, $sectionId);
 $onlyDue = (string) ($_GET['only_due'] ?? '1') === '1';
 
 $students = [];
@@ -106,7 +107,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td class="text-end" data-label="আদায়"><?= h(Money::format($due['paid'])) ?></td>
                               <td class="text-end" data-label="বকেয়া"><strong class="<?= $due['due'] > 0 ? 'text-danger' : '' ?>"><?= h(Money::format($due['due'])) ?></strong></td>
                               <td class="text-end" data-label="মেয়াদোত্তীর্ণ"><?= $due['overdue'] > 0 ? '<span class="badge text-bg-warning">' . h(Money::format($due['overdue'])) . '</span>' : '—' ?></td>
-                              <td class="text-end" data-label="বিস্তারিত"><a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php', $studentId, 'acc_student')) ?>">ফি বিবরণী</a></td>
+                              <td class="text-end" data-label="বিস্তারিত"><a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php', $studentId, 'acc_student')) ?>">ফি বিবরণী</a><?php if ($canCollect && $due['due'] > 0): ?> <a class="btn btn-sm btn-primary" href="<?= h(signedRecordUrl('collect.php', $studentId, 'acc_student')) ?>">আদায়</a><?php endif; ?></td>
                             </tr>
                           <?php endforeach; ?>
                         </tbody>
