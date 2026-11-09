@@ -29,6 +29,7 @@ use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Ledger\PeriodClosing;
 use School\Accounting\Ledger\PostingService;
 use School\Accounting\Ledger\VoucherService;
+use School\Accounting\Report\ReportService;
 
 /**
  * Thin procedural helpers so admin pages and the sidebar can use the
@@ -157,6 +158,13 @@ function accPosting(): PostingService
     static $service = null;
 
     return $service ??= new PostingService(getDatabaseConnection(), accChart(), accVouchers());
+}
+
+function accReports(): ReportService
+{
+    static $service = null;
+
+    return $service ??= new ReportService(getDatabaseConnection(), accChart());
 }
 
 function accBank(): BankService
@@ -461,6 +469,7 @@ function accNavItems(AccessContext $access): array
         ['page' => 'online-payments', 'icon' => 'bi-phone', 'label' => 'অনলাইন পেমেন্ট', 'capability' => [Capability::GATEWAY_SETTINGS, Capability::REFUND_REQUEST]],
         ['page' => 'refunds', 'icon' => 'bi-arrow-counterclockwise', 'label' => 'রিফান্ড', 'capability' => [Capability::REFUND_REQUEST, Capability::REFUND_APPROVE]],
         ['page' => 'settlements', 'icon' => 'bi-arrow-down-up', 'label' => 'গেটওয়ে সেটেলমেন্ট', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
+        ['page' => 'reports', 'icon' => 'bi-bar-chart', 'label' => 'রিপোর্ট', 'capability' => [Capability::REPORTS_VIEW_ALL, Capability::REPORTS_VIEW_CLASS]],
         ['page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'খতিয়ান (লেজার)', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'হিসাবের খাত', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['page' => 'period-closing', 'icon' => 'bi-calendar2-check', 'label' => 'মাস সমাপনী', 'capability' => Capability::PERIOD_CLOSE],

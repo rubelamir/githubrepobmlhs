@@ -196,7 +196,7 @@ shared/Accounting/                 ← হিসাব মডিউলের স
     ├── Ledger/                    ← ChartOfAccounts, VoucherService, PostingRules, PeriodClosing (ধাপ ৪)
     ├── Gateway/                   ← PaymentGatewayInterface, GatewayResult, GatewayHttpClient,
     │                                 Bkash/BkashTokenizedGateway, Nagad/NagadGateway (adapter stub) (ধাপ ৫)
-    └── Report/                    ← CashBook, BankBook, Ledger, TrialBalance, IncomeExpenditure, Dues … (ধাপ ৬)
+    └── Report/                    ← ReportService, Workbook (SpreadsheetML), ReportPdf (ধাপ ৬)
 
 dist/pages/accounts/               ← অ্যাডমিন প্যানেলের পাতলা পেজ (শুধু ইনপুট যাচাই → সার্ভিস কল → ভিউ)
 ├── dashboard.php                  ← (ধাপ ১) ভূমিকা অনুযায়ী ড্যাশবোর্ড
@@ -249,7 +249,7 @@ interface PaymentGatewayInterface
 | ৩ | নগদ আদায়, ক্রমিক রসিদ (প্রিন্ট/SMS), আংশিক ও অগ্রিম পেমেন্ট, শিক্ষক → অফিসার হস্তান্তর | ✔ |
 | ৪ | চার্ট অব অ্যাকাউন্টস, Receipt/Payment/Journal/Contra ভাউচার, অনুমোদন, রিভার্সাল, সংযুক্তি, ব্যাংক জমা, মাস সমাপনী | ✔ |
 | ৫ | bKash Tokenized Checkout v2 (sandbox), Nagad adapter (ডকুমেন্টেশন ছাড়া নিষ্ক্রিয়), অভিভাবক পোর্টাল, cron, রিফান্ড, সেটেলমেন্ট | ✔ |
-| ৬ | রিপোর্ট (PDF/Excel) ও চার্টসহ ড্যাশবোর্ড | |
+| ৬ | রিপোর্ট (PDF/Excel) ও চার্টসহ ড্যাশবোর্ড | সম্পন্ন — `ReportService` (ট্রায়াল, আয়-ব্যয়, নগদ/ব্যাংক/গেটওয়ে, আদায়, বকেয়া, ছাড়), `reports.php`, SpreadsheetML ও বাংলা PDF, ড্যাশবোর্ডে Chart.js |
 | ৭ | নিরাপত্তা যাচাই, টেস্ট প্ল্যান, sandbox → live চেকলিস্ট, ব্যবহার নির্দেশিকা | |
 
 ধাপ ৫-এ কলব্যাকের `status` কখনো চূড়ান্ত নয়: সফলতার আগে সার্ভার Execute বা Query করে। একই লেনদেনে Execute একবার, প্রতিটি ইনভয়েস নম্বর ও idempotency key অনন্য। গেটওয়ে চার্জ অভিভাবক বহন করলে আদায়ের সঙ্গে ৫১৬০-এ আলাদা (আয় নয়); স্কুল বহন করলে সেটেলমেন্টের সময় খরচ হয়। ক্রেডেনশিয়াল শুধু প্রাইভেট কনফিগ `payment_gateways.bkash` বা `BMLHS_BKASH_*` এনভ্যারনমেন্টে। কলব্যাকের ভিত্তি ঠিকানা `payment_callback_base` দিয়ে Host হেডারের বাইরে রাখা যায়। Nagad-এর অফিসিয়াল ডকুমেন্টেশন না আসা পর্যন্ত `NagadGateway` কোনো অনুরোধ পাঠায় না।
