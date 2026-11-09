@@ -62,7 +62,7 @@ final class FeeStructureRepository
      * Saves a whole grid. An empty amount removes (deactivates) the rate for that cell.
      *
      * @param array<int|string, array<int|string, string>> $amounts  [head_id][category_id] => "1200"
-     * @param array<int|string, array<string, string>> $settings     [head_id] => due_day, late_fine, grace_days
+     * @param array<int|string, array<string, string>> $settings     [head_id] => due_day
      * @return int number of changed cells
      */
     public function saveGrid(
@@ -100,13 +100,8 @@ final class FeeStructureRepository
                 if ($dueDay < 1 || $dueDay > 31) {
                     throw new RuntimeException($head['name_bn'] . ': পরিশোধের দিন ১ থেকে ৩১-এর মধ্যে হতে হবে।');
                 }
-                $lateFine = (int) $head['late_fine_allowed'] === 1
-                    ? (Money::parseOptional((string) ($headSettings['late_fine'] ?? ''), $head['name_bn'] . ' বিলম্ব জরিমানা') ?? 0)
-                    : 0;
-                $graceDays = (int) ($headSettings['grace_days'] ?? 0);
-                if ($graceDays < 0 || $graceDays > 365) {
-                    throw new RuntimeException($head['name_bn'] . ': অতিরিক্ত সময় ০ থেকে ৩৬৫ দিনের মধ্যে হতে হবে।');
-                }
+                $lateFine = 0;
+                $graceDays = 0;
 
                 foreach ($categories as $category) {
                     $categoryId = (int) $category['id'];

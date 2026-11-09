@@ -113,7 +113,7 @@ final class Capability
         self::FEES_COLLECT => 'ফি আদায় ও রসিদ প্রদান',
         self::CONCESSION_REQUEST => 'ফি-শ্রেণী (বৃত্তি/উপবৃত্তি) ও ব্যক্তিগত ছাড়ের আবেদন',
         self::CONCESSION_APPROVE => 'ফি-শ্রেণী ও ব্যক্তিগত ছাড় অনুমোদন',
-        self::INVOICE_MANAGE => 'ইনভয়েস তৈরি ও বিলম্ব জরিমানা প্রয়োগ',
+        self::INVOICE_MANAGE => 'ইনভয়েস তৈরি',
         self::INVOICE_CANCEL => 'ইনভয়েস বাতিল',
         self::WAIVER_REQUEST => 'ছাড়/মওকুফের আবেদন',
         self::WAIVER_APPROVE => 'ছাড়/মওকুফ অনুমোদন',

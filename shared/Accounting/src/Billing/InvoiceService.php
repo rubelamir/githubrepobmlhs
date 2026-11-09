@@ -16,7 +16,7 @@ use School\Accounting\Support\Money;
 use School\Accounting\Support\Sequence;
 
 /**
- * Invoice generation, totals, cancellation and late fines.
+ * Invoice generation, totals and cancellation. Late fines are not charged.
  * Invoices are never deleted; a cancelled invoice keeps its number and lines.
  */
 final class InvoiceService
@@ -230,8 +230,8 @@ final class InvoiceService
                     'concession' => $line['concession_id'],
                     'net' => Money::toDb($rate['amount'] - $line['discount']),
                     'due' => $line['due_date']->format('Y-m-d'),
-                    'late_fine' => Money::toDb((int) $line['head']['late_fine_allowed'] === 1 ? $rate['late_fine'] : 0),
-                    'grace' => $rate['grace_days'],
+                    'late_fine' => Money::toDb(0),
+                    'grace' => 0,
                     'now' => $now,
                 ]);
             }
@@ -349,89 +349,6 @@ final class InvoiceService
             $this->db->rollBack();
             throw $exception;
         }
-    }
-
-    /**
-     * Adds one late-fine line per overdue fee line (due date + grace days passed,
-     * still outstanding). Running it again never adds a second fine.
-     *
-     * @return int number of fines added
-     */
-    public function applyLateFines(AccessContext $actor, AuditTrail $audit, DateTimeImmutable $today, string $sessionYear, int $classId = 0, int $sectionId = 0): int
-    {
-        if (!$actor->can(Capability::INVOICE_MANAGE)) {
-            throw AccessDeniedException::forCapability(Capability::INVOICE_MANAGE);
-        }
-        FeeStructureRepository::assertSession($sessionYear);
-        $sql = "SELECT i.*, inv.invoice_no
-                FROM acc_invoice_items i
-                JOIN acc_invoices inv ON inv.id = i.invoice_id
-                JOIN acc_fee_heads h ON h.id = i.fee_head_id
-                LEFT JOIN acc_invoice_items f ON f.uniq_key = CONCAT(i.student_id, ':', i.fee_head_id, ':', i.billing_key, ':late_fine')
-                WHERE i.line_kind = 'fee' AND inv.status IN ('unpaid', 'partial') AND inv.session_year = :session
-                  AND h.late_fine_allowed = 1 AND i.late_fine_amount > 0 AND i.net > i.paid
-                  AND DATE_ADD(i.due_date, INTERVAL i.grace_days DAY) < :today
-                  AND f.id IS NULL";
-        $params = ['session' => $sessionYear, 'today' => $today->format('Y-m-d')];
-        if ($classId > 0) {
-            $sql .= ' AND inv.class_id = :class';
-            $params['class'] = $classId;
-            if ($sectionId > 0) {
-                $sql .= ' AND inv.section_id = :section';
-                $params['section'] = $sectionId;
-            }
-        }
-        $sql .= ' ORDER BY i.id LIMIT 2000';
-        $candidates = \fetchRows($this->db, $sql, $params);
-        $added = 0;
-        $now = AuditTrail::now()->format('Y-m-d H:i:s');
-        foreach ($candidates as $item) {
-            $this->db->beginTransaction();
-            try {
-                $invoice = $this->lockInvoice((int) $item['invoice_id']);
-                if (!in_array($invoice['status'], [self::UNPAID, self::PARTIAL], true)) {
-                    $this->db->rollBack();
-                    continue;
-                }
-                $fine = Money::fromDb($item['late_fine_amount']);
-                $this->db->prepare(
-                    'INSERT INTO acc_invoice_items
-                        (invoice_id, student_id, billing_key, fee_head_id, line_kind, uniq_key, description,
-                         standard_amount, amount, net, due_date, parent_item_id, created_at)
-                     VALUES (:invoice, :student, :billing_key, :head, :kind, :uniq, :description,
-                             :standard, :amount, :net, :due, :parent, :now)'
-                )->execute([
-                    'invoice' => (int) $item['invoice_id'],
-                    'student' => (int) $item['student_id'],
-                    'billing_key' => $item['billing_key'],
-                    'head' => (int) $item['fee_head_id'],
-                    'kind' => self::LINE_LATE_FINE,
-                    'uniq' => self::uniqKey((int) $item['student_id'], (int) $item['fee_head_id'], (string) $item['billing_key'], self::LINE_LATE_FINE),
-                    'description' => mb_substr('বিলম্ব জরিমানা — ' . $item['description'], 0, 160),
-                    'standard' => Money::toDb($fine),
-                    'amount' => Money::toDb($fine),
-                    'net' => Money::toDb($fine),
-                    'due' => $today->format('Y-m-d'),
-                    'parent' => (int) $item['id'],
-                    'now' => $now,
-                ]);
-                $before = ['fine' => $invoice['fine'], 'net' => $invoice['net']];
-                $totals = $this->recompute((int) $item['invoice_id']);
-                $audit->record('invoice.late_fine', 'invoice', (int) $item['invoice_id'], $before, ['fine' => $totals['fine'], 'net' => $totals['net']], 'বিলম্ব জরিমানা: ' . $item['invoice_no']);
-                $this->db->commit();
-                $added++;
-            } catch (PDOException $exception) {
-                $this->db->rollBack();
-                if ($exception->getCode() !== '23000') {
-                    throw $exception;
-                }
-            } catch (\Throwable $exception) {
-                $this->db->rollBack();
-                throw $exception;
-            }
-        }
-
-        return $added;
     }
 
     /** @return array<string, mixed>|null */

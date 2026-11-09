@@ -99,10 +99,7 @@ if ($ready) {
 
 $headSetting = static function (array $grid, int $headId, string $field, string $default): string {
     foreach ($grid[$headId] ?? [] as $row) {
-        return match ($field) {
-            'late_fine' => Money::toInput(Money::fromDb($row['late_fine_amount'])),
-            default => (string) $row[$field],
-        };
+        return (string) $row[$field];
     }
 
     return $default;
@@ -173,13 +170,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <th class="text-end"><?= h((string) $category['name_bn']) ?> <span class="text-secondary small">(৳)</span></th>
                           <?php endforeach; ?>
                           <th>পরিশোধের দিন</th>
-                          <th>বিলম্ব জরিমানা (৳)</th>
-                          <th>অতিরিক্ত দিন</th>
                         </tr>
                       </thead>
                       <tbody>
                         <?php foreach ($heads as $head): ?>
-                          <?php $headId = (int) $head['id']; $fineAllowed = (int) $head['late_fine_allowed'] === 1; ?>
+                          <?php $headId = (int) $head['id']; ?>
                           <tr>
                             <th scope="row">
                               <?= h((string) $head['name_bn']) ?>
@@ -205,12 +200,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php endforeach; ?>
                             <?php if ($canEdit): ?>
                               <td><input class="form-control form-control-sm" type="number" min="1" max="31" name="settings[<?= $headId ?>][due_day]" value="<?= h($headSetting($grid, $headId, 'due_day', '10')) ?>" aria-label="পরিশোধের দিন"></td>
-                              <td><input class="form-control form-control-sm text-end" name="settings[<?= $headId ?>][late_fine]" value="<?= h($fineAllowed ? $headSetting($grid, $headId, 'late_fine', '') : '') ?>" inputmode="decimal" maxlength="16"<?= $fineAllowed ? '' : ' disabled placeholder="প্রযোজ্য নয়"' ?> aria-label="বিলম্ব জরিমানা"></td>
-                              <td><input class="form-control form-control-sm" type="number" min="0" max="365" name="settings[<?= $headId ?>][grace_days]" value="<?= h($headSetting($grid, $headId, 'grace_days', '0')) ?>" aria-label="অতিরিক্ত দিন"></td>
                             <?php else: ?>
                               <td><?= h(bnDigits($headSetting($grid, $headId, 'due_day', '—'))) ?></td>
-                              <td><?= $fineAllowed ? h(bnDigits($headSetting($grid, $headId, 'late_fine', '—'))) : '—' ?></td>
-                              <td><?= h(bnDigits($headSetting($grid, $headId, 'grace_days', '—'))) ?></td>
                             <?php endif; ?>
                           </tr>
                         <?php endforeach; ?>
