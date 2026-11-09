@@ -17,6 +17,10 @@ final class Capability
     public const FEES_VIEW_ALL = 'fees.view_all';
     public const FEES_VIEW_CLASS = 'fees.view_class';
     public const FEES_COLLECT = 'fees.collect';
+    public const CONCESSION_REQUEST = 'concession.request';
+    public const CONCESSION_APPROVE = 'concession.approve';
+    public const INVOICE_MANAGE = 'invoices.manage';
+    public const INVOICE_CANCEL = 'invoices.cancel';
     public const WAIVER_REQUEST = 'waiver.request';
     public const WAIVER_APPROVE = 'waiver.approve';
     public const HANDOVER_SUBMIT = 'handover.submit';
@@ -39,6 +43,7 @@ final class Capability
     public const CLASS_SCOPED = [
         self::FEES_VIEW_CLASS,
         self::FEES_COLLECT,
+        self::CONCESSION_REQUEST,
         self::WAIVER_REQUEST,
         self::REPORTS_VIEW_CLASS,
     ];
@@ -52,6 +57,10 @@ final class Capability
             self::FEES_VIEW_ALL,
             self::FEES_VIEW_CLASS,
             self::FEES_COLLECT,
+            self::CONCESSION_REQUEST,
+            self::CONCESSION_APPROVE,
+            self::INVOICE_MANAGE,
+            self::INVOICE_CANCEL,
             self::WAIVER_REQUEST,
             self::WAIVER_APPROVE,
             self::HANDOVER_RECEIVE,
@@ -71,6 +80,8 @@ final class Capability
             self::FEES_VIEW_ALL,
             self::FEES_VIEW_CLASS,
             self::FEES_COLLECT,
+            self::CONCESSION_REQUEST,
+            self::INVOICE_MANAGE,
             self::WAIVER_REQUEST,
             self::HANDOVER_RECEIVE,
             self::VOUCHER_CREATE,
@@ -83,6 +94,7 @@ final class Capability
             self::DASHBOARD_VIEW,
             self::FEES_VIEW_CLASS,
             self::FEES_COLLECT,
+            self::CONCESSION_REQUEST,
             self::WAIVER_REQUEST,
             self::HANDOVER_SUBMIT,
             self::REPORTS_VIEW_CLASS,
@@ -97,6 +109,10 @@ final class Capability
         self::FEES_VIEW_ALL => 'সব শিক্ষার্থীর ফি ও বকেয়া দেখা',
         self::FEES_VIEW_CLASS => 'নিজ শ্রেণীর ফি ও বকেয়া দেখা',
         self::FEES_COLLECT => 'ফি আদায় ও রসিদ প্রদান',
+        self::CONCESSION_REQUEST => 'ফি-শ্রেণী (বৃত্তি/উপবৃত্তি) ও ব্যক্তিগত ছাড়ের আবেদন',
+        self::CONCESSION_APPROVE => 'ফি-শ্রেণী ও ব্যক্তিগত ছাড় অনুমোদন',
+        self::INVOICE_MANAGE => 'ইনভয়েস তৈরি ও বিলম্ব জরিমানা প্রয়োগ',
+        self::INVOICE_CANCEL => 'ইনভয়েস বাতিল',
         self::WAIVER_REQUEST => 'ছাড়/মওকুফের আবেদন',
         self::WAIVER_APPROVE => 'ছাড়/মওকুফ অনুমোদন',
         self::HANDOVER_SUBMIT => 'আদায়কৃত টাকা অফিসারের কাছে হস্তান্তর',
