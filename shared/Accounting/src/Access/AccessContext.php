@@ -41,6 +41,12 @@ final class AccessContext
         return new self(0, '', [], ['entire' => [], 'sections' => []], '');
     }
 
+    /** Actor for automatic work (gateway callbacks, cron); it has no capabilities. */
+    public static function system(string $name): self
+    {
+        return new self(0, $name, [], ['entire' => [], 'sections' => []], '');
+    }
+
     public function teacherId(): int
     {
         return $this->teacherId;

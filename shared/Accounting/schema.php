@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 4;
+const ACC_SCHEMA_VERSION = 5;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -617,4 +617,190 @@ function accMigrationV4(PDO $db): void
          SET h.income_account_id = a.id
          WHERE h.income_account_id IS NULL"
     );
+}
+
+/**
+ * Phase 5: online payments (bKash, Nagad adapter), masked gateway logs,
+ * refunds, gateway settlements and the guardian portal OTPs.
+ */
+function accMigrationV5(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_gateway_settings (
+            gateway VARCHAR(20) NOT NULL PRIMARY KEY,
+            enabled TINYINT(1) NOT NULL DEFAULT 0,
+            charge_bearer VARCHAR(10) NOT NULL DEFAULT 'school',
+            charge_rate_bp INT UNSIGNED NOT NULL DEFAULT 0,
+            updated_by INT NULL DEFAULT NULL,
+            updated_at DATETIME NULL DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    // Tokens are stored encrypted with the app signing key.
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_gateway_tokens (
+            gateway VARCHAR(20) NOT NULL PRIMARY KEY,
+            id_token TEXT NULL,
+            refresh_token TEXT NULL,
+            expires_at DATETIME NULL DEFAULT NULL,
+            refresh_expires_at DATETIME NULL DEFAULT NULL,
+            calls_json VARCHAR(255) NOT NULL DEFAULT '[]',
+            updated_at DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_gateway_transactions (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gateway VARCHAR(20) NOT NULL,
+            merchant_invoice_no VARCHAR(40) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            student_id INT NOT NULL,
+            invoice_ids VARCHAR(255) NOT NULL DEFAULT '',
+            fee_amount DECIMAL(14,2) NOT NULL,
+            charge_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+            charge_bearer VARCHAR(10) NOT NULL,
+            payable_amount DECIMAL(14,2) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            callback_status VARCHAR(20) NULL DEFAULT NULL,
+            gateway_payment_id VARCHAR(80) NULL DEFAULT NULL,
+            trx_id VARCHAR(40) NULL DEFAULT NULL,
+            gateway_status VARCHAR(30) NULL DEFAULT NULL,
+            paid_amount DECIMAL(14,2) NULL DEFAULT NULL,
+            payer_account_masked VARCHAR(20) NULL DEFAULT NULL,
+            error_code VARCHAR(20) NULL DEFAULT NULL,
+            error_message VARCHAR(255) NULL DEFAULT NULL,
+            payment_id INT UNSIGNED NULL DEFAULT NULL,
+            refunded_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+            source VARCHAR(20) NOT NULL DEFAULT 'guardian',
+            client_ip VARCHAR(45) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            execute_attempted_at DATETIME NULL DEFAULT NULL,
+            completed_at DATETIME NULL DEFAULT NULL,
+            last_queried_at DATETIME NULL DEFAULT NULL,
+            query_attempts INT UNSIGNED NOT NULL DEFAULT 0,
+            UNIQUE KEY uniq_acc_gw_invoice (merchant_invoice_no),
+            UNIQUE KEY uniq_acc_gw_idempotency (idempotency_key),
+            UNIQUE KEY uniq_acc_gw_payment_ref (gateway, gateway_payment_id),
+            UNIQUE KEY uniq_acc_gw_trx (gateway, trx_id),
+            UNIQUE KEY uniq_acc_gw_payment (payment_id),
+            KEY idx_acc_gw_status (status, created_at),
+            KEY idx_acc_gw_student (student_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_gateway_logs (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gateway VARCHAR(20) NOT NULL,
+            gateway_txn_id INT UNSIGNED NULL DEFAULT NULL,
+            refund_id INT UNSIGNED NULL DEFAULT NULL,
+            operation VARCHAR(30) NOT NULL,
+            endpoint VARCHAR(160) NOT NULL,
+            http_status INT NOT NULL DEFAULT 0,
+            request_masked TEXT NULL,
+            response_masked TEXT NULL,
+            error VARCHAR(255) NULL DEFAULT NULL,
+            duration_ms INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            KEY idx_acc_gwlog_txn (gateway_txn_id),
+            KEY idx_acc_gwlog_refund (refund_id),
+            KEY idx_acc_gwlog_date (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_refunds (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            refund_no VARCHAR(30) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            gateway_txn_id INT UNSIGNED NOT NULL,
+            payment_id INT UNSIGNED NOT NULL,
+            amount DECIMAL(14,2) NOT NULL,
+            reason VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            refund_trx_id VARCHAR(40) NULL DEFAULT NULL,
+            gateway_error VARCHAR(255) NULL DEFAULT NULL,
+            attempts INT UNSIGNED NOT NULL DEFAULT 0,
+            requested_by INT NOT NULL,
+            requested_at DATETIME NOT NULL,
+            decided_by INT NULL DEFAULT NULL,
+            decided_at DATETIME NULL DEFAULT NULL,
+            remark VARCHAR(255) NULL DEFAULT NULL,
+            last_attempt_at DATETIME NULL DEFAULT NULL,
+            completed_at DATETIME NULL DEFAULT NULL,
+            voucher_id INT UNSIGNED NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_refund_no (refund_no),
+            UNIQUE KEY uniq_acc_refund_idempotency (idempotency_key),
+            UNIQUE KEY uniq_acc_refund_trx (refund_trx_id),
+            KEY idx_acc_refund_txn (gateway_txn_id),
+            KEY idx_acc_refund_status (status),
+            CONSTRAINT fk_acc_refund_txn FOREIGN KEY (gateway_txn_id) REFERENCES acc_gateway_transactions (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_settlements (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            settlement_no VARCHAR(30) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            gateway VARCHAR(20) NOT NULL,
+            settlement_date DATE NOT NULL,
+            gross DECIMAL(14,2) NOT NULL,
+            charge DECIMAL(14,2) NOT NULL DEFAULT 0,
+            net DECIMAL(14,2) NOT NULL,
+            bank_account_id INT UNSIGNED NOT NULL,
+            reference VARCHAR(80) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            note VARCHAR(255) NOT NULL DEFAULT '',
+            submitted_by INT NOT NULL,
+            submitted_at DATETIME NOT NULL,
+            decided_by INT NULL DEFAULT NULL,
+            decided_at DATETIME NULL DEFAULT NULL,
+            remark VARCHAR(255) NULL DEFAULT NULL,
+            voucher_id INT UNSIGNED NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_settlement_no (settlement_no),
+            UNIQUE KEY uniq_acc_settlement_idempotency (idempotency_key),
+            KEY idx_acc_settlement_status (status, settlement_date),
+            CONSTRAINT fk_acc_settlement_bank FOREIGN KEY (bank_account_id) REFERENCES acc_accounts (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_guardian_otps (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            code_hash CHAR(64) NOT NULL,
+            client_ip VARCHAR(45) NOT NULL DEFAULT '',
+            attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME NULL DEFAULT NULL,
+            KEY idx_acc_otp_student (student_id, created_at),
+            KEY idx_acc_otp_ip (client_ip, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    // v4 already seeds these; repeat here so a database that applied v4 before the
+    // gateway accounts existed still gets them.
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $account = $db->prepare(
+        'INSERT IGNORE INTO acc_accounts (code, name_bn, account_type, money_kind, parent_id, is_group, is_system, is_active, created_at, updated_at)
+         VALUES (:code, :name, :type, :money, (SELECT id FROM (SELECT id FROM acc_accounts WHERE code = :parent) AS p), 0, 1, 1, :now, :now2)'
+    );
+    foreach ([
+        ['1130', 'bKash মার্চেন্ট হিসাব', 'asset', 'bkash', '1100'],
+        ['1140', 'Nagad মার্চেন্ট হিসাব', 'asset', 'nagad', '1100'],
+        ['2120', 'রিফান্ড প্রদেয়', 'liability', 'none', '2000'],
+        ['5160', 'গেটওয়ে চার্জ', 'expense', 'none', '5000'],
+        ['5170', 'ব্যাংক চার্জ', 'expense', 'none', '5000'],
+    ] as [$code, $name, $type, $money, $parent]) {
+        $account->execute(['code' => $code, 'name' => $name, 'type' => $type, 'money' => $money, 'parent' => $parent, 'now' => $now, 'now2' => $now]);
+    }
+
+    $insert = $db->prepare('INSERT IGNORE INTO acc_gateway_settings (gateway, enabled, charge_bearer, charge_rate_bp, updated_at) VALUES (:gateway, 0, :bearer, 0, :now)');
+    foreach (['bkash', 'nagad'] as $gateway) {
+        $insert->execute(['gateway' => $gateway, 'bearer' => 'school', 'now' => $now]);
+    }
 }

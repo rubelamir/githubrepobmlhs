@@ -99,6 +99,12 @@ final class PeriodClosing
         if ($handovers > 0) {
             $blockers[] = bnDigits((string) $handovers) . 'টি শিক্ষক-হস্তান্তর গ্রহণের অপেক্ষায় আছে।';
         }
+        if (tableExists($this->db, 'acc_settlements')) {
+            $settlements = (int) \fetchRows($this->db, "SELECT COUNT(*) AS n FROM acc_settlements WHERE status = 'submitted' AND settlement_date BETWEEN :start AND :end", ['start' => $start, 'end' => $end])[0]['n'];
+            if ($settlements > 0) {
+                $blockers[] = bnDigits((string) $settlements) . 'টি গেটওয়ে সেটেলমেন্ট যাচাইয়ের অপেক্ষায় আছে।';
+            }
+        }
 
         return $blockers;
     }

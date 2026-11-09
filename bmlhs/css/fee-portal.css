@@ -1,0 +1,53 @@
+.fee-portal {
+  color: var(--school-ink, #1a2a24);
+}
+
+.fee-portal-card {
+  background: #fff;
+  border: 1px solid rgba(26, 77, 62, 0.12);
+  border-radius: var(--school-radius, 0.85rem);
+  box-shadow: var(--school-shadow-sm, 0 6px 16px rgba(15, 47, 38, 0.08));
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.fee-portal-student {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--school-mist, #eef4f1);
+}
+
+.fee-portal-otp {
+  letter-spacing: 0.45em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fee-portal .btn-bkash {
+  background: #e2136e;
+  border-color: #e2136e;
+  color: #fff;
+}
+
+.fee-portal .btn-bkash:hover,
+.fee-portal .btn-bkash:focus {
+  background: #c41060;
+  border-color: #c41060;
+  color: #fff;
+}
+
+.fee-portal .btn-bkash:disabled {
+  opacity: 0.7;
+}
+
+.fee-portal table tfoot th {
+  border-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+  .fee-portal-card {
+    padding: 1rem;
+  }
+}

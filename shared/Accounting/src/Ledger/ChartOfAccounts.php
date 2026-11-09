@@ -42,7 +42,10 @@ final class ChartOfAccounts
 
     public const CASH = '1110';
     public const TEACHER_CUSTODY = '1120';
+    public const BKASH = '1130';
+    public const NAGAD = '1140';
     public const BANK_GROUP = '1150';
+    public const GATEWAY_CHARGE = '5160';
     public const ADVANCE = '2110';
     public const LATE_FINE = '4140';
     public const OTHER_FEES = '4190';

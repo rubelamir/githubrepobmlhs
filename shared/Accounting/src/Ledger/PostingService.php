@@ -17,6 +17,9 @@ use School\Accounting\Support\Money;
  *   advance applied         Dr 2110 advance           Cr fee income
  *   receipt reversed        Dr fee income / 2110      Cr 1110 or 1120 (where the cash is)
  *   handover received       Dr 1110 cash              Cr 1120 teacher custody
+ *   online payment          Dr 1130 bKash / 1140 Nagad  Cr fee income / 2110
+ *     + charge paid by guardian  Dr 1130/1140         Cr 5160 gateway charge (recovery, not income)
+ *   online refund           Dr fee income / 2110      Cr 1130/1140
  */
 final class PostingService
 {
@@ -48,6 +51,7 @@ final class PostingService
         foreach ($rows as $row) {
             $group = match ((string) $row['kind']) {
                 'advance_applied' => 'adv:' . $row['created_at'],
+                'refund' => 'refund:' . $row['created_at'],
                 'reversal' => 'reversal',
                 default => 'collect',
             };
@@ -61,14 +65,20 @@ final class PostingService
                 $group === 'collect' => [
                     VoucherService::RECEIPT,
                     'payment:' . $paymentId,
-                    'ফি আদায় — রসিদ ' . $receipt . ', ' . $name,
-                    (string) $payment['collected_custody'] === 'teacher' ? ChartOfAccounts::TEACHER_CUSTODY : ChartOfAccounts::CASH,
+                    ($payment['gateway_txn_id'] !== null ? 'অনলাইন ফি আদায় — রসিদ ' : 'ফি আদায় — রসিদ ') . $receipt . ', ' . $name,
+                    self::custodyAccount((string) $payment['collected_custody']),
                 ],
                 $group === 'reversal' => [
                     VoucherService::JOURNAL,
                     'payment:' . $paymentId . ':reversal',
                     'রসিদ রিভার্স — ' . $receipt . ', ' . $name . ($payment['reversal_reason'] ? ' (' . $payment['reversal_reason'] . ')' : ''),
-                    (string) $payment['custody'] === 'teacher' ? ChartOfAccounts::TEACHER_CUSTODY : ChartOfAccounts::CASH,
+                    self::custodyAccount((string) $payment['custody']),
+                ],
+                str_starts_with($group, 'refund:') => [
+                    VoucherService::PAYMENT,
+                    'payment:' . $paymentId . ':refund:' . $groupRows[0]['id'],
+                    'অনলাইন পেমেন্ট রিফান্ড — রসিদ ' . $receipt . ', ' . $name,
+                    self::custodyAccount((string) $payment['custody']),
                 ],
                 default => [
                     VoucherService::JOURNAL,
@@ -78,6 +88,9 @@ final class PostingService
                 ],
             };
             $lines = $this->linesFor($groupRows, $cashCode, $teacherId);
+            if ($group === 'collect' && $lines !== [] && $payment['gateway_txn_id'] !== null) {
+                $lines = array_merge($lines, $this->payerChargeLines((int) $payment['gateway_txn_id'], (string) $cashCode));
+            }
             if ($lines !== []) {
                 $date = substr((string) $groupRows[0]['created_at'], 0, 10);
                 $voucherId = $this->vouchers->postSystem($type, $date, $narration, $lines, $sourceKey, (int) $groupRows[0]['created_by']);
@@ -147,6 +160,37 @@ final class PostingService
         }
 
         return $count;
+    }
+
+    public static function custodyAccount(string $custody): string
+    {
+        return match ($custody) {
+            'teacher' => ChartOfAccounts::TEACHER_CUSTODY,
+            'bkash' => ChartOfAccounts::BKASH,
+            'nagad' => ChartOfAccounts::NAGAD,
+            default => ChartOfAccounts::CASH,
+        };
+    }
+
+    /**
+     * A charge the guardian paid on top of the fee reaches the gateway account
+     * too; it offsets the gateway's charge to the school instead of being income.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function payerChargeLines(int $gatewayTxnId, string $cashCode): array
+    {
+        $txn = \fetchRows($this->db, 'SELECT charge_amount, charge_bearer, merchant_invoice_no FROM acc_gateway_transactions WHERE id = :id', ['id' => $gatewayTxnId])[0] ?? null;
+        $charge = $txn === null ? 0 : Money::fromDb($txn['charge_amount']);
+        if ($txn === null || $txn['charge_bearer'] !== 'payer' || $charge <= 0) {
+            return [];
+        }
+        $memo = 'অভিভাবক প্রদত্ত গেটওয়ে চার্জ — ' . $txn['merchant_invoice_no'];
+
+        return [
+            ['account_id' => $this->chart->idOf($cashCode), 'debit' => $charge, 'credit' => 0, 'memo' => $memo],
+            ['account_id' => $this->chart->idOf(ChartOfAccounts::GATEWAY_CHARGE), 'debit' => 0, 'credit' => $charge, 'memo' => $memo],
+        ];
     }
 
     /**

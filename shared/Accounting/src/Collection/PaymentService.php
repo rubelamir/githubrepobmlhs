@@ -38,10 +38,11 @@ final class PaymentService
     public const KIND_ADVANCE = 'advance';
     public const KIND_ADVANCE_APPLIED = 'advance_applied';
     public const KIND_REVERSAL = 'reversal';
+    public const KIND_REFUND = 'refund';
 
     public const STATUS_LABELS = [self::CONFIRMED => 'বৈধ', self::REVERSED => 'রিভার্সড'];
     public const METHOD_LABELS = ['cash' => 'নগদ', 'bkash' => 'bKash', 'nagad' => 'Nagad', 'bank' => 'ব্যাংক'];
-    public const CUSTODY_LABELS = [self::CUSTODY_TEACHER => 'শিক্ষকের কাছে', self::CUSTODY_OFFICE => 'অফিসে'];
+    public const CUSTODY_LABELS = [self::CUSTODY_TEACHER => 'শিক্ষকের কাছে', self::CUSTODY_OFFICE => 'অফিসে', 'bkash' => 'bKash হিসাবে', 'nagad' => 'Nagad হিসাবে'];
 
     public function __construct(
         private PDO $db,
@@ -337,6 +338,9 @@ final class PaymentService
             if ($payment['status'] !== self::CONFIRMED) {
                 throw new RuntimeException('রসিদটি আগেই রিভার্স করা হয়েছে।');
             }
+            if ($payment['method'] !== self::METHOD_CASH) {
+                throw new RuntimeException('অনলাইন পেমেন্ট রিভার্স করা যায় না; টাকা ফেরত দিতে রিফান্ড অনুরোধ করুন।');
+            }
             if ($payment['handover_id'] !== null) {
                 $handover = \fetchRows($this->db, 'SELECT status FROM acc_handovers WHERE id = :id', ['id' => (int) $payment['handover_id']]);
                 if (($handover[0]['status'] ?? '') === HandoverService::SUBMITTED) {
@@ -390,6 +394,162 @@ final class PaymentService
             $this->db->rollBack();
             throw $exception;
         }
+    }
+
+    /**
+     * Records a gateway payment that the gateway itself confirmed. Runs inside
+     * the caller's transaction (which holds the gateway transaction row lock).
+     * Money already received is never rejected: whatever the selected invoices
+     * no longer need is kept as advance.
+     *
+     * @param array<string, mixed> $txn acc_gateway_transactions row
+     */
+    public function recordOnline(AccessContext $system, AuditTrail $audit, array $txn, string $gatewayLabel): int
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('Online payments must be recorded inside a transaction.');
+        }
+        $studentId = (int) $txn['student_id'];
+        $student = $this->students->find($studentId);
+        if ($student === null) {
+            throw new RuntimeException('শিক্ষার্থী পাওয়া যায়নি।');
+        }
+        $amount = Money::fromDb($txn['fee_amount']);
+        $invoiceIds = array_values(array_filter(array_map('intval', explode(',', (string) $txn['invoice_ids']))));
+        $lines = $this->outstandingLines($studentId, true);
+        if ($invoiceIds !== []) {
+            $lines = array_values(array_filter($lines, static fn (array $line): bool => in_array((int) $line['invoice_id'], $invoiceIds, true)));
+        }
+        $split = Allocator::allocate(
+            array_map(static fn (array $line): array => [
+                'id' => (int) $line['id'],
+                'outstanding' => Money::fromDb($line['net']) - Money::fromDb($line['paid']),
+            ], $lines),
+            $amount
+        );
+        $now = AuditTrail::now();
+        $receiptNo = Sequence::format('RCT', $now->format('Y'), Sequence::next($this->db, 'RCT', $now->format('Y')));
+        $method = (string) $txn['gateway'];
+        $this->db->prepare(
+            'INSERT INTO acc_payments
+                (receipt_no, idempotency_key, student_id, session_year, class_id, section_id, roll_snapshot, name_snapshot,
+                 amount, method, status, custody, collected_custody, collected_by, collected_at, payer_name, note, gateway_txn_id)
+             VALUES (:receipt, :key, :student, :session, :class, :section, :roll, :name,
+                     :amount, :method, :status, :custody, :custody2, 0, :now, :payer, :note, :txn)'
+        )->execute([
+            'receipt' => $receiptNo,
+            'key' => (string) $txn['idempotency_key'],
+            'student' => $studentId,
+            'session' => (string) $student['session_year'],
+            'class' => (int) $student['cls'],
+            'section' => StudentDirectory::sectionIdOf($student),
+            'roll' => mb_substr((string) $student['cls_roll'], 0, 20),
+            'name' => mb_substr(StudentDirectory::displayName($student), 0, 255),
+            'amount' => Money::toDb($amount),
+            'method' => $method,
+            'status' => self::CONFIRMED,
+            'custody' => $method,
+            'custody2' => $method,
+            'now' => $now->format('Y-m-d H:i:s'),
+            'payer' => 'অনলাইন — ' . $gatewayLabel,
+            'note' => mb_substr($gatewayLabel . ' TrxID ' . $txn['trx_id'] . ', ইনভয়েস ' . $txn['merchant_invoice_no'], 0, 255),
+            'txn' => (int) $txn['id'],
+        ]);
+        $paymentId = (int) $this->db->lastInsertId();
+        $byId = [];
+        foreach ($lines as $line) {
+            $byId[(int) $line['id']] = $line;
+        }
+        $touched = [];
+        foreach ($split['lines'] as $itemId => $paisa) {
+            $this->allocate($paymentId, $studentId, $itemId, (int) $byId[$itemId]['invoice_id'], $paisa, self::KIND_FEE, $system);
+            $touched[(int) $byId[$itemId]['invoice_id']] = true;
+        }
+        if ($split['remainder'] > 0) {
+            $this->allocate($paymentId, $studentId, null, null, $split['remainder'], self::KIND_ADVANCE, $system);
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->invoices->recompute($invoiceId);
+        }
+        $this->posting?->postPayment($paymentId);
+        $audit->record(
+            'payment.online',
+            'payment',
+            $paymentId,
+            null,
+            [
+                'receipt_no' => $receiptNo,
+                'student_id' => $studentId,
+                'amount' => Money::toDb($amount),
+                'gateway' => $method,
+                'trx_id' => (string) $txn['trx_id'],
+                'lines' => array_map(static fn (int $paisa): string => Money::toDb($paisa), $split['lines']),
+                'advance' => Money::toDb($split['remainder']),
+            ],
+            'অনলাইন ফি ' . $receiptNo . ' (' . $gatewayLabel . '): ' . StudentDirectory::displayName($student) . ' — ' . Money::format($amount)
+        );
+
+        return $paymentId;
+    }
+
+    /** Amount of this receipt still sitting on fee lines or advance (what a refund can take back). */
+    public function refundable(int $paymentId): int
+    {
+        $total = 0;
+        foreach (\fetchRows(
+            $this->db,
+            'SELECT invoice_item_id, SUM(amount) AS amount FROM acc_payment_allocations WHERE payment_id = :id GROUP BY invoice_item_id',
+            ['id' => $paymentId]
+        ) as $row) {
+            $total += max(0, Money::fromDb($row['amount']));
+        }
+
+        return $total;
+    }
+
+    /**
+     * Takes $amount back from a receipt for a completed refund: unused advance
+     * first, then the most recently paid fee lines. Runs inside the caller's transaction.
+     */
+    public function refundAllocations(AccessContext $actor, int $paymentId, int $amount): void
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('Refund allocations must run inside a transaction.');
+        }
+        $payment = \fetchRows($this->db, 'SELECT student_id FROM acc_payments WHERE id = :id FOR UPDATE', ['id' => $paymentId])[0] ?? null;
+        if ($payment === null) {
+            throw new RuntimeException('রসিদটি পাওয়া যায়নি।');
+        }
+        $net = \fetchRows(
+            $this->db,
+            'SELECT invoice_item_id, MAX(invoice_id) AS invoice_id, SUM(amount) AS amount, MAX(id) AS last_id
+             FROM acc_payment_allocations WHERE payment_id = :id GROUP BY invoice_item_id
+             ORDER BY invoice_item_id IS NOT NULL, last_id DESC',
+            ['id' => $paymentId]
+        );
+        $left = $amount;
+        $touched = [];
+        foreach ($net as $row) {
+            $available = Money::fromDb($row['amount']);
+            if ($left <= 0 || $available <= 0) {
+                continue;
+            }
+            $take = min($left, $available);
+            $itemId = $row['invoice_item_id'] === null ? null : (int) $row['invoice_item_id'];
+            $invoiceId = $row['invoice_id'] === null ? null : (int) $row['invoice_id'];
+            $this->allocate($paymentId, (int) $payment['student_id'], $itemId, $invoiceId, -$take, self::KIND_REFUND, $actor);
+            if ($invoiceId !== null) {
+                $touched[$invoiceId] = true;
+            }
+            $left -= $take;
+        }
+        if ($left > 0) {
+            throw new RuntimeException('রিফান্ডের পরিমাণ রসিদের অবশিষ্ট টাকার চেয়ে বেশি।');
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->invoices->recompute($invoiceId);
+        }
+        $this->posting?->postPayment($paymentId);
     }
 
     public function setSmsStatus(int $paymentId, string $status): void

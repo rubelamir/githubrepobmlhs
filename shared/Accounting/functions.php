@@ -17,6 +17,12 @@ use School\Accounting\Billing\StudentDirectory;
 use School\Accounting\Billing\WaiverService;
 use School\Accounting\Collection\HandoverService;
 use School\Accounting\Collection\PaymentService;
+use School\Accounting\Gateway\BkashGateway;
+use School\Accounting\Gateway\GatewayConfig;
+use School\Accounting\Gateway\NagadGateway;
+use School\Accounting\Gateway\OnlinePaymentService;
+use School\Accounting\Gateway\RefundService;
+use School\Accounting\Gateway\SettlementService;
 use School\Accounting\Ledger\AttachmentStore;
 use School\Accounting\Ledger\BankService;
 use School\Accounting\Ledger\ChartOfAccounts;
@@ -165,6 +171,80 @@ function accAttachments(): AttachmentStore
     static $service = null;
 
     return $service ??= new AttachmentStore(getDatabaseConnection());
+}
+
+function accOnline(): OnlinePaymentService
+{
+    static $service = null;
+    if ($service === null) {
+        $db = getDatabaseConnection();
+        $system = AccessContext::system('অনলাইন পেমেন্ট (সিস্টেম)');
+        $service = new OnlinePaymentService($db, accPayments(), accGateways($db), $system, new AuditTrail($db, $system));
+    }
+
+    return $service;
+}
+
+function accRefunds(): RefundService
+{
+    static $service = null;
+
+    return $service ??= new RefundService(getDatabaseConnection(), accOnline(), accPayments(), accChart());
+}
+
+function accSettlements(): SettlementService
+{
+    static $service = null;
+
+    return $service ??= new SettlementService(getDatabaseConnection(), accChart(), accVouchers(), accPeriods());
+}
+
+/** @return list<\School\Accounting\Gateway\PaymentGateway> */
+function accGateways(PDO $db): array
+{
+    return [new BkashGateway($db, GatewayConfig::for('bkash')), new NagadGateway()];
+}
+
+/**
+ * Online payment services for code that runs without a staff login (guardian
+ * portal, gateway callback, cron). $actorName appears in the audit log.
+ *
+ * @return array{online: OnlinePaymentService, refunds: RefundService, payments: PaymentService, invoices: InvoiceService, audit: AuditTrail}
+ */
+function accStandaloneServices(PDO $db, string $actorName): array
+{
+    accEnsureSchema($db);
+    $system = AccessContext::system($actorName);
+    $audit = new AuditTrail($db, $system);
+    $chart = new ChartOfAccounts($db);
+    $periods = new PeriodClosing($db, $chart);
+    $vouchers = new VoucherService($db, $chart, $periods);
+    $posting = new PostingService($db, $chart, $vouchers);
+    $catalog = new FeeCatalog($db);
+    $students = new StudentDirectory($db);
+    $categories = new StudentCategoryService($db, $catalog, $students);
+    $invoices = new InvoiceService($db, $catalog, new FeeStructureRepository($db, $catalog), $students, $categories, new ConcessionService($db, $catalog, $students));
+    $payments = new PaymentService($db, $invoices, $students, $posting);
+    $online = new OnlinePaymentService($db, $payments, accGateways($db), $system, $audit);
+
+    return [
+        'online' => $online,
+        'refunds' => new RefundService($db, $online, $payments, $chart),
+        'payments' => $payments,
+        'invoices' => $invoices,
+        'audit' => $audit,
+    ];
+}
+
+/** Secret for the gateway reconciliation cron URL (also runnable from the CLI). */
+function accGatewayCronKey(): string
+{
+    $configured = deploymentPrivateConfig()['gateway_cron_key'] ?? '';
+    if (is_string($configured) && strlen(trim($configured)) >= 16) {
+        return trim($configured);
+    }
+
+    return hash_hmac('sha256', 'acc-gateway-cron', appSigningKey());
 }
 
 function accToday(): DateTimeImmutable
@@ -378,6 +458,9 @@ function accNavItems(AccessContext $access): array
         ['page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা হস্তান্তর', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE]],
         ['page' => 'vouchers', 'icon' => 'bi-journal-check', 'label' => 'ভাউচার', 'capability' => Capability::VOUCHER_CREATE],
         ['page' => 'bank', 'icon' => 'bi-bank', 'label' => 'ব্যাংক জমা ও মিলকরণ', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
+        ['page' => 'online-payments', 'icon' => 'bi-phone', 'label' => 'অনলাইন পেমেন্ট', 'capability' => [Capability::GATEWAY_SETTINGS, Capability::REFUND_REQUEST]],
+        ['page' => 'refunds', 'icon' => 'bi-arrow-counterclockwise', 'label' => 'রিফান্ড', 'capability' => [Capability::REFUND_REQUEST, Capability::REFUND_APPROVE]],
+        ['page' => 'settlements', 'icon' => 'bi-arrow-down-up', 'label' => 'গেটওয়ে সেটেলমেন্ট', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
         ['page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'খতিয়ান (লেজার)', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'হিসাবের খাত', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['page' => 'period-closing', 'icon' => 'bi-calendar2-check', 'label' => 'মাস সমাপনী', 'capability' => Capability::PERIOD_CLOSE],
@@ -403,6 +486,9 @@ function accNavItems(AccessContext $access): array
                 'handovers' => $access->can(Capability::HANDOVER_RECEIVE) && tableExists(getDatabaseConnection(), 'acc_handovers') ? accHandovers()->submittedCount() : 0,
                 'vouchers' => $access->can(Capability::VOUCHER_APPROVE) && tableExists(getDatabaseConnection(), 'acc_vouchers') ? accVouchers()->submittedCount() : 0,
                 'bank' => $access->can(Capability::VOUCHER_APPROVE) && tableExists(getDatabaseConnection(), 'acc_bank_deposits') ? accBank()->submittedCount() : 0,
+                'online-payments' => tableExists(getDatabaseConnection(), 'acc_gateway_transactions') ? accOnline()->attentionCount() : 0,
+                'refunds' => $access->can(Capability::REFUND_APPROVE) && tableExists(getDatabaseConnection(), 'acc_refunds') ? accRefunds()->waitingCount() : 0,
+                'settlements' => $access->can(Capability::VOUCHER_APPROVE) && tableExists(getDatabaseConnection(), 'acc_settlements') ? accSettlements()->submittedCount() : 0,
                 default => 0,
             };
             $visible[] = $item;
