@@ -23,6 +23,7 @@ final class Capability
     public const INVOICE_CANCEL = 'invoices.cancel';
     public const WAIVER_REQUEST = 'waiver.request';
     public const WAIVER_APPROVE = 'waiver.approve';
+    public const PAYMENT_REVERSE = 'payment.reverse';
     public const HANDOVER_SUBMIT = 'handover.submit';
     public const HANDOVER_RECEIVE = 'handover.receive';
     public const VOUCHER_CREATE = 'voucher.create';
@@ -63,6 +64,7 @@ final class Capability
             self::INVOICE_CANCEL,
             self::WAIVER_REQUEST,
             self::WAIVER_APPROVE,
+            self::PAYMENT_REVERSE,
             self::HANDOVER_RECEIVE,
             self::VOUCHER_CREATE,
             self::VOUCHER_APPROVE,
@@ -115,6 +117,7 @@ final class Capability
         self::INVOICE_CANCEL => 'ইনভয়েস বাতিল',
         self::WAIVER_REQUEST => 'ছাড়/মওকুফের আবেদন',
         self::WAIVER_APPROVE => 'ছাড়/মওকুফ অনুমোদন',
+        self::PAYMENT_REVERSE => 'রসিদ রিভার্স (ভুল আদায় সংশোধন)',
         self::HANDOVER_SUBMIT => 'আদায়কৃত টাকা অফিসারের কাছে হস্তান্তর',
         self::HANDOVER_RECEIVE => 'শিক্ষকদের হস্তান্তর গ্রহণ',
         self::VOUCHER_CREATE => 'আয়-ব্যয় ভাউচার তৈরি',

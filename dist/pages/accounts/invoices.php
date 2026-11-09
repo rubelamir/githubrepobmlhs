@@ -72,6 +72,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($result['zero'] > 0) {
                 $message .= ', সম্পূর্ণ ছাড়প্রাপ্ত (৳০) ' . bnDigits((string) $result['zero']) . 'টি';
             }
+            if ($result['created'] > 0 && $access->can(Capability::FEES_COLLECT)) {
+                $studentIds = array_map(static fn (array $row): int => (int) $row['id'], accStudents()->forClass($sessionYear, $classId, $sectionId));
+                $adjusted = 0;
+                foreach (array_keys(array_filter(accPayments()->advanceMap($studentIds), static fn (int $balance): bool => $balance > 0)) as $studentId) {
+                    $adjusted += accPayments()->applyAdvance($access, accAudit(), $studentId);
+                }
+                if ($adjusted > 0) {
+                    $message .= '; অগ্রিম জমা থেকে ' . Money::format($adjusted) . ' সমন্বয় হয়েছে';
+                }
+            }
             redirectWithMessage($back, $result['created'] > 0 ? 'success' : 'warning', $message . '।');
         }
         if ($action === 'late_fines') {

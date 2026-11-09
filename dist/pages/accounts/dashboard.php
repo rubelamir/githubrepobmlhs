@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use School\Accounting\Access\Capability;
 use School\Accounting\Access\Role;
+use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
@@ -17,6 +18,18 @@ $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
 $officerCount = $access->hasSchoolWideScope() ? count(accOfficers()->activeOfficers()) : null;
 $pendingApprovals = $access->can(Capability::CONCESSION_APPROVE) ? accPendingApprovalCount() : null;
+$todayCollection = null;
+if ($access->can(Capability::FEES_COLLECT)) {
+    $todayCollection = 0;
+    $todayDate = accToday()->format('Y-m-d');
+    foreach (accPayments()->search(['from' => $todayDate, 'to' => $todayDate, 'collector' => $access->hasSchoolWideScope() ? 0 : $access->teacherId(), 'status' => 'confirmed']) as $row) {
+        $todayCollection += Money::fromDb($row['amount']);
+    }
+}
+$myCustody = $access->can(Capability::HANDOVER_SUBMIT)
+    ? array_sum(array_map(static fn (array $row): int => Money::fromDb($row['amount']), accHandovers()->pendingPayments($access->teacherId())))
+    : null;
+$handoversWaiting = $access->can(Capability::HANDOVER_RECEIVE) ? accHandovers()->submittedCount() : null;
 
 $classNames = [];
 foreach (schoolClasses($db) as $class) {
@@ -43,7 +56,7 @@ $phases = [
     ['নকশা প্রস্তাব (ডেটাবেস স্কিমা, ER ডায়াগ্রাম, ফোল্ডার কাঠামো)', true],
     ['ধাপ ১ — অথেন্টিকেশন ও ভূমিকা', true],
     ['ধাপ ২ — ফি কাঠামো (সাধারণ ও বৃত্তি/উপবৃত্তি হার), ছাড় ও ইনভয়েস', true],
-    ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', false],
+    ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', true],
     ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস ও ভাউচার', false],
     ['ধাপ ৫ — bKash / Nagad (sandbox)', false],
     ['ধাপ ৬ — রিপোর্ট ও ড্যাশবোর্ড চার্ট', false],
@@ -90,6 +103,30 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="acc-stat-label">সক্রিয় অ্যাকাউন্টস অফিসার</div>
                   <div class="acc-stat-value"><?= h(bnDigits((string) $officerCount)) ?> জন</div>
                 </div>
+              </div>
+              <?php endif; ?>
+              <?php if ($todayCollection !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="payments.php">
+                  <div class="acc-stat-label"><?= $access->hasSchoolWideScope() ? 'আজকের মোট আদায়' : 'আজ আমার আদায়' ?></div>
+                  <div class="acc-stat-value text-success"><?= h(Money::format($todayCollection)) ?></div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($myCustody !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="handovers.php">
+                  <div class="acc-stat-label">আমার কাছে (হস্তান্তর বাকি)</div>
+                  <div class="acc-stat-value<?= $myCustody > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(Money::format($myCustody)) ?></div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($handoversWaiting !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="handovers.php">
+                  <div class="acc-stat-label">গ্রহণের অপেক্ষায় হস্তান্তর</div>
+                  <div class="acc-stat-value<?= $handoversWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $handoversWaiting)) ?>টি</div>
+                </a>
               </div>
               <?php endif; ?>
               <?php if ($pendingApprovals !== null): ?>

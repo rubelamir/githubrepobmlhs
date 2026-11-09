@@ -1,7 +1,7 @@
 <?php
 [$flashType, $flashMessage] = consumeFlash();
 if ($flashMessage !== ''):
-    $alertClass = $flashType === 'success' ? 'success' : ($flashType === 'warning' ? 'warning' : 'danger');
+    $alertClass = in_array($flashType, ['success', 'warning', 'info'], true) ? $flashType : 'danger';
 ?>
   <div class="alert alert-<?= h($alertClass) ?> alert-dismissible fade show" role="alert">
     <?= h($flashMessage) ?>
