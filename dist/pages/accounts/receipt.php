@@ -97,7 +97,7 @@ $back = signedRecordUrl('collect.php', (int) $payment['student_id'], 'acc_studen
           <p class="receipt-note">রিভার্সের কারণ: <?= h((string) $payment['reversal_reason']) ?> (<?= h(accFormatDateTime((string) $payment['reversed_at'])) ?>)</p>
         <?php endif; ?>
         <footer class="receipt-foot">
-          <div>গ্রহণকারী: <?= h((string) $payment['collected_by_name']) ?></div>
+          <div>গ্রহণকারী: <?= $payment['gateway_txn_id'] ? 'অনলাইন (' . h(PaymentService::METHOD_LABELS[$payment['method']] ?? (string) $payment['method']) . ')' : h((string) $payment['collected_by_name']) ?></div>
           <div class="receipt-sign">স্বাক্ষর</div>
         </footer>
         <div class="receipt-fine">কম্পিউটারে তৈরি রসিদ। রসিদ নম্বর দিয়ে অফিসে যাচাই করা যাবে।</div>

@@ -41,6 +41,18 @@ if ($access->can(Capability::REPORTS_VIEW_ALL)) {
     }
 }
 $vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() + accBank()->submittedCount() : null;
+$bkashBalance = null;
+$nagadBalance = null;
+if ($access->can(Capability::REPORTS_VIEW_ALL)) {
+    $bkashBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::BKASH));
+    $nagadBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::NAGAD));
+}
+$onlineReview = ($access->can(Capability::GATEWAY_SETTINGS) || $access->can(Capability::REFUND_REQUEST)) ? accOnline()->attentionCount() : null;
+$onlinePending = $onlineReview !== null
+    ? (int) $db->query("SELECT COUNT(*) FROM acc_gateway_transactions WHERE status IN ('pending', 'initiated')")->fetchColumn()
+    : null;
+$refundsWaiting = $access->can(Capability::REFUND_APPROVE) ? accRefunds()->waitingCount() : null;
+$settlementsWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accSettlements()->submittedCount() : null;
 
 $classNames = [];
 foreach (schoolClasses($db) as $class) {
@@ -69,7 +81,7 @@ $phases = [
     ['ধাপ ২ — ফি কাঠামো (সাধারণ ও বৃত্তি/উপবৃত্তি হার), ছাড় ও ইনভয়েস', true],
     ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', true],
     ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস, ভাউচার, ব্যাংক ও মাস সমাপনী', true],
-    ['ধাপ ৫ — bKash / Nagad (sandbox)', false],
+    ['ধাপ ৫ — bKash (sandbox), Nagad অ্যাডাপ্টার, অভিভাবক পোর্টাল, রিফান্ড ও সেটেলমেন্ট', true],
     ['ধাপ ৬ — রিপোর্ট ও ড্যাশবোর্ড চার্ট', false],
     ['ধাপ ৭ — নিরাপত্তা যাচাই ও টেস্ট', false],
 ];
@@ -151,6 +163,50 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <a class="acc-stat d-block text-decoration-none text-body" href="bank.php">
                   <div class="acc-stat-label">ব্যাংক স্থিতি</div>
                   <div class="acc-stat-value"><?= h(Money::format($bankBalance)) ?></div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($bkashBalance !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="online-payments.php">
+                  <div class="acc-stat-label">bKash হিসাব</div>
+                  <div class="acc-stat-value"><?= h(Money::format($bkashBalance)) ?></div>
+                </a>
+              </div>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="settlements.php">
+                  <div class="acc-stat-label">Nagad হিসাব</div>
+                  <div class="acc-stat-value"><?= h(Money::format($nagadBalance)) ?></div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($onlinePending !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="online-payments.php?status=pending">
+                  <div class="acc-stat-label">পেন্ডিং অনলাইন পেমেন্ট</div>
+                  <div class="acc-stat-value<?= $onlinePending > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $onlinePending)) ?>টি</div>
+                </a>
+              </div>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="online-payments.php?status=review">
+                  <div class="acc-stat-label">যাচাই প্রয়োজন</div>
+                  <div class="acc-stat-value<?= $onlineReview > 0 ? ' text-danger' : '' ?>"><?= h(bnDigits((string) $onlineReview)) ?>টি</div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($refundsWaiting !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="refunds.php">
+                  <div class="acc-stat-label">রিফান্ডের সিদ্ধান্ত বাকি</div>
+                  <div class="acc-stat-value<?= $refundsWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $refundsWaiting)) ?>টি</div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($settlementsWaiting !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="settlements.php">
+                  <div class="acc-stat-label">সেটেলমেন্ট যাচাই বাকি</div>
+                  <div class="acc-stat-value<?= $settlementsWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $settlementsWaiting)) ?>টি</div>
                 </a>
               </div>
               <?php endif; ?>
