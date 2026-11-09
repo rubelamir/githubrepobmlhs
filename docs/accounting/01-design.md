@@ -65,10 +65,13 @@ erDiagram
     students_info ||--o{ acc_invoices : "billed"
     cls ||--o{ acc_fee_structures : "class"
     acc_fee_heads ||--o{ acc_fee_structures : "amount per class/session"
+    acc_fee_categories ||--o{ acc_fee_structures : "rate per category"
+    acc_fee_categories ||--o{ acc_student_fee_categories : "assigned"
+    students_info ||--o{ acc_student_fee_categories : "general / stipend / scholarship"
     acc_accounts ||--o{ acc_fee_heads : "income ledger"
     acc_invoices ||--|{ acc_invoice_items : "lines"
     acc_fee_heads ||--o{ acc_invoice_items : "fee type"
-    students_info ||--o{ acc_concessions : "discount / scholarship"
+    students_info ||--o{ acc_concessions : "personal discount"
     acc_invoice_items ||--o{ acc_waivers : "waiver request"
     students_info ||--o{ acc_payments : "pays"
     acc_payments ||--|{ acc_payment_allocations : "allocated to"
@@ -110,10 +113,12 @@ erDiagram
 | `acc_sequences` | `seq_key, period, next_no` | PK(seq_key, period) |
 | `acc_accounts` (চার্ট অব অ্যাকাউন্টস) | `code, name_bn, name_en, account_type`(asset/liability/income/expense/fund)`, parent_id, money_kind`(cash/bank/bkash/nagad/teacher_custody/none)`, is_system, is_active` | code UNIQUE; সিস্টেম হিসাব নিষ্ক্রিয় করা যাবে না |
 | `acc_fee_heads` | `code, name_bn, category`(monthly/session/admission/exam/other)`, income_account_id, late_fine_allowed, is_active` | code UNIQUE |
-| `acc_fee_structures` | `fee_head_id, session_year, class_id, section_id`(0=পুরো শ্রেণী)`, amount, due_day, late_fine_amount, grace_days, effective_from, is_active` | UNIQUE(fee_head, session, class, section, effective_from) |
+| `acc_fee_categories` | `code`(general/stipend/scholarship …)`, name_bn, is_default, requires_reference, sort_order, is_active` | code UNIQUE; ঠিক একটি `is_default` (সাধারণ) |
+| `acc_student_fee_categories` | `student_id, session_year, fee_category_id, reference_no`(উপবৃত্তি/বৃত্তির আদেশ নং)`, effective_from, effective_to, status`(pending/approved/ended)`, requested_by, approved_by, approved_at, note` | একই শিক্ষার্থীর একই সময়ে একটির বেশি অনুমোদিত শ্রেণী নয় |
+| `acc_fee_structures` | `fee_head_id, session_year, class_id, section_id`(0=পুরো শ্রেণী)`, fee_category_id, amount, due_day, late_fine_amount, grace_days, effective_from, is_active` | UNIQUE(fee_head, session, class, section, fee_category, effective_from) |
 | `acc_concessions` | `student_id, fee_head_id, session_year, kind`(percent/fixed)`, value, reason, status, requested_by, approved_by, approved_at` | অনুমোদিত হলেই প্রয়োগ |
 | `acc_invoices` | `invoice_no, student_id, session_year, class_id, section_id, roll_snapshot, name_snapshot, billing_period`(YYYY-MM বা exam-id)`, issue_date, due_date, gross, discount, fine, waived, net, paid, status`(unpaid/partial/paid/waived/cancelled) | invoice_no UNIQUE; UNIQUE(student_id, billing_period) — একই মাসের বিল দুবার হবে না |
-| `acc_invoice_items` | `invoice_id, fee_head_id, line_kind`(fee/late_fine)`, amount, discount, waived, net, paid` | UNIQUE(invoice_id, fee_head_id, line_kind) |
+| `acc_invoice_items` | `invoice_id, fee_head_id, line_kind`(fee/late_fine)`, fee_category_id, standard_amount`(সাধারণ হার)`, category_concession`(সাধারণ হার − শ্রেণীর হার)`, amount, discount, waived, net, paid` | UNIQUE(invoice_id, fee_head_id, line_kind) |
 | `acc_waivers` | `invoice_item_id, amount, reason, status`(pending/approved/rejected)`, requested_by, decided_by, decided_at` | — |
 | `acc_payments` | `receipt_no, idempotency_key, student_id, amount, method`(cash/bkash/nagad/bank)`, status`(confirmed/reversed)`, custody`(teacher/office/gateway/bank)`, collected_by, collected_at, handover_id, gateway_txn_id, voucher_id, reversal_voucher_id, note` | receipt_no, idempotency_key, gateway_txn_id UNIQUE |
 | `acc_payment_allocations` | `payment_id, invoice_item_id`(NULL = অগ্রিম)`, amount` | অবশিষ্ট টাকা "অগ্রিম ফি" দায় হিসেবে থাকে, পরের ইনভয়েসে স্বয়ংক্রিয় সমন্বয় |
@@ -127,6 +132,17 @@ erDiagram
 | `acc_bank_deposits` | `bank_account_id, deposit_date, amount, slip_no, status`(pending/verified/rejected)`, deposited_by, verified_by, voucher_id` | — |
 | `acc_settlements` | `gateway, settlement_date, gross, charge, net, bank_account_id, bank_reference, status, voucher_id` | — |
 | `acc_period_closings` | `period`(YYYY-MM)`, status`(closed/reopened)`, closed_by, closed_at, reopened_by, reopen_reason, balances_json` | period UNIQUE |
+
+### শিক্ষার্থীর ফি-শ্রেণী: সাধারণ বনাম বৃত্তি/উপবৃত্তিপ্রাপ্ত (ধাপ ২)
+
+সাধারণ শিক্ষার্থী এবং বৃত্তি/উপবৃত্তিপ্রাপ্ত শিক্ষার্থীর বেতন আলাদা হবে।
+
+* **ফি-শ্রেণী (`acc_fee_categories`)** — ডিফল্ট: *সাধারণ* (default), *উপবৃত্তিপ্রাপ্ত*, *বৃত্তিপ্রাপ্ত*। প্রধান শিক্ষক নতুন শ্রেণী (যেমন অর্ধ-বেতন, পূর্ণ ফ্রি) যোগ বা নিষ্ক্রিয় করতে পারবেন; মুছে ফেলা যাবে না।
+* **হার নির্ধারণ** — ফি কাঠামোতে প্রতিটি ফি হেড × শ্রেণী/শাখা × সেশনের জন্য প্রতিটি ফি-শ্রেণীর আলাদা পরিমাণ (যেমন ৬ষ্ঠ শ্রেণীর মাসিক বেতন: সাধারণ ৳২০০, উপবৃত্তিপ্রাপ্ত ৳১০০, বৃত্তিপ্রাপ্ত ৳০)। কোনো ফি-শ্রেণীর আলাদা হার না দিলে *সাধারণ* হার প্রযোজ্য — ফলে শুধু যে ফি হেডে পার্থক্য আছে (সাধারণত মাসিক বেতন), সেখানেই আলাদা হার দিতে হবে; পরীক্ষা/সেশন ফি চাইলে সবার জন্য এক থাকবে।
+* **শিক্ষার্থী নির্ধারণ** — অফিসার বা শ্রেণী শিক্ষক (নিজ শ্রেণী) উপবৃত্তি/বৃত্তির আদেশ নম্বরসহ আবেদন করবেন, প্রধান শিক্ষক অনুমোদন করলে কার্যকর। কার্যকর তারিখ থেকে পরবর্তী ইনভয়েসে নতুন হার; আগের ইনভয়েস বদলায় না (প্রয়োজনে মওকুফ-প্রবাহে সমন্বয়)। শ্রেণী না থাকলে শিক্ষার্থী *সাধারণ*। তালিকা থেকে একসাথে অনেক শিক্ষার্থী নির্ধারণের সুবিধা থাকবে।
+* **ইনভয়েস** — প্রতিটি লাইনে প্রযোজ্য ফি-শ্রেণী, সাধারণ হার ও শ্রেণীজনিত ছাড় snapshot হিসেবে থাকে। ফলে রিপোর্টে "উপবৃত্তি/বৃত্তিজনিত মোট ছাড়" এবং ফি-শ্রেণীভিত্তিক আদায়/বকেয়া আলাদা দেখা যাবে।
+* **ব্যক্তিগত ছাড়** (`acc_concessions`) ফি-শ্রেণীর হারের উপর আলাদাভাবে প্রয়োগ হয় — বিশেষ ক্ষেত্রে (ভাইবোন ছাড়, দরিদ্র তহবিল ইত্যাদি)।
+* **হিসাব** — modified cash basis অনুযায়ী ফি-শ্রেণীর ছাড় আয় হিসেবে লেজারে যায় না; শুধু বিলিং সাব-লেজার ও রিপোর্টে দেখায়।
 
 ### ডিফল্ট চার্ট অব অ্যাকাউন্টস (ধাপ ৪-এ seed)
 
@@ -224,7 +240,7 @@ interface PaymentGatewayInterface
 |---|---|---|
 | ০ | নকশা প্রস্তাব (এই নথি) | ✔ |
 | ১ | অথেন্টিকেশন ও ভূমিকা: হিসাব-ভূমিকা, অনুমতি ম্যাট্রিক্স, অফিসার নিয়োগ/প্রত্যাহার, before/after অডিট, মেনু, ড্যাশবোর্ড কাঠামো | ✔ এই PR |
-| ২ | ফি হেড, শ্রেণীভিত্তিক ফি কাঠামো, ছাড়/বৃত্তি, স্বয়ংক্রিয় ইনভয়েস, বিলম্ব জরিমানা, বকেয়া তালিকা | পরবর্তী |
+| ২ | ফি হেড, ফি-শ্রেণী (সাধারণ/উপবৃত্তি/বৃত্তি) অনুযায়ী আলাদা হারসহ শ্রেণীভিত্তিক ফি কাঠামো, ব্যক্তিগত ছাড়, স্বয়ংক্রিয় ইনভয়েস, বিলম্ব জরিমানা, বকেয়া তালিকা | পরবর্তী |
 | ৩ | নগদ আদায়, ক্রমিক রসিদ (PDF/প্রিন্ট/SMS), আংশিক ও অগ্রিম পেমেন্ট, শিক্ষক → অফিসার হস্তান্তর | |
 | ৪ | চার্ট অব অ্যাকাউন্টস, Receipt/Payment/Journal/Contra ভাউচার, অনুমোদন, রিভার্সাল, সংযুক্তি, ব্যাংক জমা, মাস সমাপনী | |
 | ৫ | bKash sandbox, Nagad adapter, অভিভাবক পোর্টাল, cron রিকনসিলিয়েশন, রিফান্ড, সেটেলমেন্ট | |
