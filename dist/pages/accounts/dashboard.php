@@ -16,6 +16,12 @@ $basePath = '../../';
 $pageTitle = 'হিসাব ড্যাশবোর্ড | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
+$chartData = null;
+if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPORTS_VIEW_CLASS)) {
+    $chartData = accReports()->charts($access);
+    $pageScriptFiles[] = $basePath . 'assets/vendor/chartjs/chart.umd.min.js';
+    $pageScriptFiles[] = accAssetUrl($basePath, 'js/accounts-charts.js');
+}
 
 $officerCount = $access->hasSchoolWideScope() ? count(accOfficers()->activeOfficers()) : null;
 $pendingApprovals = $access->can(Capability::CONCESSION_APPROVE) ? accPendingApprovalCount() : null;
@@ -82,7 +88,7 @@ $phases = [
     ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', true],
     ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস, ভাউচার, ব্যাংক ও মাস সমাপনী', true],
     ['ধাপ ৫ — bKash (sandbox), Nagad অ্যাডাপ্টার, অভিভাবক পোর্টাল, রিফান্ড ও সেটেলমেন্ট', true],
-    ['ধাপ ৬ — রিপোর্ট ও ড্যাশবোর্ড চার্ট', false],
+    ['ধাপ ৬ — রিপোর্ট ও ড্যাশবোর্ড চার্ট', true],
     ['ধাপ ৭ — নিরাপত্তা যাচাই ও টেস্ট', false],
 ];
 
@@ -235,6 +241,26 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <?php endif; ?>
             </div>
+
+            <?php if ($chartData !== null): ?>
+            <div class="row g-3 mb-3">
+              <div class="col-lg-6">
+                <div class="card h-100">
+                  <div class="card-header"><h3 class="card-title mb-0">গত ছয় মাসের আদায়</h3></div>
+                  <div class="card-body"><canvas id="acc-chart-collection" height="140"></canvas></div>
+                </div>
+              </div>
+              <?php if ($chartData['income'] !== []): ?>
+              <div class="col-lg-6">
+                <div class="card h-100">
+                  <div class="card-header"><h3 class="card-title mb-0">গত ছয় মাসের আয় ও ব্যয়</h3></div>
+                  <div class="card-body"><canvas id="acc-chart-flow" height="140"></canvas></div>
+                </div>
+              </div>
+              <?php endif; ?>
+            </div>
+            <script type="application/json" id="acc-chart-data"><?= json_encode($chartData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_THROW_ON_ERROR) ?></script>
+            <?php endif; ?>
 
             <div class="row g-3">
               <div class="col-lg-8">
