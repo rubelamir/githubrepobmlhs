@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 2;
+const ACC_SCHEMA_VERSION = 3;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -306,4 +306,102 @@ function accMigrationV2(PDO $db): void
     ] as [$code, $name, $kind, $lateFine, $sort]) {
         $head->execute(['code' => $code, 'name' => $name, 'kind' => $kind, 'late_fine' => $lateFine, 'sort_order' => $sort, 'now' => $now, 'now2' => $now]);
     }
+}
+
+/**
+ * Phase 3: cash collection, receipts, advances and teacher-to-office handovers.
+ * Payments are never deleted: a wrong receipt is reversed, which adds negative
+ * allocation rows next to the original ones.
+ */
+function accMigrationV3(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_payments (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            receipt_no VARCHAR(30) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            student_id INT NOT NULL,
+            session_year VARCHAR(20) NOT NULL,
+            class_id INT NOT NULL,
+            section_id INT NOT NULL DEFAULT 0,
+            roll_snapshot VARCHAR(20) NOT NULL DEFAULT '',
+            name_snapshot VARCHAR(255) NOT NULL DEFAULT '',
+            amount DECIMAL(14,2) NOT NULL,
+            method VARCHAR(20) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            custody VARCHAR(20) NOT NULL,
+            collected_by INT NOT NULL,
+            collected_at DATETIME NOT NULL,
+            payer_name VARCHAR(120) NOT NULL DEFAULT '',
+            note VARCHAR(255) NOT NULL DEFAULT '',
+            handover_id INT UNSIGNED NULL DEFAULT NULL,
+            gateway_txn_id INT UNSIGNED NULL DEFAULT NULL,
+            voucher_id INT UNSIGNED NULL DEFAULT NULL,
+            sms_status VARCHAR(20) NOT NULL DEFAULT '',
+            reversed_by INT NULL DEFAULT NULL,
+            reversed_at DATETIME NULL DEFAULT NULL,
+            reversal_reason VARCHAR(255) NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_payment_receipt (receipt_no),
+            UNIQUE KEY uniq_acc_payment_idempotency (idempotency_key),
+            UNIQUE KEY uniq_acc_payment_gateway (gateway_txn_id),
+            KEY idx_acc_payment_student (student_id, session_year),
+            KEY idx_acc_payment_collector (collected_by, custody, handover_id),
+            KEY idx_acc_payment_date (collected_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    // invoice_item_id NULL = money held as advance for the student.
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_payment_allocations (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            payment_id INT UNSIGNED NOT NULL,
+            student_id INT NOT NULL,
+            invoice_item_id INT UNSIGNED NULL DEFAULT NULL,
+            invoice_id INT UNSIGNED NULL DEFAULT NULL,
+            amount DECIMAL(14,2) NOT NULL,
+            kind VARCHAR(20) NOT NULL,
+            created_by INT NOT NULL,
+            created_at DATETIME NOT NULL,
+            KEY idx_acc_alloc_payment (payment_id),
+            KEY idx_acc_alloc_item (invoice_item_id),
+            KEY idx_acc_alloc_student (student_id, invoice_item_id),
+            CONSTRAINT fk_acc_alloc_payment FOREIGN KEY (payment_id) REFERENCES acc_payments (id),
+            CONSTRAINT fk_acc_alloc_item FOREIGN KEY (invoice_item_id) REFERENCES acc_invoice_items (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_handovers (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            handover_no VARCHAR(30) NOT NULL,
+            idempotency_key CHAR(32) NOT NULL,
+            teacher_id INT NOT NULL,
+            total DECIMAL(14,2) NOT NULL,
+            payment_count INT NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            note VARCHAR(255) NOT NULL DEFAULT '',
+            submitted_at DATETIME NOT NULL,
+            decided_by INT NULL DEFAULT NULL,
+            decided_at DATETIME NULL DEFAULT NULL,
+            remark VARCHAR(255) NULL DEFAULT NULL,
+            voucher_id INT UNSIGNED NULL DEFAULT NULL,
+            UNIQUE KEY uniq_acc_handover_no (handover_no),
+            UNIQUE KEY uniq_acc_handover_idempotency (idempotency_key),
+            KEY idx_acc_handover_status (status, submitted_at),
+            KEY idx_acc_handover_teacher (teacher_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    // History of which receipts were in which handover (a rejected handover releases them).
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS acc_handover_items (
+            handover_id INT UNSIGNED NOT NULL,
+            payment_id INT UNSIGNED NOT NULL,
+            amount DECIMAL(14,2) NOT NULL,
+            PRIMARY KEY (handover_id, payment_id),
+            KEY idx_acc_handover_item_payment (payment_id),
+            CONSTRAINT fk_acc_hi_handover FOREIGN KEY (handover_id) REFERENCES acc_handovers (id),
+            CONSTRAINT fk_acc_hi_payment FOREIGN KEY (payment_id) REFERENCES acc_payments (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
 }
