@@ -93,6 +93,46 @@
     }, 0);
   });
 
+  // <input type="checkbox" data-acc-class-wide>: a class-wide choice makes the section optional.
+  const syncClassWide = (box) => {
+    const section = box.form && box.form.querySelector('select[data-sf-sections]');
+    if (section) {
+      section.required = !box.checked;
+      section.disabled = box.checked;
+    }
+  };
+  document.querySelectorAll('input[data-acc-class-wide]').forEach((box) => {
+    syncClassWide(box);
+    box.addEventListener('change', () => syncClassWide(box));
+  });
+
+  // <select data-acc-kind-select> shows only the [data-acc-kind~="value"] blocks of its form.
+  const syncKind = (select) => {
+    select.form.querySelectorAll('[data-acc-kind]').forEach((block) => {
+      const visible = block.dataset.accKind.split(/\s+/).includes(select.value);
+      block.hidden = !visible;
+      block.querySelectorAll('input, select').forEach((field) => {
+        field.disabled = !visible;
+      });
+    });
+  };
+  document.querySelectorAll('select[data-acc-kind-select]').forEach((select) => {
+    syncKind(select);
+    select.addEventListener('change', () => syncKind(select));
+  });
+
+  // <input type="checkbox" data-acc-check-all="name[]"> toggles every matching checkbox.
+  document.addEventListener('change', (event) => {
+    const box = event.target;
+    if (!(box instanceof HTMLInputElement) || !box.dataset.accCheckAll) {
+      return;
+    }
+    const scope = box.form || document;
+    scope.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(box.dataset.accCheckAll)}"]:not(:disabled)`).forEach((item) => {
+      item.checked = box.checked;
+    });
+  });
+
   // bfcache restores a locked form when the user navigates back.
   window.addEventListener('pageshow', () => {
     document.querySelectorAll('form[data-acc-submitting="1"]').forEach((form) => {

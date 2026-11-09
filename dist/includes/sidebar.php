@@ -86,7 +86,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
                   <i class="nav-icon bi <?= h($accItem['icon']) ?>"></i>
-                  <p><?= h($accItem['label']) ?></p>
+                  <p><?= h($accItem['label']) ?><?php if ($accItem['badge'] > 0): ?> <span class="nav-badge badge text-bg-warning me-3"><?= h(bnDigits((string) $accItem['badge'])) ?></span><?php endif; ?></p>
                 </a>
               </li>
               <?php endforeach; ?>

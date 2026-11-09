@@ -16,6 +16,7 @@ $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
 $officerCount = $access->hasSchoolWideScope() ? count(accOfficers()->activeOfficers()) : null;
+$pendingApprovals = $access->can(Capability::CONCESSION_APPROVE) ? accPendingApprovalCount() : null;
 
 $classNames = [];
 foreach (schoolClasses($db) as $class) {
@@ -41,7 +42,7 @@ if ($access->hasRole(Role::CLASS_TEACHER)) {
 $phases = [
     ['নকশা প্রস্তাব (ডেটাবেস স্কিমা, ER ডায়াগ্রাম, ফোল্ডার কাঠামো)', true],
     ['ধাপ ১ — অথেন্টিকেশন ও ভূমিকা', true],
-    ['ধাপ ২ — ফি কাঠামো (সাধারণ ও বৃত্তি/উপবৃত্তি হার), ছাড় ও ইনভয়েস', false],
+    ['ধাপ ২ — ফি কাঠামো (সাধারণ ও বৃত্তি/উপবৃত্তি হার), ছাড় ও ইনভয়েস', true],
     ['ধাপ ৩ — নগদ আদায়, রসিদ ও হস্তান্তর', false],
     ['ধাপ ৪ — চার্ট অব অ্যাকাউন্টস ও ভাউচার', false],
     ['ধাপ ৫ — bKash / Nagad (sandbox)', false],
@@ -89,6 +90,14 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="acc-stat-label">সক্রিয় অ্যাকাউন্টস অফিসার</div>
                   <div class="acc-stat-value"><?= h(bnDigits((string) $officerCount)) ?> জন</div>
                 </div>
+              </div>
+              <?php endif; ?>
+              <?php if ($pendingApprovals !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="approvals.php">
+                  <div class="acc-stat-label">অনুমোদনের অপেক্ষায়</div>
+                  <div class="acc-stat-value<?= $pendingApprovals > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $pendingApprovals)) ?>টি আবেদন</div>
+                </a>
               </div>
               <?php endif; ?>
               <?php if ($access->hasRole(Role::CLASS_TEACHER)): ?>
