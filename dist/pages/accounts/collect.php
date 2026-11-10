@@ -59,7 +59,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $student) {
             $payment = $payments->payment($result['payment_id']);
             $message = 'আদায় সংরক্ষিত হয়েছে — রসিদ নং ' . $payment['receipt_no'] . '।';
             if ($smsReady && (string) ($_POST['send_sms'] ?? '') === '1') {
-                $due = accInvoices()->duesByStudent([$studentId], (string) $student['session_year'], accToday())[$studentId]['due'] ?? 0;
+                $due = accInvoices()->duesByStudent([$studentId], (string) $student['session_year'])[$studentId]['due'] ?? 0;
                 $settings = schoolSettings($db);
                 $text = trim((string) ($settings['short_name_en'] ?? 'School')) . ': ' . StudentDirectory::displayName($student)
                     . '-এর ফি ' . Money::format(Money::fromDb($payment['amount'])) . ' গ্রহণ করা হয়েছে। রসিদ ' . $payment['receipt_no']
@@ -96,7 +96,7 @@ $advances = [];
 if ($listReady) {
     $classStudents = accStudents()->forClass($sessionYear, $classId, $sectionId);
     $ids = array_map(static fn (array $row): int => (int) $row['id'], $classStudents);
-    $dues = accInvoices()->duesByStudent($ids, $sessionYear, accToday());
+    $dues = accInvoices()->duesByStudent($ids, $sessionYear);
     $advances = $payments->advanceMap($ids);
 }
 
@@ -116,7 +116,6 @@ if ($student) {
     }
     $advance = $payments->advanceBalance($studentId);
 }
-$today = accToday()->format('Y-m-d');
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
@@ -207,7 +206,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <thead><tr><th style="width:2.5rem"><input class="form-check-input" type="checkbox" checked data-acc-check-all="invoices[]" aria-label="সব ইনভয়েস"></th><th>ইনভয়েস</th><th>খাত</th><th>শেষ তারিখ</th><th class="text-end">বকেয়া</th></tr></thead>
                             <tbody>
                               <?php foreach ($invoiceGroups as $invoiceId => $group): ?>
-                                <tr class="<?= (string) $group['due_date'] < $today ? 'table-warning' : '' ?>">
+                                <tr>
                                   <td data-label="নির্বাচন"><input class="form-check-input" type="checkbox" name="invoices[]" value="<?= (int) $invoiceId ?>" checked data-acc-due="<?= (int) $group['total'] ?>" aria-label="<?= h((string) $group['invoice_no']) ?>"></td>
                                   <td data-label="ইনভয়েস"><code><?= h((string) $group['invoice_no']) ?></code><div class="small"><?= h((string) $group['label']) ?></div></td>
                                   <td data-label="খাত">

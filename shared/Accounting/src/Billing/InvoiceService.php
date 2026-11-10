@@ -428,9 +428,9 @@ final class InvoiceService
      * Outstanding dues per student (cancelled invoices excluded).
      *
      * @param list<int> $studentIds
-     * @return array<int, array{invoices: int, net: int, paid: int, due: int, overdue: int}>
+     * @return array<int, array{invoices: int, net: int, paid: int, due: int}>
      */
-    public function duesByStudent(array $studentIds, string $sessionYear, DateTimeImmutable $today): array
+    public function duesByStudent(array $studentIds, string $sessionYear): array
     {
         $studentIds = array_values(array_filter(array_map('intval', $studentIds), static fn (int $id): bool => $id > 0));
         if ($studentIds === []) {
@@ -438,12 +438,11 @@ final class InvoiceService
         }
         $rows = \fetchRows(
             $this->db,
-            "SELECT student_id, COUNT(*) AS invoices, SUM(net) AS net, SUM(paid) AS paid,
-                    SUM(CASE WHEN due_date < :today AND net > paid THEN net - paid ELSE 0 END) AS overdue
+            'SELECT student_id, COUNT(*) AS invoices, SUM(net) AS net, SUM(paid) AS paid
              FROM acc_invoices
-             WHERE student_id IN (" . implode(',', $studentIds) . ") AND session_year = :session AND status <> 'cancelled'
+             WHERE student_id IN (' . implode(',', $studentIds) . ") AND session_year = :session AND status <> 'cancelled'
              GROUP BY student_id",
-            ['today' => $today->format('Y-m-d'), 'session' => $sessionYear]
+            ['session' => $sessionYear]
         );
         $map = [];
         foreach ($rows as $row) {
@@ -454,7 +453,6 @@ final class InvoiceService
                 'net' => $net,
                 'paid' => $paid,
                 'due' => max(0, $net - $paid),
-                'overdue' => Money::fromDb($row['overdue']),
             ];
         }
 
