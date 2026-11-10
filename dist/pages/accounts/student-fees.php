@@ -70,7 +70,7 @@ $waivers = accWaivers()->forStudent($studentId);
 $receipts = accPayments()->forStudent($studentId);
 $advance = accPayments()->advanceBalance($studentId);
 $canCollect = $access->canForClass(Capability::FEES_COLLECT, (int) $student['cls'], StudentDirectory::sectionIdOf($student));
-$dues = accInvoices()->duesByStudent([$studentId], $sessionYear, $today)[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0, 'overdue' => 0];
+$dues = accInvoices()->duesByStudent([$studentId], $sessionYear)[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0];
 $heads = accCatalog()->heads(true);
 $pendingWaiverItems = [];
 foreach ($waivers as $waiver) {
@@ -105,7 +105,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মোট প্রাপ্য</div><div class="acc-stat-value"><?= h(Money::format($dues['net'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">আদায়</div><div class="acc-stat-value text-success"><?= h(Money::format($dues['paid'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বকেয়া</div><div class="acc-stat-value text-danger"><?= h(Money::format($dues['due'])) ?></div></div></div>
-              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মেয়াদোত্তীর্ণ<?= $advance > 0 ? ' · অগ্রিম জমা ' . h(Money::format($advance)) : '' ?></div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($dues['overdue'])) ?></div></div></div>
+              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">অগ্রিম জমা</div><div class="acc-stat-value"><?= h(Money::format($advance)) ?></div></div></div>
             </div>
 
             <div class="card mb-3" id="receipts">

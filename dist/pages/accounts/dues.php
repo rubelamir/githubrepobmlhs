@@ -33,18 +33,17 @@ $onlyDue = (string) ($_GET['only_due'] ?? '1') === '1';
 $students = [];
 $dues = [];
 $categories = [];
-$totals = ['net' => 0, 'paid' => 0, 'due' => 0, 'overdue' => 0, 'students_due' => 0];
+$totals = ['net' => 0, 'paid' => 0, 'due' => 0, 'students_due' => 0];
 if ($ready) {
     $today = accToday();
     $students = accStudents()->forClass($sessionYear, $classId, $sectionId);
     $ids = array_map(static fn (array $student): int => (int) $student['id'], $students);
-    $dues = accInvoices()->duesByStudent($ids, $sessionYear, $today);
+    $dues = accInvoices()->duesByStudent($ids, $sessionYear);
     $categories = accStudentCategories()->currentMap($ids, $sessionYear, $today->format('Y-m-d'));
     foreach ($dues as $due) {
         $totals['net'] += $due['net'];
         $totals['paid'] += $due['paid'];
         $totals['due'] += $due['due'];
-        $totals['overdue'] += $due['overdue'];
         $totals['students_due'] += $due['due'] > 0 ? 1 : 0;
     }
     if ($onlyDue) {
@@ -85,7 +84,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মোট প্রাপ্য</div><div class="acc-stat-value"><?= h(Money::format($totals['net'])) ?></div></div></div>
                 <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">আদায়</div><div class="acc-stat-value text-success"><?= h(Money::format($totals['paid'])) ?></div></div></div>
                 <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বকেয়া (<?= h(bnDigits((string) $totals['students_due'])) ?> জন)</div><div class="acc-stat-value text-danger"><?= h(Money::format($totals['due'])) ?></div></div></div>
-                <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মেয়াদোত্তীর্ণ</div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($totals['overdue'])) ?></div></div></div>
               </div>
               <div class="card">
                 <div class="card-body p-0">
@@ -94,10 +92,10 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>রোল</th><th>নাম</th><th>ফি-শ্রেণী</th><th class="text-end">ইনভয়েস</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বকেয়া</th><th class="text-end">মেয়াদোত্তীর্ণ</th><th class="text-end">বিস্তারিত</th></tr></thead>
+                        <thead><tr><th>রোল</th><th>নাম</th><th>ফি-শ্রেণী</th><th class="text-end">ইনভয়েস</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বকেয়া</th><th class="text-end">বিস্তারিত</th></tr></thead>
                         <tbody>
                           <?php foreach ($students as $student): ?>
-                            <?php $studentId = (int) $student['id']; $due = $dues[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0, 'overdue' => 0]; ?>
+                            <?php $studentId = (int) $student['id']; $due = $dues[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0]; ?>
                             <tr>
                               <td data-label="রোল"><?= h(bnDigits((string) $student['cls_roll'])) ?></td>
                               <td data-label="নাম"><?= h(StudentDirectory::displayName($student)) ?></td>
@@ -106,7 +104,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td class="text-end" data-label="প্রাপ্য"><?= h(Money::format($due['net'])) ?></td>
                               <td class="text-end" data-label="আদায়"><?= h(Money::format($due['paid'])) ?></td>
                               <td class="text-end" data-label="বকেয়া"><strong class="<?= $due['due'] > 0 ? 'text-danger' : '' ?>"><?= h(Money::format($due['due'])) ?></strong></td>
-                              <td class="text-end" data-label="মেয়াদোত্তীর্ণ"><?= $due['overdue'] > 0 ? '<span class="badge text-bg-warning">' . h(Money::format($due['overdue'])) . '</span>' : '—' ?></td>
                               <td class="text-end" data-label="বিস্তারিত"><a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php', $studentId, 'acc_student')) ?>">ফি বিবরণী</a><?php if ($canCollect && $due['due'] > 0): ?> <a class="btn btn-sm btn-primary" href="<?= h(signedRecordUrl('collect.php', $studentId, 'acc_student')) ?>">আদায়</a><?php endif; ?></td>
                             </tr>
                           <?php endforeach; ?>
