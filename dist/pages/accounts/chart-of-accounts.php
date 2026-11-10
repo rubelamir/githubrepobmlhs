@@ -13,7 +13,7 @@ $access = accBootPage(Capability::REPORTS_VIEW_ALL);
 $chart = accChart();
 $canManage = $access->can(Capability::CHART_MANAGE);
 $basePath = '../../';
-$pageTitle = 'হিসাবের খাত | School Admin';
+$pageTitle = 'হিসাবের নাম | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -73,7 +73,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">হিসাবের খাত (চার্ট অব অ্যাকাউন্টস)</h3>
+            <h3 class="mb-1">হিসাবের নাম</h3>
             <p class="text-secondary mb-0">সব আয়, ব্যয়, নগদ, ব্যাংক ও দায়ের হিসাব। স্থিতি শুধু অনুমোদিত ভাউচার থেকে গণনা হয়। <i class="bi bi-lock-fill"></i> চিহ্নিত সিস্টেম হিসাব স্বয়ংক্রিয় এন্ট্রিতে ব্যবহৃত হয়, তাই এগুলো নিষ্ক্রিয় করা যায় না।</p>
           </div>
         </div>

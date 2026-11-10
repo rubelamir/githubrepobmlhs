@@ -12,7 +12,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 accBootPage(Capability::AUDIT_VIEW);
 $db = getDatabaseConnection();
 $basePath = '../../';
-$pageTitle = 'হিসাব অডিট লগ | School Admin';
+$pageTitle = 'পরিবর্তনের ইতিহাস | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -92,7 +92,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">হিসাব অডিট লগ</h3>
+            <h3 class="mb-1">পরিবর্তনের ইতিহাস</h3>
             <p class="text-secondary mb-0">হিসাব মডিউলে কে, কখন, কী পরিবর্তন করেছেন — আগের ও পরের মানসহ। এই লগ মুছে ফেলা বা সম্পাদনা করা যায় না।</p>
           </div>
         </div>

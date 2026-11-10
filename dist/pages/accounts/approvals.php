@@ -11,7 +11,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
 $access = accBootPage(Capability::CONCESSION_APPROVE);
 $basePath = '../../';
-$pageTitle = 'অনুমোদন | School Admin';
+$pageTitle = 'ছাড়ের অনুমোদন | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -83,7 +83,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">অনুমোদন</h3>
+            <h3 class="mb-1">ছাড়ের অনুমোদন</h3>
             <p class="text-secondary mb-0">শ্রেণি শিক্ষক ও অ্যাকাউন্টস অফিসারের পাঠানো ফি-শ্রেণী পরিবর্তন, ব্যক্তিগত ছাড় ও মওকুফের আবেদন। অনুমোদনের আগে কোনো আবেদন হিসাবে কার্যকর হয় না।</p>
           </div>
         </div>

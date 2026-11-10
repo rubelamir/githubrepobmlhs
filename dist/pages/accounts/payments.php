@@ -16,7 +16,7 @@ $payments = accPayments();
 $schoolWide = $access->hasSchoolWideScope();
 $canReverse = $access->can(Capability::PAYMENT_REVERSE);
 $basePath = '../../';
-$pageTitle = 'আদায় তালিকা ও রসিদ | School Admin';
+$pageTitle = 'রসিদ | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -75,7 +75,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">আদায় তালিকা ও রসিদ</h3>
+            <h3 class="mb-1">রসিদ</h3>
             <p class="text-secondary mb-0"><?= $schoolWide ? 'সব আদায়ের রসিদ।' : 'আপনার নেওয়া আদায়ের রসিদ।' ?> কোনো রসিদ মুছে ফেলা যায় না; ভুল হলে প্রধান শিক্ষক কারণসহ রিভার্স করবেন।</p>
           </div>
         </div>

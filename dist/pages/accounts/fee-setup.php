@@ -12,7 +12,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::FEE_STRUCTURE_MANAGE);
 $catalog = accCatalog();
 $basePath = '../../';
-$pageTitle = 'ফি হেড ও ফি-শ্রেণী | School Admin';
+$pageTitle = 'ফির নাম | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -71,8 +71,8 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">ফি হেড ও ফি-শ্রেণী</h3>
-            <p class="text-secondary mb-0">কোন কোন খাতে ফি নেওয়া হবে (ফি হেড) এবং শিক্ষার্থীর কোন শ্রেণী আলাদা হারে ফি দেবে (ফি-শ্রেণী: সাধারণ, উপবৃত্তিপ্রাপ্ত, বৃত্তিপ্রাপ্ত …) তা নির্ধারণ করুন। কোনো কিছু মুছে ফেলা যায় না—প্রয়োজনে নিষ্ক্রিয় করুন।</p>
+            <h3 class="mb-1">ফির নাম</h3>
+            <p class="text-secondary mb-0">কোন কোন নামে ফি নেওয়া হবে (বেতন, ভর্তি, পরীক্ষা) এবং কাদের আলাদা হার (সাধারণ, উপবৃত্তি, বৃত্তি)। কোনো কিছু মুছে ফেলা যায় না — দরকার না হলে নিষ্ক্রিয় করুন।</p>
           </div>
         </div>
         <div class="app-content">

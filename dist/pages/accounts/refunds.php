@@ -17,7 +17,7 @@ if (!$canRequest && !$canApprove) {
 }
 $refunds = accRefunds();
 $basePath = '../../';
-$pageTitle = 'রিফান্ড | School Admin';
+$pageTitle = 'টাকা ফেরত | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 $status = (string) ($_GET['status'] ?? ($canApprove ? RefundService::REQUESTED : ''));
@@ -48,7 +48,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">রিফান্ড</h3>
+            <h3 class="mb-1">টাকা ফেরত</h3>
             <p class="text-secondary mb-0">অনলাইন পেমেন্ট ফেরত: অফিসার অনুরোধ করেন, প্রধান শিক্ষক অনুমোদন করলে গেটওয়েতে যায়। গেটওয়ে নিশ্চিত করার আগে খাতায় কোনো এন্ট্রি হয় না। ভুল এন্ট্রি মুছে ফেলা হয় না — রিফান্ডই সংশোধন।</p>
           </div>
         </div>

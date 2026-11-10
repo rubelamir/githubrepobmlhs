@@ -40,7 +40,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">খতিয়ান (লেজার)</h3>
+            <h3 class="mb-1">খতিয়ান</h3>
             <p class="text-secondary mb-0">একটি হিসাবের সব অনুমোদিত লেনদেন, প্রারম্ভিক ও সমাপনী স্থিতিসহ। নগদ হিসাব (১১১০) নির্বাচন করলে এটিই ক্যাশ বুক।</p>
           </div>
         </div>

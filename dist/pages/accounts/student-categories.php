@@ -13,7 +13,7 @@ $access = accBootPage(Capability::CONCESSION_REQUEST);
 $catalog = accCatalog();
 $service = accStudentCategories();
 $basePath = '../../';
-$pageTitle = 'বৃত্তি/উপবৃত্তি শ্রেণী | School Admin';
+$pageTitle = 'বৃত্তি/উপবৃত্তি | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -77,8 +77,8 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">বৃত্তি/উপবৃত্তি শ্রেণী</h3>
-            <p class="text-secondary mb-0">শিক্ষার্থীদের ফি-শ্রেণী (সাধারণ, উপবৃত্তিপ্রাপ্ত, বৃত্তিপ্রাপ্ত …) নির্ধারণ করুন। ফি কাঠামোতে প্রতিটি শ্রেণীর জন্য আলাদা হার থাকে; পরবর্তী ইনভয়েস থেকে সেই হার প্রযোজ্য হবে।<?= $autoApprove ? '' : ' আপনার আবেদন প্রধান শিক্ষক অনুমোদন করলে কার্যকর হবে।' ?></p>
+            <h3 class="mb-1">বৃত্তি/উপবৃত্তি</h3>
+            <p class="text-secondary mb-0">কে সাধারণ হারে দেবেন, কে উপবৃত্তি বা বৃত্তি পাবেন। শ্রেণীর হারে সেই টাকা আলাদা থাকে; পরের বিল থেকে সেই হার লাগে।<?= $autoApprove ? '' : ' আপনার আবেদন প্রধান শিক্ষক অনুমোদন করলে কার্যকর হবে।' ?></p>
           </div>
         </div>
         <div class="app-content">

@@ -56,7 +56,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">বকেয়া তালিকা</h3>
-            <p class="text-secondary mb-0">নির্বাচিত সেশনের সব ইনভয়েস (বাতিল ছাড়া) ধরে প্রত্যেক শিক্ষার্থীর প্রাপ্য, আদায় ও বকেয়া।<?= $access->hasSchoolWideScope() ? '' : ' আপনি শুধু নিজের শ্রেণী/শাখা দেখতে পাবেন।' ?></p>
+            <p class="text-secondary mb-0">কার কত বাকি। বিল তৈরি না থাকলে তালিকা খালি থাকে।<?= $access->hasSchoolWideScope() ? '' : ' আপনি শুধু নিজের শ্রেণী/শাখা দেখতে পাবেন।' ?></p>
           </div>
         </div>
         <div class="app-content">
@@ -88,7 +88,17 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="card">
                 <div class="card-body p-0">
                   <?php if ($students === []): ?>
-                    <p class="text-secondary p-3 mb-0"><?= $onlyDue ? 'কোনো বকেয়া নেই।' : 'কোনো ভর্তি শিক্ষার্থী নেই।' ?></p>
+                    <p class="text-secondary p-3 mb-0"><?php
+                    if (!$onlyDue && $students === []) {
+                        echo 'কোনো ভর্তি শিক্ষার্থী নেই।';
+                    } elseif ($totals['net'] === 0) {
+                        echo $access->can(Capability::INVOICE_MANAGE)
+                            ? 'এই শ্রেণীর বিল এখনো তৈরি হয়নি। মাসের বিল থেকে এই মাসের বিল তৈরি করুন।'
+                            : 'এই শ্রেণীর বিল এখনো তৈরি হয়নি। অফিসকে এই মাসের বিল তৈরি করতে বলুন।';
+                    } else {
+                        echo 'এই শ্রেণীতে এখন বকেয়া নেই।';
+                    }
+                  ?></p>
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">

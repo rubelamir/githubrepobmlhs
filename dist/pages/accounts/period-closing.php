@@ -12,7 +12,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::PERIOD_CLOSE);
 $periods = accPeriods();
 $basePath = '../../';
-$pageTitle = 'মাস সমাপনী | School Admin';
+$pageTitle = 'মাস বন্ধ | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -56,7 +56,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">মাস সমাপনী (পিরিয়ড ক্লোজিং)</h3>
+            <h3 class="mb-1">মাস বন্ধ</h3>
             <p class="text-secondary mb-0">মাস শেষে সব ভাউচার অনুমোদন, ব্যাংক জমা যাচাই ও হস্তান্তর গ্রহণ শেষ হলে মাসটি বন্ধ করুন। বন্ধ মাসের তারিখে কোনো এন্ট্রি, অনুমোদন বা রিভার্সাল দেওয়া যায় না; বন্ধের সময়কার রেওয়ামিল সংরক্ষিত থাকে।</p>
           </div>
         </div>

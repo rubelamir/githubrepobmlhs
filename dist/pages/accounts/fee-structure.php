@@ -16,7 +16,7 @@ $canEdit = $access->can(Capability::FEE_STRUCTURE_MANAGE);
 $catalog = accCatalog();
 $structures = accStructures();
 $basePath = '../../';
-$pageTitle = 'ফি কাঠামো | School Admin';
+$pageTitle = 'শ্রেণীর হার | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -109,7 +109,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">ফি কাঠামো</h3>
+            <h3 class="mb-1">শ্রেণীর হার</h3>
             <p class="text-secondary mb-0">প্রতিটি শ্রেণী/শাখা ও ফি-শ্রেণীর (সাধারণ, উপবৃত্তিপ্রাপ্ত, বৃত্তিপ্রাপ্ত …) জন্য আলাদা হার। কোনো ফি-শ্রেণীর হার ফাঁকা থাকলে সেই শিক্ষার্থীদের সাধারণ হার প্রযোজ্য হবে।</p>
           </div>
         </div>
