@@ -19,7 +19,7 @@ if (!$canRecord && !$canVerify) {
 $bank = accBank();
 $chart = accChart();
 $basePath = '../../';
-$pageTitle = 'ব্যাংক জমা ও মিলকরণ | School Admin';
+$pageTitle = 'ব্যাংক জমা | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -84,7 +84,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">ব্যাংক জমা ও মিলকরণ</h3>
+            <h3 class="mb-1">ব্যাংক জমা</h3>
             <p class="text-secondary mb-0">অফিসের নগদ টাকা ব্যাংকে জমা দিয়ে স্লিপসহ রেকর্ড করুন; প্রধান শিক্ষক যাচাই করলে হিসাবে নগদ কমে ব্যাংক বাড়বে। ব্যাংক স্টেটমেন্টের সাথে প্রতিটি লেনদেন মিলিয়ে টিক দিন।</p>
           </div>
         </div>

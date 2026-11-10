@@ -18,7 +18,7 @@ if (!$canSubmit && !$canReceive) {
 }
 $handovers = accHandovers();
 $basePath = '../../';
-$pageTitle = 'টাকা হস্তান্তর | School Admin';
+$pageTitle = 'টাকা জমা | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 $status = (string) ($_GET['status'] ?? ($canReceive ? HandoverService::SUBMITTED : ''));
@@ -57,7 +57,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">টাকা হস্তান্তর</h3>
+            <h3 class="mb-1">টাকা জমা</h3>
             <p class="text-secondary mb-0">শ্রেণি শিক্ষকের আদায় করা নগদ টাকা অ্যাকাউন্টস অফিসারের কাছে জমা দেওয়ার হিসাব। অফিসার টাকা গুনে মিললে গ্রহণ করবেন, না মিললে কারণসহ ফেরত দেবেন।</p>
           </div>
         </div>

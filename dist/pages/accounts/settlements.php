@@ -18,7 +18,7 @@ if (!$canSubmit && !$canVerify) {
 }
 $settlements = accSettlements();
 $basePath = '../../';
-$pageTitle = 'গেটওয়ে সেটেলমেন্ট | School Admin';
+$pageTitle = 'bKash থেকে ব্যাংক | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 $status = (string) ($_GET['status'] ?? ($canVerify ? SettlementService::SUBMITTED : ''));
@@ -50,7 +50,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">গেটওয়ে সেটেলমেন্ট</h3>
+            <h3 class="mb-1">bKash থেকে ব্যাংক</h3>
             <p class="text-secondary mb-0">bKash/Nagad মার্চেন্ট হিসাব থেকে স্কুলের ব্যাংকে টাকা এলে স্টেটমেন্ট অনুযায়ী লিপিবদ্ধ করুন। মোট থেকে চার্জ বাদ দিয়ে নেট ব্যাংকে যায়; চার্জ আলাদা খরচ (৫১৬০)। প্রধান শিক্ষকের যাচাইয়ের আগে কোনো এন্ট্রি হয় না।</p>
           </div>
         </div>

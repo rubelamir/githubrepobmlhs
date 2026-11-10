@@ -81,8 +81,11 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
               <?php endif; ?>
 
               <?php if ($accNavItems !== []): ?>
-              <li class="nav-header">হিসাব ও ফি</li>
+              <?php $accGroup = ''; ?>
               <?php foreach ($accNavItems as $accItem): ?>
+              <?php if (($accItem['group'] ?? '') !== '' && $accItem['group'] !== $accGroup): $accGroup = $accItem['group']; ?>
+              <li class="nav-header"><?= h($accGroup) ?></li>
+              <?php endif; ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
                   <i class="nav-icon bi <?= h($accItem['icon']) ?>"></i>

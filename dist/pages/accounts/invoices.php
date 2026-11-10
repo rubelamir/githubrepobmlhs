@@ -17,7 +17,7 @@ $canCancel = $access->can(Capability::INVOICE_CANCEL);
 $invoices = accInvoices();
 $db = getDatabaseConnection();
 $basePath = '../../';
-$pageTitle = 'ইনভয়েস | School Admin';
+$pageTitle = 'মাসের বিল | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -125,8 +125,8 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">ইনভয়েস</h3>
-            <p class="text-secondary mb-0">শ্রেণী/শাখা ধরে মাসিক বেতন, সেশন, পরীক্ষা বা অন্যান্য ফির ইনভয়েস তৈরি করুন। প্রত্যেক শিক্ষার্থীর ফি-শ্রেণী অনুযায়ী (সাধারণ/উপবৃত্তি/বৃত্তি) হার ও অনুমোদিত ছাড় স্বয়ংক্রিয়ভাবে প্রযোজ্য হয়। একই ফি দুইবার বিল হয় না।</p>
+            <h3 class="mb-1">মাসের বিল</h3>
+            <p class="text-secondary mb-0">শ্রেণী বেছে এই মাসের বেতন বা অন্য ফি বিল করুন। বিল তৈরি না হলে বকেয়া তালিকায় কিছু দেখায় না। একই ফি দুবার বিল হয় না।</p>
           </div>
         </div>
         <div class="app-content">
@@ -149,7 +149,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <?= csrfField() ?>
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                     <input type="hidden" name="action" value="generate">
-                    <div class="card-header"><h3 class="card-title mb-0">ইনভয়েস তৈরি</h3></div>
+                    <div class="card-header"><h3 class="card-title mb-0">এই মাসের বিল তৈরি</h3></div>
                     <div class="card-body">
                       <div class="row g-2">
                         <div class="col-sm-4">
@@ -177,7 +177,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </div>
                       </div>
                       <div class="mt-3">
-                        <span class="form-label d-block">ফি হেড <span class="text-secondary small">(কোনোটি না বাছলে ধরন অনুযায়ী সব সক্রিয় হেড)</span></span>
+                        <span class="form-label d-block">কোন ফি <span class="text-secondary small">(কিছু না বাছলে এই ধরনের সব ফি)</span></span>
                         <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
                           <div data-acc-kind="<?= h($kind) ?>"<?= $kind === BillingPeriod::MONTHLY ? '' : ' hidden' ?>>
                             <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
@@ -192,7 +192,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <?php endforeach; ?>
                       </div>
                     </div>
-                    <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt me-1"></i>ইনভয়েস তৈরি করুন</button></div>
+                    <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt me-1"></i>বিল তৈরি করুন</button></div>
                   </form>
                 </div>
               </div>
@@ -204,7 +204,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="col-sm-5">
                       <label class="form-label small mb-1" for="list-key">বিল</label>
                       <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : '' ?>>
-                        <?php if ($billingKeys === []): ?><option>এখনো কোনো ইনভয়েস নেই</option><?php endif; ?>
+                        <?php if ($billingKeys === []): ?><option>এখনো কোনো বিল নেই</option><?php endif; ?>
                         <?php foreach (array_reverse($billingKeys, true) as $key => $label): ?>
                           <option value="<?= h($key) ?>"<?= $key === $billingKey ? ' selected' : '' ?>><?= h($label) ?></option>
                         <?php endforeach; ?>
