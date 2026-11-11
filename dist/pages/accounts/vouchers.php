@@ -35,7 +35,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between">
               <div>
                 <h3 class="mb-1">ভাউচার</h3>
-                <p class="text-secondary mb-0">আয়, ব্যয়, নগদ-ব্যাংক স্থানান্তর ও সমন্বয়ের ভাউচার। অফিসার খসড়া করে জমা দেবেন, প্রধান শিক্ষক অনুমোদন করলে তবেই হিসাবে যোগ হবে। ফি আদায়, হস্তান্তর ও ব্যাংক জমার ভাউচার স্বয়ংক্রিয়ভাবে তৈরি হয়।</p>
+                <p class="text-secondary mb-0">আয়, ব্যয়, নগদ-ব্যাংক স্থানান্তর ও সমন্বয়ের ভাউচার। হিসাব রক্ষক খসড়া করে জমা দেবেন, প্রধান শিক্ষক অনুমোদন করলে তবেই হিসাবে যোগ হবে। ফি আদায়, হস্তান্তর ও ব্যাংক জমার ভাউচার স্বয়ংক্রিয়ভাবে তৈরি হয়।</p>
               </div>
               <a class="btn btn-primary" href="voucher-form.php"><i class="bi bi-plus-lg me-1"></i>নতুন ভাউচার</a>
             </div>

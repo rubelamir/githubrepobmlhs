@@ -141,7 +141,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($officerCount !== null): ?>
               <div class="col-6 col-lg-3">
                 <div class="acc-stat">
-                  <div class="acc-stat-label">সক্রিয় অ্যাকাউন্টস অফিসার</div>
+                  <div class="acc-stat-label">সক্রিয় হিসাব রক্ষক</div>
                   <div class="acc-stat-value"><?= h(bnDigits((string) $officerCount)) ?> জন</div>
                 </div>
               </div>
@@ -292,9 +292,9 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="col-lg-6">
                 <div class="card h-100">
                   <div class="card-body">
-                    <h3 class="h6">অফিসার</h3>
+                    <h3 class="h6">হিসাব রক্ষক</h3>
                     <p class="text-secondary small mb-2">যিনি প্রতিদিন হিসাব লিখবেন, তাঁকে এখান থেকে নিয়োগ দিন।</p>
-                    <a href="officers.php" class="btn btn-sm btn-primary"><i class="bi bi-person-gear me-1"></i>অফিসার নিয়োগ</a>
+                    <a href="officers.php" class="btn btn-sm btn-primary"><i class="bi bi-person-gear me-1"></i>হিসাব রক্ষক নিয়োগ</a>
                   </div>
                 </div>
               </div>

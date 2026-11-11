@@ -37,7 +37,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $handover = $handovers->handover($result['handover_id']);
             redirectWithMessage('handovers.php', $result['duplicate'] ? 'info' : 'success', $result['duplicate']
                 ? 'এই হস্তান্তর আগেই জমা হয়েছে (' . $handover['handover_no'] . ')।'
-                : 'হস্তান্তর ' . $handover['handover_no'] . ' জমা হয়েছে — ' . Money::format(Money::fromDb($handover['total'])) . '। অফিসার টাকা গুনে গ্রহণ করবেন।');
+                : 'হস্তান্তর ' . $handover['handover_no'] . ' জমা হয়েছে — ' . Money::format(Money::fromDb($handover['total'])) . '। হিসাব রক্ষক টাকা গুনে গ্রহণ করবেন।');
         }
         if ($action === 'receive' || $action === 'reject') {
             $handovers->decide($access, accAudit(), postedRecordId('acc_handover'), $action === 'receive', (string) ($_POST['counted'] ?? ''), (string) ($_POST['remark'] ?? ''));
@@ -58,7 +58,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">টাকা জমা</h3>
-            <p class="text-secondary mb-0">শ্রেণি শিক্ষকের আদায় করা নগদ টাকা অ্যাকাউন্টস অফিসারের কাছে জমা দেওয়ার হিসাব। অফিসার টাকা গুনে মিললে গ্রহণ করবেন, না মিললে কারণসহ ফেরত দেবেন।</p>
+            <p class="text-secondary mb-0">শ্রেণি শিক্ষকের আদায় করা নগদ টাকা হিসাব রক্ষকের কাছে জমা দেওয়ার হিসাব। হিসাব রক্ষক টাকা গুনে মিললে গ্রহণ করবেন, না মিললে কারণসহ ফেরত দেবেন।</p>
           </div>
         </div>
         <div class="app-content">

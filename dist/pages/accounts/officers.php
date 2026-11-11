@@ -10,7 +10,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::OFFICERS_MANAGE);
 $officers = accOfficers();
 $basePath = '../../';
-$pageTitle = 'অ্যাকাউন্টস অফিসার | School Admin';
+$pageTitle = 'হিসাব রক্ষক | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -23,7 +23,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 throw new RuntimeException('একজন শিক্ষক নির্বাচন করুন।');
             }
             $officers->appoint($access, accAudit(), $teacherId, (string) ($_POST['note'] ?? ''));
-            redirectWithMessage('officers.php', 'success', 'অ্যাকাউন্টস অফিসার নিয়োগ সম্পন্ন হয়েছে।');
+            redirectWithMessage('officers.php', 'success', 'হিসাব রক্ষক নিয়োগ সম্পন্ন হয়েছে।');
         }
         if ($action === 'revoke') {
             $officerId = postedRecordId('acc_officer');
@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 throw new RuntimeException('নিয়োগটি শনাক্ত করা যায়নি। পাতাটি আবার লোড করে চেষ্টা করুন।');
             }
             $officers->revoke($access, accAudit(), $officerId, (string) ($_POST['reason'] ?? ''));
-            redirectWithMessage('officers.php', 'success', 'অ্যাকাউন্টস অফিসারের দায়িত্ব প্রত্যাহার করা হয়েছে।');
+            redirectWithMessage('officers.php', 'success', 'হিসাব রক্ষকের দায়িত্ব প্রত্যাহার করা হয়েছে।');
         }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
@@ -47,8 +47,8 @@ include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">অ্যাকাউন্টস অফিসার নিয়োগ</h3>
-            <p class="text-secondary mb-0">অ্যাকাউন্টস অফিসার আয়-ব্যয় এন্ট্রি, ভাউচার, ব্যাংক রিকনসিলিয়েশন, শিক্ষকদের হস্তান্তর গ্রহণ ও রিপোর্ট দেখতে পারেন; ভাউচার, মওকুফ ও রিফান্ড আপনার অনুমোদনসাপেক্ষে কার্যকর হয়।</p>
+            <h3 class="mb-1">হিসাব রক্ষক নিয়োগ</h3>
+            <p class="text-secondary mb-0">হিসাব রক্ষক আয়-ব্যয় এন্ট্রি, ভাউচার, ব্যাংক রিকনসিলিয়েশন, শিক্ষকদের হস্তান্তর গ্রহণ ও রিপোর্ট দেখতে পারেন; ভাউচার, মওকুফ ও রিফান্ড আপনার অনুমোদনসাপেক্ষে কার্যকর হয়।</p>
           </div>
         </div>
         <div class="app-content">
@@ -62,7 +62,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <?php if ($candidates === []): ?>
                       <p class="text-secondary mb-0">নিয়োগযোগ্য কোনো সক্রিয় শিক্ষক নেই।</p>
                     <?php else: ?>
-                    <form method="post" data-acc-confirm="নির্বাচিত শিক্ষককে অ্যাকাউন্টস অফিসার হিসেবে নিয়োগ দিতে চান?" data-acc-confirm-ok="নিয়োগ দিন">
+                    <form method="post" data-acc-confirm="নির্বাচিত শিক্ষককে হিসাব রক্ষক হিসেবে নিয়োগ দিতে চান?" data-acc-confirm-ok="নিয়োগ দিন">
                       <?= csrfField() ?>
                       <input type="hidden" name="action" value="appoint">
                       <div class="mb-3">
@@ -89,7 +89,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <div class="col-lg-8">
                 <div class="card mb-3">
-                  <div class="card-header"><h3 class="card-title mb-0">বর্তমান অ্যাকাউন্টস অফিসার</h3></div>
+                  <div class="card-header"><h3 class="card-title mb-0">বর্তমান হিসাব রক্ষক</h3></div>
                   <div class="card-body p-0">
                     <?php if ($activeOfficers === []): ?>
                       <p class="text-secondary p-3 mb-0">এখনো কাউকে নিয়োগ দেওয়া হয়নি।</p>
@@ -114,7 +114,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             </tr>
                             <tr class="collapse" id="<?= h($collapseId) ?>">
                               <td colspan="5">
-                                <form method="post" class="row g-2 align-items-end" data-acc-confirm="<?= h((string) ($row['teacher_name'] ?? '')) ?>-এর অ্যাকাউন্টস অফিসারের দায়িত্ব প্রত্যাহার করবেন?" data-acc-confirm-variant="danger" data-acc-confirm-ok="প্রত্যাহার করুন">
+                                <form method="post" class="row g-2 align-items-end" data-acc-confirm="<?= h((string) ($row['teacher_name'] ?? '')) ?>-এর হিসাব রক্ষকের দায়িত্ব প্রত্যাহার করবেন?" data-acc-confirm-variant="danger" data-acc-confirm-ok="প্রত্যাহার করুন">
                                   <?= csrfField() ?>
                                   <input type="hidden" name="action" value="revoke">
                                   <?= signedRecordField((int) $row['id'], 'acc_officer') ?>

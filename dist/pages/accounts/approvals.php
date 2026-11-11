@@ -84,7 +84,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ছাড়ের অনুমোদন</h3>
-            <p class="text-secondary mb-0">শ্রেণি শিক্ষক ও অ্যাকাউন্টস অফিসারের পাঠানো ফি-শ্রেণী পরিবর্তন, ব্যক্তিগত ছাড় ও মওকুফের আবেদন। অনুমোদনের আগে কোনো আবেদন হিসাবে কার্যকর হয় না।</p>
+            <p class="text-secondary mb-0">শ্রেণি শিক্ষক ও হিসাব রক্ষকের পাঠানো ফি-শ্রেণী পরিবর্তন, ব্যক্তিগত ছাড় ও মওকুফের আবেদন। অনুমোদনের আগে কোনো আবেদন হিসাবে কার্যকর হয় না।</p>
           </div>
         </div>
         <div class="app-content">

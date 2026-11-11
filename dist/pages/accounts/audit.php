@@ -56,7 +56,7 @@ $rows = fetchRows(
 $entities = array_column(fetchRows($db, 'SELECT DISTINCT entity_type FROM acc_audit_log ORDER BY entity_type'), 'entity_type');
 
 $entityLabels = [
-    'acc_officer' => 'অ্যাকাউন্টস অফিসার',
+    'acc_officer' => 'হিসাব রক্ষক',
 ];
 
 /**

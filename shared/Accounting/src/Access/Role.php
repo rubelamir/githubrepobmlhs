@@ -19,7 +19,7 @@ final class Role
 
     private const LABELS = [
         self::HEAD => 'প্রধান শিক্ষক (সুপার অ্যাডমিন)',
-        self::OFFICER => 'অ্যাকাউন্টস অফিসার',
+        self::OFFICER => 'হিসাব রক্ষক',
         self::CLASS_TEACHER => 'শ্রেণী শিক্ষক',
     ];
 
