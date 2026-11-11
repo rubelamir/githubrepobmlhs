@@ -11,7 +11,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::FEES_COLLECT);
+$access = accBootPage([Capability::FEES_COLLECT, Capability::FEES_VIEW_ALL]);
 $payments = accPayments();
 $schoolWide = $access->hasSchoolWideScope();
 $canReverse = $access->can(Capability::PAYMENT_REVERSE);

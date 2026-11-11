@@ -14,7 +14,8 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::DASHBOARD_VIEW);
 $canSettings = $access->can(Capability::GATEWAY_SETTINGS);
 $canRefund = $access->can(Capability::REFUND_REQUEST);
-if (!$canSettings && !$canRefund) {
+$canVerify = $access->can(Capability::REFUND_APPROVE);
+if (!$canSettings && !$canRefund && !$canVerify) {
     redirectWithMessage('dashboard.php', 'danger', 'এই পাতার অনুমতি আপনার নেই।');
 }
 $online = accOnline();
@@ -128,10 +129,12 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 <?php endforeach; ?>
               </div>
+            <?php endif; ?>
+            <?php if ($canSettings || $access->can(Capability::OFFICERS_MANAGE)): ?>
               <div class="card mb-3">
                 <div class="card-body">
                   <h3 class="h6">পেন্ডিং পেমেন্ট মিলানো (cron)</h3>
-                  <p class="small text-secondary mb-2">প্রতি ৫ মিনিটে cPanel cron-এ চালান। কীটি শুধু প্রধান শিক্ষক দেখতে পান; URL-এর <code>key</code> না মিললে কিছুই চলে না।</p>
+                  <p class="small text-secondary mb-2">প্রতি ৫ মিনিটে cPanel cron-এ চালান। কীটি প্রধান শিক্ষক ও হিসাব রক্ষক দেখতে পান; URL-এর <code>key</code> না মিললে কিছুই চলে না।</p>
                   <p class="small mb-1"><code>php <?= h(dirname(__DIR__, 3) . '/dist/cron/accounting-gateway.php') ?></code></p>
                   <p class="small mb-0">অথবা HTTP: <code><?= h(adminUrl('cron/accounting-gateway.php')) ?>?key=<?= h(accGatewayCronKey()) ?></code></p>
                 </div>

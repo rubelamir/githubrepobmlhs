@@ -24,16 +24,31 @@ $officerAndTeacher = new AccessContext(4, 'Both', [Role::CLASS_TEACHER, Role::OF
 $guest = AccessContext::guest();
 $ghost = new AccessContext(0, '', [Role::HEAD], $noScope, '2026');
 
-// Head holds every capability except submitting a teacher's cash handover.
+// The head appoints the officer and can see and verify every account. Day-to-day control belongs to the officer.
+$headKeeps = [
+    Capability::DASHBOARD_VIEW, Capability::OFFICERS_MANAGE, Capability::FEES_VIEW_ALL, Capability::FEES_VIEW_CLASS,
+    Capability::CONCESSION_APPROVE, Capability::WAIVER_APPROVE, Capability::VOUCHER_APPROVE, Capability::REFUND_APPROVE,
+    Capability::REPORTS_VIEW_ALL, Capability::REPORTS_VIEW_CLASS, Capability::AUDIT_VIEW,
+];
+$officerControls = [
+    Capability::FEE_STRUCTURE_MANAGE, Capability::CHART_MANAGE, Capability::FEES_COLLECT, Capability::CONCESSION_REQUEST,
+    Capability::INVOICE_MANAGE, Capability::INVOICE_CANCEL, Capability::WAIVER_REQUEST, Capability::PAYMENT_REVERSE,
+    Capability::HANDOVER_RECEIVE, Capability::VOUCHER_CREATE, Capability::BANK_RECONCILE, Capability::GATEWAY_SETTINGS,
+    Capability::REFUND_REQUEST, Capability::PERIOD_CLOSE,
+];
 foreach (array_keys(Capability::labels()) as $capability) {
-    $expected = $capability !== Capability::HANDOVER_SUBMIT;
-    $check($head->can($capability) === $expected, "head capability {$capability}");
+    $check($head->can($capability) === in_array($capability, $headKeeps, true), "head capability {$capability}");
 }
-
-// Approval and control powers stay with the head.
-foreach ([Capability::OFFICERS_MANAGE, Capability::FEE_STRUCTURE_MANAGE, Capability::CHART_MANAGE, Capability::WAIVER_APPROVE, Capability::VOUCHER_APPROVE, Capability::REFUND_APPROVE, Capability::PERIOD_CLOSE, Capability::GATEWAY_SETTINGS, Capability::AUDIT_VIEW] as $capability) {
+$classTeacherMayShare = [Capability::FEES_COLLECT, Capability::CONCESSION_REQUEST, Capability::WAIVER_REQUEST];
+foreach ($officerControls as $capability) {
+    $check($officer->can($capability), "officer controls {$capability}");
+    $check(!$head->can($capability), "head does not control {$capability}");
+    if (!in_array($capability, $classTeacherMayShare, true)) {
+        $check(!$classTeacher->can($capability), "class teacher cannot {$capability}");
+    }
+}
+foreach ([Capability::OFFICERS_MANAGE, Capability::CONCESSION_APPROVE, Capability::WAIVER_APPROVE, Capability::VOUCHER_APPROVE, Capability::REFUND_APPROVE, Capability::AUDIT_VIEW] as $capability) {
     $check(!$officer->can($capability), "officer cannot {$capability}");
-    $check(!$classTeacher->can($capability), "class teacher cannot {$capability}");
 }
 $check($officer->can(Capability::VOUCHER_CREATE), 'officer creates vouchers');
 $check($officer->can(Capability::HANDOVER_RECEIVE), 'officer receives handovers');
