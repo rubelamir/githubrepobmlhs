@@ -1,4 +1,5 @@
-/* Printable fee receipt (dist/pages/accounts/receipt.php): two copies per A4 page. */
+/* Printable fee receipt. Guardian and office copies share one A4 page.
+   When they do not fit, each copy starts on its own page. */
 
 * {
   box-sizing: border-box;
@@ -212,6 +213,16 @@ body {
   }
 }
 
+.receipt-sheet.is-split .receipt {
+  min-height: 0;
+}
+
+.receipt-sheet.is-split .receipt + .receipt {
+  border-top: 0;
+  margin-top: 12mm;
+  padding-top: 4mm;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -230,6 +241,18 @@ body {
   .receipt-sheet {
     margin: 0;
     width: 210mm;
+  }
+
+  .receipt-sheet.is-fitted .receipt {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .receipt-sheet.is-split .receipt + .receipt {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 0;
+    padding-top: 4mm;
   }
 
   .receipt-lines thead th {
