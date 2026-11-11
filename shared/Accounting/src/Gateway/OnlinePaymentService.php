@@ -313,7 +313,7 @@ final class OnlinePaymentService
     /** Staff "check again" for one transaction. */
     public function recheck(AccessContext $actor, int $txnId): string
     {
-        if (!$actor->can(Capability::GATEWAY_SETTINGS) && !$actor->can(Capability::REFUND_REQUEST)) {
+        if (!$actor->can(Capability::GATEWAY_SETTINGS) && !$actor->can(Capability::REFUND_REQUEST) && !$actor->can(Capability::REFUND_APPROVE)) {
             throw AccessDeniedException::forCapability(Capability::GATEWAY_SETTINGS);
         }
         $txn = $this->transaction($txnId) ?? throw new RuntimeException('লেনদেনটি পাওয়া যায়নি।');

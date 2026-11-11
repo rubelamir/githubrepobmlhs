@@ -13,7 +13,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::DASHBOARD_VIEW);
 $canSubmit = $access->can(Capability::HANDOVER_SUBMIT);
 $canReceive = $access->can(Capability::HANDOVER_RECEIVE);
-if (!$canSubmit && !$canReceive) {
+if (!$canSubmit && !$canReceive && !$access->can(Capability::REPORTS_VIEW_ALL)) {
     redirectWithMessage('dashboard.php', 'danger', 'এই পাতার অনুমতি আপনার নেই।');
 }
 $handovers = accHandovers();

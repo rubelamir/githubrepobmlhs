@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::VOUCHER_CREATE);
+$access = accBootPage([Capability::VOUCHER_CREATE, Capability::VOUCHER_APPROVE]);
 $vouchers = accVouchers();
 $canApprove = $access->can(Capability::VOUCHER_APPROVE);
 $voucherId = postedRecordId('acc_voucher');

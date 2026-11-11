@@ -12,7 +12,8 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::INVOICE_MANAGE);
+$access = accBootPage([Capability::INVOICE_MANAGE, Capability::FEES_VIEW_ALL]);
+$canGenerate = $access->can(Capability::INVOICE_MANAGE);
 $canCancel = $access->can(Capability::INVOICE_CANCEL);
 $invoices = accInvoices();
 $db = getDatabaseConnection();
@@ -142,7 +143,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </form>
             </div>
 
-            <?php if ($ready): ?>
+            <?php if ($ready && $canGenerate): ?>
               <div class="row g-3 mb-3">
                 <div class="col-lg-12">
                   <form method="post" class="card h-100" data-acc-confirm="নির্বাচিত শ্রেণী/শাখার সব ভর্তি শিক্ষার্থীর ইনভয়েস তৈরি হবে। চালিয়ে যাবেন?">
@@ -196,7 +197,9 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </form>
                 </div>
               </div>
+              <?php endif; ?>
 
+              <?php if ($ready): ?>
               <div class="card">
                 <div class="card-header">
                   <form method="get" class="row g-2 align-items-end">

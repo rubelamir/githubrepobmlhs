@@ -9,7 +9,8 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::FEE_STRUCTURE_MANAGE);
+$access = accBootPage([Capability::FEE_STRUCTURE_MANAGE, Capability::FEES_VIEW_ALL]);
+$canManage = $access->can(Capability::FEE_STRUCTURE_MANAGE);
 $catalog = accCatalog();
 $basePath = '../../';
 $pageTitle = 'ফির নাম | School Admin';
@@ -79,6 +80,7 @@ include __DIR__ . '/../../includes/layout-head.php';
           <div class="container-fluid">
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
             <div class="row g-3">
+              <?php if ($canManage): ?>
               <div class="col-lg-4">
                 <div class="card">
                   <div class="card-header"><h3 class="card-title mb-0"><?= $editHead ? 'ফি হেড সম্পাদনা' : 'নতুন ফি হেড' ?></h3></div>
@@ -122,13 +124,14 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </form>
                 </div>
               </div>
-              <div class="col-lg-8">
+              <?php endif; ?>
+              <div class="<?= $canManage ? 'col-lg-8' : 'col-12' ?>">
                 <div class="card">
                   <div class="card-header"><h3 class="card-title mb-0">ফি হেড</h3></div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
                       <table class="table align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>নাম</th><th>কোড</th><th>বিলের ধরন</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
+                        <thead><tr><th>নাম</th><th>কোড</th><th>বিলের ধরন</th><th>অবস্থা</th><?php if ($canManage): ?><th class="text-end">কার্যক্রম</th><?php endif; ?></tr></thead>
                         <tbody>
                           <?php foreach ($heads as $head): ?>
                             <?php $active = (int) $head['is_active'] === 1; ?>
@@ -137,6 +140,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td data-label="কোড"><code><?= h((string) $head['code']) ?></code></td>
                               <td data-label="বিলের ধরন"><?= h(BillingPeriod::KIND_LABELS[$head['billing_kind']] ?? (string) $head['billing_kind']) ?><?php if (isset($incomeNames[(int) $head['income_account_id']])): ?><div class="small text-secondary">আয়: <?= h($incomeNames[(int) $head['income_account_id']]) ?></div><?php endif; ?></td>
                               <td data-label="অবস্থা"><span class="badge <?= $active ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= $active ? 'সক্রিয়' : 'নিষ্ক্রিয়' ?></span></td>
+                              <?php if ($canManage): ?>
                               <td class="text-end text-nowrap" data-label="কার্যক্রম">
                                 <a class="btn btn-sm btn-outline-primary" href="<?= h(signedRecordUrl('fee-setup.php', (int) $head['id'], 'acc_fee_head')) ?>">সম্পাদনা</a>
                                 <form method="post" class="d-inline" data-acc-confirm="<?= h((string) $head['name_bn']) ?> <?= $active ? 'নিষ্ক্রিয়' : 'সক্রিয়' ?> করবেন?">
@@ -145,6 +149,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                                   <button class="btn btn-sm <?= $active ? 'btn-outline-secondary' : 'btn-outline-success' ?>" type="submit"><?= $active ? 'নিষ্ক্রিয়' : 'সক্রিয়' ?></button>
                                 </form>
                               </td>
+                              <?php endif; ?>
                             </tr>
                           <?php endforeach; ?>
                         </tbody>
@@ -156,6 +161,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             </div>
 
             <div class="row g-3 mt-1" id="categories">
+              <?php if ($canManage): ?>
               <div class="col-lg-4">
                 <div class="card">
                   <div class="card-header"><h3 class="card-title mb-0"><?= $editCategory ? 'ফি-শ্রেণী সম্পাদনা' : 'নতুন ফি-শ্রেণী' ?></h3></div>
@@ -194,13 +200,14 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </form>
                 </div>
               </div>
-              <div class="col-lg-8">
+              <?php endif; ?>
+              <div class="<?= $canManage ? 'col-lg-8' : 'col-12' ?>">
                 <div class="card">
                   <div class="card-header"><h3 class="card-title mb-0">ফি-শ্রেণী</h3></div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
                       <table class="table align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>নাম</th><th>কোড</th><th>আদেশ নম্বর</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
+                        <thead><tr><th>নাম</th><th>কোড</th><th>আদেশ নম্বর</th><th>অবস্থা</th><?php if ($canManage): ?><th class="text-end">কার্যক্রম</th><?php endif; ?></tr></thead>
                         <tbody>
                           <?php foreach ($categories as $category): ?>
                             <?php $active = (int) $category['is_active'] === 1; $isDefault = (int) $category['is_default'] === 1; ?>
@@ -213,6 +220,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td data-label="কোড"><code><?= h((string) $category['code']) ?></code></td>
                               <td data-label="আদেশ নম্বর"><?= (int) $category['requires_reference'] === 1 ? 'বাধ্যতামূলক' : '—' ?></td>
                               <td data-label="অবস্থা"><span class="badge <?= $active ? 'text-bg-success' : 'text-bg-secondary' ?>"><?= $active ? 'সক্রিয়' : 'নিষ্ক্রিয়' ?></span></td>
+                              <?php if ($canManage): ?>
                               <td class="text-end text-nowrap" data-label="কার্যক্রম">
                                 <a class="btn btn-sm btn-outline-primary" href="<?= h(signedRecordUrl('fee-setup.php', (int) $category['id'], 'acc_fee_category')) ?>#categories">সম্পাদনা</a>
                                 <?php if (!$isDefault): ?>
@@ -223,6 +231,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                                 </form>
                                 <?php endif; ?>
                               </td>
+                              <?php endif; ?>
                             </tr>
                           <?php endforeach; ?>
                         </tbody>

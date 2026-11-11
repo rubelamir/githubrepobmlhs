@@ -9,7 +9,8 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::PERIOD_CLOSE);
+$access = accBootPage([Capability::PERIOD_CLOSE, Capability::REPORTS_VIEW_ALL]);
+$canClose = $access->can(Capability::PERIOD_CLOSE);
 $periods = accPeriods();
 $basePath = '../../';
 $pageTitle = 'মাস বন্ধ | School Admin';
@@ -95,7 +96,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php foreach ($blockers as $blocker): ?><div class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> <?= h($blocker) ?></div><?php endforeach; ?>
                           </td>
                           <td class="text-end" data-label="">
-                            <?php if ($closed): ?>
+                            <?php if (!$canClose): ?>
+                            <?php elseif ($closed): ?>
                               <button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="collapse" data-bs-target="#reopen-<?= h($period) ?>">পুনরায় খুলুন</button>
                             <?php elseif ($ended && $blockers === []): ?>
                               <form method="post" class="d-flex gap-1 justify-content-end" data-acc-confirm="<?= h(PeriodClosing::label($period)) ?> মাস বন্ধ করবেন? এরপর এই মাসের তারিখে কোনো এন্ট্রি দেওয়া যাবে না।">
@@ -106,7 +108,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php endif; ?>
                           </td>
                         </tr>
-                        <?php if ($closed): ?>
+                        <?php if ($canClose && $closed): ?>
                           <tr class="collapse" id="reopen-<?= h($period) ?>"><td colspan="4" class="bg-body-tertiary">
                             <form method="post" class="d-flex flex-wrap gap-1" data-acc-confirm="মাসটি পুনরায় খুলবেন? কারণটি অডিট লগে থাকবে।" data-acc-confirm-variant="danger">
                               <?= csrfField() ?><input type="hidden" name="action" value="reopen"><input type="hidden" name="period" value="<?= h($period) ?>">

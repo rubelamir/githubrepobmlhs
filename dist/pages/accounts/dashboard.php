@@ -82,6 +82,12 @@ if ($access->hasRole(Role::CLASS_TEACHER)) {
 }
 
 $steps = [];
+if ($access->can(Capability::OFFICERS_MANAGE)) {
+    $steps[] = ['হিসাব রক্ষক', 'হিসাবের কাজ তাঁর মাধ্যমে চলবে। আপনি নিয়োগ দেন এবং প্রত্যাহার করেন।', 'officers.php', 'নিয়োগ দিন'];
+}
+if ($access->can(Capability::VOUCHER_APPROVE)) {
+    $steps[] = ['যাচাই', 'ছাড়, ভাউচার, ব্যাংক জমা ও টাকা ফেরত মিলিয়ে অনুমোদন করুন। এন্ট্রি হিসাব রক্ষক করেন।', 'vouchers.php?status=submitted', 'যাচাই করুন'];
+}
 if ($access->can(Capability::FEE_STRUCTURE_MANAGE)) {
     $steps[] = ['শ্রেণীর হার', 'বছরের শুরুতে একবার। সাধারণ শিক্ষার্থী ও বৃত্তি/উপবৃত্তির টাকা আলাদা দিন।', 'fee-structure.php', 'হার দেখুন'];
 }
@@ -105,7 +111,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
               <div>
                 <h3 class="mb-1">আজকের কাজ</h3>
-                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। প্রতিদিনের কাজ বাঁ দিকের প্রথম অংশে। হিসাবের খাতা আলাদা অংশে, দরকার হলে খুলবেন।</p>
+                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং সব হিসাব দেখে যাচাই করেন। এন্ট্রি, বিল ও আদায় হিসাব রক্ষক করেন।' : 'প্রতিদিনের কাজ বাঁ দিকের প্রথম অংশে। হিসাবের খাতা আলাদা অংশে, দরকার হলে খুলবেন।' ?></p>
               </div>
               <div class="acc-role-badges d-flex flex-wrap gap-1">
                 <?php foreach ($access->roles() as $role): ?>

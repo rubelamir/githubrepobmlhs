@@ -9,7 +9,8 @@ require_once __DIR__ . '/../../includes/auth.php';
 requireAuthentication('../../examples/login-v2.php');
 require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
-$access = accBootPage(Capability::CONCESSION_REQUEST);
+$access = accBootPage([Capability::CONCESSION_REQUEST, Capability::FEES_VIEW_ALL]);
+$canRequest = $access->can(Capability::CONCESSION_REQUEST);
 $catalog = accCatalog();
 $service = accStudentCategories();
 $basePath = '../../';
@@ -98,6 +99,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <form method="post" data-acc-confirm="নির্বাচিত শিক্ষার্থীদের ফি-শ্রেণী <?= $autoApprove ? 'নির্ধারণ' : 'পরিবর্তনের আবেদন' ?> করবেন?">
                 <?= csrfField() ?>
                 <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
+                <?php if ($canRequest): ?>
                 <div class="card mb-3">
                   <div class="card-body">
                     <div class="row g-2 align-items-end">
@@ -129,6 +131,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="small text-secondary mt-2">সাধারণ শ্রেণীতে ফেরাতে "সাধারণ" নির্বাচন করুন। কার্যকর তারিখের আগের ইনভয়েস অপরিবর্তিত থাকবে।</div>
                   </div>
                 </div>
+                <?php endif; ?>
 
                 <div class="card">
                   <div class="card-header d-flex flex-wrap gap-2 align-items-center">
@@ -145,7 +148,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <table class="table table-hover align-middle mb-0 acc-table-stack">
                           <thead>
                             <tr>
-                              <th style="width:2.5rem"><input class="form-check-input" type="checkbox" data-acc-check-all="students[]" aria-label="সবাইকে নির্বাচন"></th>
+                              <?php if ($canRequest): ?><th style="width:2.5rem"><input class="form-check-input" type="checkbox" data-acc-check-all="students[]" aria-label="সবাইকে নির্বাচন"></th><?php endif; ?>
                               <th>রোল</th><th>নাম</th><th>বর্তমান ফি-শ্রেণী</th><th>অপেক্ষমাণ আবেদন</th><th class="text-end">বিস্তারিত</th>
                             </tr>
                           </thead>
@@ -157,7 +160,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               $waiting = $pending[$studentId] ?? null;
                               ?>
                               <tr>
-                                <td data-label="নির্বাচন"><input class="form-check-input" type="checkbox" name="students[]" value="<?= h(signedRecordRef($studentId, 'acc_student')) ?>"<?= $waiting ? ' disabled' : '' ?> aria-label="<?= h(StudentDirectory::displayName($student)) ?>"></td>
+                                <?php if ($canRequest): ?><td data-label="নির্বাচন"><input class="form-check-input" type="checkbox" name="students[]" value="<?= h(signedRecordRef($studentId, 'acc_student')) ?>"<?= $waiting ? ' disabled' : '' ?> aria-label="<?= h(StudentDirectory::displayName($student)) ?>"></td><?php endif; ?>
                                 <td data-label="রোল"><?= h(bnDigits((string) $student['cls_roll'])) ?></td>
                                 <td data-label="নাম"><?= h(StudentDirectory::displayName($student)) ?></td>
                                 <td data-label="বর্তমান ফি-শ্রেণী">
