@@ -104,5 +104,35 @@ $back = signedRecordUrl('collect.php', (int) $payment['student_id'], 'acc_studen
       </section>
     <?php endforeach; ?>
   </main>
+  <script>
+    (function () {
+      var sheet = document.querySelector('.receipt-sheet');
+      if (!sheet || sheet.querySelectorAll('.receipt').length < 2) {
+        return;
+      }
+      function layout() {
+        sheet.classList.remove('is-split', 'is-long', 'is-fitted');
+        var pageHeight = sheet.getBoundingClientRect().width / 210 * 290;
+        var longCopy = false;
+        sheet.querySelectorAll('.receipt').forEach(function (copy) {
+          if (copy.offsetHeight > pageHeight) {
+            longCopy = true;
+          }
+        });
+        if (longCopy) {
+          sheet.classList.add('is-long', 'is-split');
+        } else if (sheet.scrollHeight > pageHeight + 1) {
+          sheet.classList.add('is-split', 'is-fitted');
+        } else {
+          sheet.classList.add('is-fitted');
+        }
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(layout);
+      }
+      window.addEventListener('load', layout);
+      window.addEventListener('beforeprint', layout);
+    }());
+  </script>
 </body>
 </html>
