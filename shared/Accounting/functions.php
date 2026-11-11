@@ -479,7 +479,7 @@ function accNavItems(AccessContext $access): array
         ['group' => 'হিসাবের খাতা', 'page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'খতিয়ান', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['group' => 'হিসাবের খাতা', 'page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'হিসাবের নাম', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['group' => 'হিসাবের খাতা', 'page' => 'period-closing', 'icon' => 'bi-calendar2-check', 'label' => 'মাস বন্ধ', 'capability' => Capability::PERIOD_CLOSE],
-        ['group' => 'হিসাবের খাতা', 'page' => 'officers', 'icon' => 'bi-person-gear', 'label' => 'অফিসার', 'capability' => Capability::OFFICERS_MANAGE],
+        ['group' => 'হিসাবের খাতা', 'page' => 'officers', 'icon' => 'bi-person-gear', 'label' => 'হিসাব রক্ষক', 'capability' => Capability::OFFICERS_MANAGE],
         ['group' => 'হিসাবের খাতা', 'page' => 'audit', 'icon' => 'bi-journal-text', 'label' => 'পরিবর্তনের ইতিহাস', 'capability' => Capability::AUDIT_VIEW],
     ];
     $visible = [];

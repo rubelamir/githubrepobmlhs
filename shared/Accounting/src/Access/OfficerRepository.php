@@ -92,7 +92,7 @@ final class OfficerRepository
             throw new RuntimeException('শিক্ষক পাওয়া যায়নি।');
         }
         if ((int) ($teacher['teacher_status'] ?? 1) !== 1) {
-            throw new RuntimeException('নিষ্ক্রিয় শিক্ষককে অ্যাকাউন্টস অফিসার করা যাবে না।');
+            throw new RuntimeException('নিষ্ক্রিয় শিক্ষককে হিসাব রক্ষক করা যাবে না।');
         }
         if (\isHeadAdmin($teacher)) {
             throw new RuntimeException('প্রধান শিক্ষকের সব অনুমতি আগে থেকেই আছে; আলাদা নিয়োগের প্রয়োজন নেই।');
@@ -118,13 +118,13 @@ final class OfficerRepository
                 $id,
                 ['teacher_id' => $teacherId, 'is_officer' => false],
                 ['teacher_id' => $teacherId, 'is_officer' => true, 'appointed_at' => $now, 'note' => $note],
-                'অ্যাকাউন্টস অফিসার নিয়োগ: ' . (string) $teacher['teacher_name']
+                'হিসাব রক্ষক নিয়োগ: ' . (string) $teacher['teacher_name']
             );
             $this->db->commit();
         } catch (PDOException $exception) {
             $this->db->rollBack();
             if ($exception->getCode() === '23000') {
-                throw new RuntimeException('এই শিক্ষক ইতিমধ্যে অ্যাকাউন্টস অফিসার হিসেবে নিযুক্ত।');
+                throw new RuntimeException('এই শিক্ষক ইতিমধ্যে হিসাব রক্ষক হিসেবে নিযুক্ত।');
             }
             throw $exception;
         } catch (Throwable $exception) {
@@ -174,7 +174,7 @@ final class OfficerRepository
                 $officerId,
                 ['teacher_id' => (int) $row['teacher_id'], 'is_officer' => true, 'appointed_at' => $row['appointed_at']],
                 ['teacher_id' => (int) $row['teacher_id'], 'is_officer' => false, 'revoked_at' => $now, 'reason' => $reason],
-                'অ্যাকাউন্টস অফিসার প্রত্যাহার: ' . (string) ($row['teacher_name'] ?? '')
+                'হিসাব রক্ষক প্রত্যাহার: ' . (string) ($row['teacher_name'] ?? '')
             );
             $this->db->commit();
         } catch (Throwable $exception) {

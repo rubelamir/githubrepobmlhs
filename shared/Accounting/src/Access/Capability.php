@@ -105,7 +105,7 @@ final class Capability
 
     private const LABELS = [
         self::DASHBOARD_VIEW => 'হিসাব ড্যাশবোর্ড দেখা',
-        self::OFFICERS_MANAGE => 'অ্যাকাউন্টস অফিসার নিয়োগ/প্রত্যাহার',
+        self::OFFICERS_MANAGE => 'হিসাব রক্ষক নিয়োগ/প্রত্যাহার',
         self::FEE_STRUCTURE_MANAGE => 'ফি কাঠামো নির্ধারণ',
         self::CHART_MANAGE => 'চার্ট অব অ্যাকাউন্টস নিয়ন্ত্রণ',
         self::FEES_VIEW_ALL => 'সব শিক্ষার্থীর ফি ও বকেয়া দেখা',
@@ -118,7 +118,7 @@ final class Capability
         self::WAIVER_REQUEST => 'ছাড়/মওকুফের আবেদন',
         self::WAIVER_APPROVE => 'ছাড়/মওকুফ অনুমোদন',
         self::PAYMENT_REVERSE => 'রসিদ রিভার্স (ভুল আদায় সংশোধন)',
-        self::HANDOVER_SUBMIT => 'আদায়কৃত টাকা অফিসারের কাছে হস্তান্তর',
+        self::HANDOVER_SUBMIT => 'আদায়কৃত টাকা হিসাব রক্ষকের কাছে হস্তান্তর',
         self::HANDOVER_RECEIVE => 'শিক্ষকদের হস্তান্তর গ্রহণ',
         self::VOUCHER_CREATE => 'আয়-ব্যয় ভাউচার তৈরি',
         self::VOUCHER_APPROVE => 'ভাউচার ও রিভার্সাল অনুমোদন',
