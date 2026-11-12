@@ -25,12 +25,12 @@ final class ReportService
     public const CONCESSION = 'concession';
 
     public const LABELS = [
-        self::TRIAL => 'ট্রায়াল ব্যালেন্স',
+        self::TRIAL => 'উদ্বৃত্ত',
         self::INCOME => 'আয়-ব্যয় বিবরণী',
-        self::CASH => 'নগদ, ব্যাংক ও গেটওয়ে',
+        self::CASH => 'নগদ ও ব্যাংক',
         self::COLLECTION => 'ফি আদায়',
         self::DUES => 'শ্রেণীভিত্তিক বকেয়া',
-        self::CONCESSION => 'ফি-শ্রেণী অনুযায়ী ছাড়',
+        self::CONCESSION => 'বৃত্তি ও ছাড়',
     ];
 
     public function __construct(private PDO $db, private ChartOfAccounts $chart)
