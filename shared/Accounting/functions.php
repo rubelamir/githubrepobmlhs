@@ -28,6 +28,7 @@ use School\Accounting\Ledger\BankService;
 use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Ledger\PeriodClosing;
 use School\Accounting\Ledger\PostingService;
+use School\Accounting\Ledger\SimpleBooks;
 use School\Accounting\Ledger\VoucherService;
 use School\Accounting\Report\ReportService;
 
@@ -151,6 +152,13 @@ function accVouchers(): VoucherService
     static $service = null;
 
     return $service ??= new VoucherService(getDatabaseConnection(), accChart(), accPeriods());
+}
+
+function accBooks(): SimpleBooks
+{
+    static $service = null;
+
+    return $service ??= new SimpleBooks(getDatabaseConnection(), accChart(), accVouchers());
 }
 
 function accPosting(): PostingService
@@ -470,6 +478,8 @@ function accNavItems(AccessContext $access): array
         ['group' => 'প্রতিদিন', 'page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
         ['group' => 'প্রতিদিন', 'page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
         ['group' => 'প্রতিদিন', 'page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'রসিদ', 'capability' => [Capability::FEES_COLLECT, Capability::FEES_VIEW_ALL]],
+        ['group' => 'প্রতিদিন', 'page' => 'expense', 'icon' => 'bi-wallet2', 'label' => 'আয় ও খরচ', 'capability' => Capability::VOUCHER_CREATE],
+        ['group' => 'প্রতিদিন', 'page' => 'books', 'icon' => 'bi-safe', 'label' => 'ক্যাশ ও ব্যাংক', 'capability' => [Capability::REPORTS_VIEW_ALL, Capability::VOUCHER_CREATE]],
         ['group' => 'প্রতিদিন', 'page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা জমা', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE, Capability::REPORTS_VIEW_ALL]],
         ['group' => 'বিল ও হার', 'page' => 'invoices', 'icon' => 'bi-receipt', 'label' => 'মাসের বিল', 'capability' => [Capability::INVOICE_MANAGE, Capability::FEES_VIEW_ALL]],
         ['group' => 'বিল ও হার', 'page' => 'fee-structure', 'icon' => 'bi-grid-3x3-gap', 'label' => 'শ্রেণীর হার', 'capability' => Capability::FEES_VIEW_ALL],
@@ -480,10 +490,10 @@ function accNavItems(AccessContext $access): array
         ['group' => 'অনলাইন', 'page' => 'refunds', 'icon' => 'bi-arrow-counterclockwise', 'label' => 'টাকা ফেরত', 'capability' => [Capability::REFUND_REQUEST, Capability::REFUND_APPROVE]],
         ['group' => 'অনলাইন', 'page' => 'settlements', 'icon' => 'bi-arrow-down-up', 'label' => 'bKash থেকে ব্যাংক', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
         ['group' => 'রিপোর্ট', 'page' => 'reports', 'icon' => 'bi-bar-chart', 'label' => 'রিপোর্ট', 'capability' => [Capability::REPORTS_VIEW_ALL, Capability::REPORTS_VIEW_CLASS]],
-        ['group' => 'হিসাবের খাতা', 'page' => 'vouchers', 'icon' => 'bi-journal-check', 'label' => 'ভাউচার', 'capability' => [Capability::VOUCHER_CREATE, Capability::VOUCHER_APPROVE]],
-        ['group' => 'হিসাবের খাতা', 'page' => 'bank', 'icon' => 'bi-bank', 'label' => 'ব্যাংক জমা', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
-        ['group' => 'হিসাবের খাতা', 'page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'খতিয়ান', 'capability' => Capability::REPORTS_VIEW_ALL],
-        ['group' => 'হিসাবের খাতা', 'page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'হিসাবের নাম', 'capability' => Capability::REPORTS_VIEW_ALL],
+        ['group' => 'হিসাবের খাতা', 'page' => 'vouchers', 'icon' => 'bi-journal-check', 'label' => 'আয়-খরচ তালিকা', 'capability' => [Capability::VOUCHER_CREATE, Capability::VOUCHER_APPROVE]],
+        ['group' => 'হিসাবের খাতা', 'page' => 'bank', 'icon' => 'bi-bank', 'label' => 'ব্যাংক মিলানো', 'capability' => [Capability::BANK_RECONCILE, Capability::VOUCHER_APPROVE]],
+        ['group' => 'হিসাবের খাতা', 'page' => 'ledger', 'icon' => 'bi-journal-bookmark', 'label' => 'বিস্তারিত খাতা', 'capability' => Capability::REPORTS_VIEW_ALL],
+        ['group' => 'হিসাবের খাতা', 'page' => 'chart-of-accounts', 'icon' => 'bi-diagram-3', 'label' => 'খাতের নাম', 'capability' => Capability::REPORTS_VIEW_ALL],
         ['group' => 'হিসাবের খাতা', 'page' => 'period-closing', 'icon' => 'bi-calendar2-check', 'label' => 'মাস বন্ধ', 'capability' => [Capability::PERIOD_CLOSE, Capability::REPORTS_VIEW_ALL]],
         ['group' => 'হিসাবের খাতা', 'page' => 'officers', 'icon' => 'bi-person-gear', 'label' => 'হিসাব রক্ষক', 'capability' => Capability::OFFICERS_MANAGE],
         ['group' => 'হিসাবের খাতা', 'page' => 'audit', 'icon' => 'bi-journal-text', 'label' => 'পরিবর্তনের ইতিহাস', 'capability' => Capability::AUDIT_VIEW],

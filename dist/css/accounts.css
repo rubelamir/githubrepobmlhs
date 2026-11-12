@@ -167,4 +167,12 @@
     border: 0;
     box-shadow: none;
   }
+
+  .acc-inner-books {
+    display: block;
+  }
+
+  .acc-inner-books summary {
+    display: none;
+  }
 }
