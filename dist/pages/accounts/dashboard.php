@@ -4,6 +4,7 @@ declare(strict_types=1);
 use School\Accounting\Access\Capability;
 use School\Accounting\Access\Role;
 use School\Accounting\Ledger\ChartOfAccounts;
+use School\Accounting\Ledger\SimpleBooks;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -39,12 +40,38 @@ $myCustody = $access->can(Capability::HANDOVER_SUBMIT)
 $handoversWaiting = $access->can(Capability::HANDOVER_RECEIVE) ? accHandovers()->submittedCount() : null;
 $cashBalance = null;
 $bankBalance = null;
+$flow = null;
 if ($access->can(Capability::REPORTS_VIEW_ALL)) {
     $cashBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::CASH));
     $bankBalance = 0;
     foreach (accChart()->bankAccounts() as $bankAccount) {
         $bankBalance += accChart()->balance((int) $bankAccount['id']);
     }
+    $todayDate = accToday()->format('Y-m-d');
+    $flow = [
+        'আজ' => accReports()->income($todayDate, $todayDate),
+        'এই মাস' => accReports()->income(accToday()->format('Y-m-01'), accToday()->format('Y-m-t')),
+        'এই বছর' => accReports()->income(accToday()->format('Y-01-01'), accToday()->format('Y-12-31')),
+    ];
+}
+$dueTotal = null;
+if ($access->can(Capability::FEES_VIEW_CLASS) || $access->can(Capability::FEES_VIEW_ALL)) {
+    $dueTotal = 0;
+    foreach (accReports()->dues($access, $access->sessionYear()) as $dueRow) {
+        $dueTotal += $dueRow['due'];
+    }
+}
+$recentPayments = [];
+if ($access->can(Capability::FEES_COLLECT) || $access->can(Capability::FEES_VIEW_ALL)) {
+    $recentPayments = accPayments()->search([
+        'from' => accToday()->modify('-60 days')->format('Y-m-d'),
+        'to' => accToday()->format('Y-m-d'),
+        'collector' => $access->hasSchoolWideScope() ? 0 : $access->teacherId(),
+    ], 8);
+}
+$staffAdvance = null;
+if ($access->can(Capability::REPORTS_VIEW_ALL)) {
+    $staffAdvance = accChart()->balance(accChart()->idOf(SimpleBooks::STAFF_ADVANCE));
 }
 $vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() + accBank()->submittedCount() : null;
 $bkashBalance = null;
@@ -137,6 +164,30 @@ include __DIR__ . '/../../includes/layout-head.php';
             </div>
             <?php endif; ?>
 
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <?php if ($access->can(Capability::FEES_COLLECT)): ?><a class="btn btn-primary" href="collect.php">ফি আদায়</a><?php endif; ?>
+              <?php if ($access->can(Capability::VOUCHER_CREATE)): ?><a class="btn btn-primary" href="expense.php">খরচ যোগ</a><?php endif; ?>
+              <?php if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPORTS_VIEW_CLASS)): ?><a class="btn btn-outline-primary" href="reports.php">রিপোর্ট</a><?php endif; ?>
+              <?php if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::VOUCHER_CREATE)): ?><a class="btn btn-outline-primary" href="books.php">ক্যাশ ও ব্যাংক</a><?php endif; ?>
+            </div>
+
+            <?php if ($flow !== null): ?>
+            <div class="row g-3 mb-3">
+              <?php foreach ($flow as $label => $row): ?>
+                <div class="col-md-4">
+                  <div class="card h-100">
+                    <div class="card-header"><h3 class="card-title mb-0"><?= h($label) ?></h3></div>
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between"><span>আয়</span><strong class="text-success"><?= h(Money::format($row['income_total'])) ?></strong></div>
+                      <div class="d-flex justify-content-between"><span>খরচ</span><strong><?= h(Money::format($row['expense_total'])) ?></strong></div>
+                      <div class="d-flex justify-content-between border-top mt-2 pt-2"><span>নিট</span><strong><?= h(Money::format($row['surplus'])) ?></strong></div>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <div class="row g-3 mb-3">
               <div class="col-6 col-lg-3">
                 <div class="acc-stat">
@@ -150,6 +201,14 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="acc-stat-label">সক্রিয় হিসাব রক্ষক</div>
                   <div class="acc-stat-value"><?= h(bnDigits((string) $officerCount)) ?> জন</div>
                 </div>
+              </div>
+              <?php endif; ?>
+              <?php if ($dueTotal !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="dues.php">
+                  <div class="acc-stat-label">মোট বকেয়া ফি</div>
+                  <div class="acc-stat-value"><?= h(Money::format($dueTotal)) ?></div>
+                </a>
               </div>
               <?php endif; ?>
               <?php if ($todayCollection !== null): ?>
@@ -178,28 +237,28 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php endif; ?>
               <?php if ($cashBalance !== null): ?>
               <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="ledger.php">
-                  <div class="acc-stat-label">অফিসের নগদ তহবিল</div>
+                <a class="acc-stat d-block text-decoration-none text-body" href="books.php">
+                  <div class="acc-stat-label">নগদ</div>
                   <div class="acc-stat-value"><?= h(Money::format($cashBalance)) ?></div>
                 </a>
               </div>
               <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="bank.php">
-                  <div class="acc-stat-label">ব্যাংক স্থিতি</div>
+                <a class="acc-stat d-block text-decoration-none text-body" href="books.php">
+                  <div class="acc-stat-label">ব্যাংক</div>
                   <div class="acc-stat-value"><?= h(Money::format($bankBalance)) ?></div>
                 </a>
               </div>
               <?php endif; ?>
               <?php if ($bkashBalance !== null): ?>
               <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="online-payments.php">
-                  <div class="acc-stat-label">bKash হিসাব</div>
+                <a class="acc-stat d-block text-decoration-none text-body" href="books.php">
+                  <div class="acc-stat-label">বিকাশ</div>
                   <div class="acc-stat-value"><?= h(Money::format($bkashBalance)) ?></div>
                 </a>
               </div>
               <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="settlements.php">
-                  <div class="acc-stat-label">Nagad হিসাব</div>
+                <a class="acc-stat d-block text-decoration-none text-body" href="books.php">
+                  <div class="acc-stat-label">নগদ (Nagad)</div>
                   <div class="acc-stat-value"><?= h(Money::format($nagadBalance)) ?></div>
                 </a>
               </div>
@@ -259,6 +318,38 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <?php endif; ?>
             </div>
+
+            <?php if ($staffAdvance !== null && $staffAdvance > 0): ?>
+            <div class="row g-3 mb-3">
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="<?= $access->can(Capability::VOUCHER_CREATE) ? 'expense.php' : 'vouchers.php' ?>">
+                  <div class="acc-stat-label">কর্মচারী অগ্রিম বকেয়া</div>
+                  <div class="acc-stat-value"><?= h(Money::format($staffAdvance)) ?></div>
+                </a>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($recentPayments !== []): ?>
+            <div class="card mb-3">
+              <div class="card-header"><h3 class="card-title mb-0">সাম্প্রতিক আদায়</h3></div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead><tr><th>রসিদ</th><th>শিক্ষার্থী</th><th>মাধ্যম</th><th class="text-end">টাকা</th></tr></thead>
+                  <tbody>
+                    <?php foreach ($recentPayments as $payment): ?>
+                      <tr>
+                        <td><a href="<?= h(signedRecordUrl('receipt.php', (int) $payment['id'], 'acc_payment')) ?>"><?= h((string) $payment['receipt_no']) ?></a></td>
+                        <td><?= h((string) $payment['name_snapshot']) ?></td>
+                        <td><?= h(\School\Accounting\Collection\PaymentService::METHOD_LABELS[$payment['method']] ?? (string) $payment['method']) ?></td>
+                        <td class="text-end"><?= h(Money::format(Money::fromDb($payment['amount']))) ?></td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <?php endif; ?>
 
             <?php if ($chartData !== null): ?>
             <div class="row g-3 mb-3">

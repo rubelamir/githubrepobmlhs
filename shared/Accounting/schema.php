@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 6;
+const ACC_SCHEMA_VERSION = 7;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -852,4 +852,83 @@ function accMigrationV6(PDO $db): void
                 ELSE 'unpaid'
              END"
     );
+}
+
+/**
+ * Tables that hold money movements. Resetting the books deletes these rows
+ * only. Students, teachers, classes, fee rates, the chart and officers stay.
+ *
+ * @return list<string>
+ */
+function accResetTables(): array
+{
+    return [
+        'acc_bank_reconciliations',
+        'acc_refunds',
+        'acc_settlements',
+        'acc_gateway_logs',
+        'acc_gateway_tokens',
+        'acc_gateway_transactions',
+        'acc_handover_items',
+        'acc_handovers',
+        'acc_payment_allocations',
+        'acc_payments',
+        'acc_waivers',
+        'acc_invoice_items',
+        'acc_invoices',
+        'acc_attachments',
+        'acc_bank_deposits',
+        'acc_voucher_lines',
+        'acc_vouchers',
+        'acc_period_closings',
+        'acc_sequences',
+        'acc_audit_log',
+        'acc_guardian_otps',
+    ];
+}
+
+/**
+ * One-time fresh start: staff-advance account, then the old test movements
+ * are removed. Fee rates, chart of accounts, officers and gateway settings stay.
+ */
+function accMigrationV7(PDO $db): void
+{
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $insert = $db->prepare(
+        'INSERT IGNORE INTO acc_accounts (code, name_bn, account_type, money_kind, parent_id, is_group, is_system, is_active, created_at, updated_at)
+         VALUES (:code, :name, :type, :money, (SELECT id FROM (SELECT id FROM acc_accounts WHERE code = :parent) AS p), 0, 1, 1, :now, :now2)'
+    );
+    $insert->execute([
+        'code' => '1180', 'name' => 'কর্মচারী অগ্রিম', 'type' => 'asset', 'money' => 'none', 'parent' => '1000',
+        'now' => $now, 'now2' => $now,
+    ]);
+
+    if (tableExists($db, 'acc_attachments') && function_exists('privateMediaDirectoryPath')) {
+        try {
+            $directory = privateMediaDirectoryPath('acc_attachments');
+            foreach (fetchRows($db, 'SELECT stored_name FROM acc_attachments') as $row) {
+                $name = basename((string) $row['stored_name']);
+                if ($name === '' || $name === '.' || $name === '..') {
+                    continue;
+                }
+                $path = $directory . DIRECTORY_SEPARATOR . $name;
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+        } catch (Throwable $exception) {
+            // The attachment rows are still removed below.
+        }
+    }
+
+    $db->exec('SET FOREIGN_KEY_CHECKS=0');
+    try {
+        foreach (accResetTables() as $table) {
+            if (tableExists($db, $table)) {
+                $db->exec('DELETE FROM `' . $table . '`');
+            }
+        }
+    } finally {
+        $db->exec('SET FOREIGN_KEY_CHECKS=1');
+    }
 }

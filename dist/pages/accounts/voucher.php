@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use School\Accounting\Access\Capability;
+use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Ledger\VoucherService;
 use School\Accounting\Support\AmountInWords;
 use School\Accounting\Support\Money;
@@ -70,6 +71,29 @@ if ($isSystem && preg_match('/^payment:(\d+)/', (string) $voucher['source_key'],
 } elseif ($isSystem && str_starts_with((string) $voucher['source_key'], 'deposit:')) {
     $sourceLink = ['ব্যাংক জমা', 'bank.php'];
 }
+$moneyIn = null;
+$moneyOut = null;
+$otherName = null;
+foreach ($lines as $line) {
+    $in = Money::fromDb($line['debit']);
+    $out = Money::fromDb($line['credit']);
+    $isMoney = in_array((string) $line['money_kind'], ChartOfAccounts::SPENDABLE_KINDS, true);
+    if ($isMoney && $in > 0) {
+        $moneyIn = [(string) $line['name_bn'], $in];
+    } elseif ($isMoney && $out > 0) {
+        $moneyOut = [(string) $line['name_bn'], $out];
+    } elseif ($in > 0 || $out > 0) {
+        $otherName = (string) $line['name_bn'];
+    }
+}
+$plain = (string) $voucher['narration'];
+if ($voucher['voucher_type'] === VoucherService::PAYMENT && $moneyOut !== null && $otherName !== null) {
+    $plain = $otherName . ' বাবদ ' . Money::format($moneyOut[1]) . ' ' . $moneyOut[0] . ' থেকে গেছে।';
+} elseif ($voucher['voucher_type'] === VoucherService::RECEIPT && $moneyIn !== null && $otherName !== null) {
+    $plain = $otherName . ' বাবদ ' . Money::format($moneyIn[1]) . ' ' . $moneyIn[0] . '-এ এসেছে।';
+} elseif ($voucher['voucher_type'] === VoucherService::CONTRA && $moneyIn !== null && $moneyOut !== null) {
+    $plain = Money::format($moneyIn[1]) . ' ' . $moneyOut[0] . ' থেকে ' . $moneyIn[0] . '-এ সরানো হয়েছে।';
+}
 $school = schoolSettings(getDatabaseConnection());
 
 $basePath = '../../';
@@ -109,6 +133,9 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div></div>
                   <div class="col-12"><span class="text-secondary small">বিবরণ</span><div><?= h((string) $voucher['narration']) ?></div></div>
                 </div>
+                <p class="fs-5 mb-3"><?= h($plain) ?></p>
+                <details class="acc-inner-books mb-2">
+                  <summary class="small text-secondary mb-2">হিসাবের ভিতরের হিসাব</summary>
                 <div class="table-responsive">
                   <table class="table table-sm table-bordered align-middle mb-2">
                     <thead><tr><th>কোড</th><th>হিসাব</th><th>নোট</th><th class="text-end">ডেবিট</th><th class="text-end">ক্রেডিট</th></tr></thead>
@@ -126,6 +153,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <tfoot><tr class="fw-semibold"><td colspan="3">মোট</td><td class="text-end text-nowrap"><?= h(Money::format($debitTotal)) ?></td><td class="text-end text-nowrap"><?= h(Money::format($creditTotal)) ?></td></tr></tfoot>
                   </table>
                 </div>
+                </details>
                 <div class="small mb-3">কথায়: <?= h(AmountInWords::taka($total)) ?></div>
                 <div class="row small text-secondary g-2">
                   <div class="col-sm-6">প্রস্তুতকারী: <strong class="text-body"><?= h((string) $voucher['created_by_name']) ?></strong> — <?= h(accFormatDateTime((string) $voucher['created_at'])) ?></div>
