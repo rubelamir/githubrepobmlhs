@@ -67,7 +67,7 @@ $sourceLink = null;
 if ($isSystem && preg_match('/^payment:(\d+)/', (string) $voucher['source_key'], $match) === 1) {
     $sourceLink = ['রসিদ দেখুন', signedRecordUrl('receipt.php', (int) $match[1], 'acc_payment')];
 } elseif ($isSystem && str_starts_with((string) $voucher['source_key'], 'handover:')) {
-    $sourceLink = ['হস্তান্তর তালিকা', 'handovers.php?status=received'];
+    $sourceLink = ['জমার তালিকা', 'handovers.php?status=received'];
 } elseif ($isSystem && str_starts_with((string) $voucher['source_key'], 'deposit:')) {
     $sourceLink = ['ব্যাংক জমা', 'bank.php'];
 }

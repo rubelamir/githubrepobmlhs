@@ -86,7 +86,7 @@ final class HandoverService
                     || $row['status'] !== PaymentService::CONFIRMED
                     || $row['custody'] !== PaymentService::CUSTODY_TEACHER
                     || $row['handover_id'] !== null) {
-                    throw new RuntimeException('নির্বাচিত রসিদগুলোর মধ্যে কোনোটি আর হস্তান্তরযোগ্য নয়; পাতাটি আবার খুলুন।');
+                    throw new RuntimeException('নির্বাচিত রসিদগুলোর মধ্যে কোনোটি আর জমা দেওয়া যায় না; পাতাটি আবার খুলুন।');
                 }
                 $total += Money::fromDb($row['amount']);
             }
@@ -118,7 +118,7 @@ final class HandoverService
                 $handoverId,
                 null,
                 ['handover_no' => $number, 'total' => Money::toDb($total), 'payments' => $paymentIds],
-                'হস্তান্তর জমা ' . $number . ': ' . Money::format($total)
+                'অফিসে জমা ' . $number . ': ' . Money::format($total)
             );
             $this->db->commit();
         } catch (PDOException $exception) {
@@ -151,17 +151,17 @@ final class HandoverService
             $statement->execute(['id' => $handoverId]);
             $handover = $statement->fetch(PDO::FETCH_ASSOC);
             if (!$handover || $handover['status'] !== self::SUBMITTED) {
-                throw new RuntimeException('হস্তান্তরটি পাওয়া যায়নি বা আগেই নিষ্পত্তি হয়েছে।');
+                throw new RuntimeException('জমাটি পাওয়া যায়নি বা আগেই নিষ্পত্তি হয়েছে।');
             }
             if ((int) $handover['teacher_id'] === $actor->teacherId()) {
-                throw new RuntimeException('নিজের জমা দেওয়া হস্তান্তর নিজে গ্রহণ করা যায় না।');
+                throw new RuntimeException('নিজের জমা নিজে নেওয়া যায় না।');
             }
             $total = Money::fromDb($handover['total']);
             $now = AuditTrail::now()->format('Y-m-d H:i:s');
             if ($receive) {
                 $counted = Money::parse($countedInput, 'গণনাকৃত টাকা');
                 if ($counted !== $total) {
-                    throw new RuntimeException('গণনাকৃত টাকা (' . Money::format($counted) . ') হস্তান্তরের মোটের (' . Money::format($total) . ') সমান নয়। গরমিল থাকলে কারণ লিখে ফেরত দিন।');
+                    throw new RuntimeException('গণনাকৃত টাকা (' . Money::format($counted) . ') জমার মোটের (' . Money::format($total) . ') সমান নয়। গরমিল থাকলে কারণ লিখে ফেরত দিন।');
                 }
                 $this->db->prepare("UPDATE acc_payments SET custody = 'office' WHERE handover_id = :id AND status = 'confirmed'")
                     ->execute(['id' => $handoverId]);
@@ -183,7 +183,7 @@ final class HandoverService
                 $handoverId,
                 ['status' => self::SUBMITTED, 'total' => $handover['total']],
                 ['status' => $status, 'remark' => $remark],
-                ($receive ? 'হস্তান্তর গ্রহণ ' : 'হস্তান্তর ফেরত ') . $handover['handover_no']
+                ($receive ? 'জমা গ্রহণ ' : 'জমা ফেরত ') . $handover['handover_no']
             );
             $this->db->commit();
         } catch (\Throwable $exception) {

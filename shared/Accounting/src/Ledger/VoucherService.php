@@ -505,7 +505,7 @@ final class VoucherService
             $moneyCredit = $moneyCredit || ($isMoney && $line['credit'] > 0);
             $nonMoney = $nonMoney || !$isMoney;
             if (($kinds[$line['account_id']] ?? '') === 'teacher_custody') {
-                throw new RuntimeException('"শিক্ষকের কাছে অনিষ্পন্ন আদায়" হিসাবে শুধু আদায় ও হস্তান্তর থেকে স্বয়ংক্রিয় এন্ট্রি হয়।');
+                throw new RuntimeException('"শিক্ষকের কাছে অনিষ্পন্ন আদায়" হিসাবে শুধু আদায় ও অফিসে জমা থেকে স্বয়ংক্রিয় এন্ট্রি হয়।');
             }
         }
         $error = match ($type) {

@@ -226,7 +226,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($myCustody !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="handovers.php">
-                  <div class="acc-stat-label">আমার কাছে (হস্তান্তর বাকি)</div>
+                  <div class="acc-stat-label">আমার কাছে (জমা বাকি)</div>
                   <div class="acc-stat-value<?= $myCustody > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(Money::format($myCustody)) ?></div>
                 </a>
               </div>
@@ -234,7 +234,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($handoversWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="handovers.php">
-                  <div class="acc-stat-label">গ্রহণের অপেক্ষায় হস্তান্তর</div>
+                  <div class="acc-stat-label">অফিসে জমা, গ্রহণ বাকি</div>
                   <div class="acc-stat-value<?= $handoversWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $handoversWaiting)) ?>টি</div>
                 </a>
               </div>
