@@ -180,7 +180,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 </div>
               <?php endif; ?>
-              <div class="card mb-3">
+              <details class="card mb-3 acc-fold"<?= $listReady ? ' open' : '' ?>>
+                <summary class="card-header">শ্রেণী দিয়ে তালিকা</summary>
                 <form method="get" class="card-body" data-student-filter>
                   <div class="row g-2 align-items-end">
                     <?= accClassFilterFields($selection, $sessionYear, 'col-sm-6 col-lg-3') ?>
@@ -188,10 +189,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                   <?php if ($selection['notice'] !== ''): ?><div class="alert alert-info py-2 mt-2 mb-0 small"><?= h($selection['notice']) ?></div><?php endif; ?>
                 </form>
-              </div>
               <?php if ($listReady): ?>
-                <div class="card">
-                  <div class="card-body p-0">
+                  <div class="border-top">
                     <?php if ($classStudents === []): ?>
                       <p class="text-secondary p-3 mb-0">কোনো ভর্তি শিক্ষার্থী নেই।</p>
                     <?php else: ?>
@@ -214,8 +213,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                       </div>
                     <?php endif; ?>
                   </div>
-                </div>
               <?php endif; ?>
+              </details>
             <?php else: ?>
               <div class="card mb-3">
                 <div class="card-body d-flex flex-wrap gap-3 align-items-center">

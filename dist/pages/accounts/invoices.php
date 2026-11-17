@@ -43,7 +43,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if (!$ready) {
                 throw new RuntimeException('শ্রেণী ও শাখা নির্বাচন করুন।');
             }
-            $issueDate = FeeStructureRepository::parseDate((string) ($_POST['issue_date'] ?? ''), 'ইনভয়েসের তারিখ');
+            $issueDate = FeeStructureRepository::parseDate((string) ($_POST['issue_date'] ?? ''), 'বিলের তারিখ');
             $kind = (string) ($_POST['billing_kind'] ?? '');
             $period = match ($kind) {
                 BillingPeriod::MONTHLY => BillingPeriod::monthly((string) ($_POST['month'] ?? '')),
@@ -62,7 +62,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             };
             $headIds = array_map('intval', is_array($_POST['heads'] ?? null) ? $_POST['heads'] : []);
             $result = $invoices->generate($access, accAudit(), $sessionYear, $classId, $sectionId, $period, $headIds, $issueDate);
-            $message = $period->label() . ': ' . bnDigits((string) $result['students']) . ' জন শিক্ষার্থী — নতুন ইনভয়েস '
+            $message = $period->label() . ': ' . bnDigits((string) $result['students']) . ' জন শিক্ষার্থী — নতুন বিল '
                 . bnDigits((string) $result['created']) . 'টি';
             if ($result['already'] > 0) {
                 $message .= ', আগেই তৈরি ' . bnDigits((string) $result['already']) . 'টি';
@@ -87,7 +87,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         if ($action === 'cancel') {
             $invoices->cancel($access, accAudit(), postedRecordId('acc_invoice'), (string) ($_POST['reason'] ?? ''));
-            redirectWithMessage($back, 'success', 'ইনভয়েস বাতিল হয়েছে।');
+            redirectWithMessage($back, 'success', 'বিল বাতিল হয়েছে।');
         }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
@@ -146,7 +146,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php if ($ready && $canGenerate): ?>
               <div class="row g-3 mb-3">
                 <div class="col-lg-12">
-                  <form method="post" class="card h-100" data-acc-confirm="নির্বাচিত শ্রেণী/শাখার সব ভর্তি শিক্ষার্থীর ইনভয়েস তৈরি হবে। চালিয়ে যাবেন?">
+                  <form method="post" class="card h-100" data-acc-confirm="নির্বাচিত শ্রেণী/শাখার সব ভর্তি শিক্ষার্থীর বিল তৈরি হবে। চালিয়ে যাবেন?">
                     <?= csrfField() ?>
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                     <input type="hidden" name="action" value="generate">
@@ -173,7 +173,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                           </select>
                         </div>
                         <div class="col-sm-4">
-                          <label class="form-label" for="inv-issue">ইনভয়েসের তারিখ</label>
+                          <label class="form-label" for="inv-issue">বিলের তারিখ</label>
                           <input class="form-control" type="date" name="issue_date" id="inv-issue" required value="<?= h($today->format('Y-m-d')) ?>">
                         </div>
                       </div>
@@ -234,11 +234,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <?php endif; ?>
                 <div class="card-body p-0">
                   <?php if ($rows === []): ?>
-                    <p class="text-secondary p-3 mb-0">কোনো ইনভয়েস পাওয়া যায়নি।</p>
+                    <p class="text-secondary p-3 mb-0">কোনো বিল পাওয়া যায়নি।</p>
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>ইনভয়েস নং</th><th>রোল</th><th>নাম</th><th class="text-end">মোট</th><th class="text-end">ছাড়/মওকুফ</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
+                        <thead><tr><th>বিল নং</th><th>রোল</th><th>নাম</th><th class="text-end">মোট</th><th class="text-end">ছাড়/মওকুফ</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
                         <tbody>
                           <?php foreach ($rows as $row): ?>
                             <?php
@@ -247,7 +247,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             $cancelled = $row['status'] === InvoiceService::CANCELLED;
                             ?>
                             <tr class="<?= $cancelled ? 'text-secondary text-decoration-line-through' : '' ?>">
-                              <td data-label="ইনভয়েস নং"><code><?= h((string) $row['invoice_no']) ?></code></td>
+                              <td data-label="বিল নং"><code><?= h((string) $row['invoice_no']) ?></code></td>
                               <td data-label="রোল"><?= h(bnDigits((string) $row['roll_snapshot'])) ?></td>
                               <td data-label="নাম"><?= h((string) $row['name_snapshot']) ?></td>
                               <td class="text-end" data-label="মোট"><?= h(Money::format(Money::fromDb($row['standard_total']) + Money::fromDb($row['fine']))) ?></td>
@@ -266,7 +266,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php if ($canCancel && !$cancelled && Money::fromDb($row['paid']) === 0): ?>
                               <tr class="collapse" id="cancel-<?= $invoiceId ?>">
                                 <td colspan="10">
-                                  <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['invoice_no']) ?> বাতিল করবেন? বাতিল ইনভয়েস মুছে যায় না, তবে প্রয়োজনে নতুন করে বিল করা যাবে।" data-acc-confirm-variant="danger">
+                                  <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['invoice_no']) ?> বাতিল করবেন? বাতিল বিল মুছে যায় না, তবে প্রয়োজনে নতুন করে বিল করা যাবে।" data-acc-confirm-variant="danger">
                                     <?= csrfField() ?>
                                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                                     <input type="hidden" name="action" value="cancel">

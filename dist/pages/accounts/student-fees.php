@@ -137,10 +137,10 @@ include __DIR__ . '/../../includes/layout-head.php';
             </div>
 
             <div class="card mb-3" id="invoices">
-              <div class="card-header"><h3 class="card-title mb-0">ইনভয়েস</h3></div>
+              <div class="card-header"><h3 class="card-title mb-0">বিল</h3></div>
               <div class="card-body">
                 <?php if ($invoiceRows === []): ?>
-                  <p class="text-secondary mb-0">এখনো কোনো ইনভয়েস তৈরি হয়নি।</p>
+                  <p class="text-secondary mb-0">এখনো কোনো বিল তৈরি হয়নি।</p>
                 <?php endif; ?>
                 <?php foreach ($invoiceRows as $invoice): ?>
                   <?php

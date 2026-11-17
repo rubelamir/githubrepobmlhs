@@ -42,7 +42,7 @@ schoolPageHero('পেমেন্টের ফলাফল', '', 'অভিভ�
                 <dl class="row mb-0">
                     <dt class="col-sm-5">অবস্থা</dt>
                     <dd class="col-sm-7"><span class="badge <?= h(OnlinePaymentService::STATUS_BADGES[$resultStatus] ?? 'text-bg-secondary') ?>"><?= h(OnlinePaymentService::STATUS_LABELS[$resultStatus] ?? $resultStatus) ?></span></dd>
-                    <dt class="col-sm-5">ইনভয়েস নম্বর</dt>
+                    <dt class="col-sm-5">পেমেন্ট নম্বর</dt>
                     <dd class="col-sm-7"><?= h((string) $resultTxn['merchant_invoice_no']) ?></dd>
                     <dt class="col-sm-5">পরিমাণ</dt>
                     <dd class="col-sm-7"><?= h(Money::format(Money::fromDb($resultTxn['payable_amount']))) ?></dd>

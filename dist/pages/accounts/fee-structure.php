@@ -210,7 +210,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 </div>
                 <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                  <small class="text-secondary">পরিশোধের দিন: মাসিক ফির ক্ষেত্রে সেই মাসের তারিখ, অন্যগুলোর ক্ষেত্রে ইনভয়েসের তারিখ থেকে দিন। ফাঁকা ঘর = হার নেই। পুরনো হার বদলাতে নতুন কার্যকর তারিখ দিন; আগের ইনভয়েস অপরিবর্তিত থাকে।</small>
+                  <small class="text-secondary">পরিশোধের দিন: মাসিক ফির ক্ষেত্রে সেই মাসের তারিখ, অন্যগুলোর ক্ষেত্রে বিলের তারিখ থেকে দিন। ফাঁকা ঘর = হার নেই। পুরনো হার বদলাতে নতুন কার্যকর তারিখ দিন; আগের বিল অপরিবর্তিত থাকে।</small>
                   <?php if ($canEdit): ?><button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>সংরক্ষণ</button><?php endif; ?>
                 </div>
               </form>
