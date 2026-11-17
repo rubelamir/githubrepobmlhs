@@ -2113,6 +2113,27 @@ function currentAbsoluteUrl(): string
     return $scheme . '://' . $host . $uri;
 }
 
+/**
+ * The address search engines should keep. Drops a visible index.php or .php
+ * suffix so /bmlhs/ and /bmlhs/index.php are one page.
+ */
+function publicCanonicalUrl(string $url): string
+{
+    $parts = parse_url($url);
+    if ($parts === false || !isset($parts['host'])) {
+        return $url;
+    }
+    $path = (string) ($parts['path'] ?? '/');
+    $path = preg_replace('#/index\.php$#', '/', $path) ?? $path;
+    if (str_ends_with($path, '.php')) {
+        $path = substr($path, 0, -4);
+    }
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+    $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+
+    return ($parts['scheme'] ?? 'https') . '://' . $parts['host'] . $port . $path . $query;
+}
+
 function facebookSharerUrl(string $url): string
 {
     return 'https://www.facebook.com/sharer/sharer.php?u=' . rawurlencode($url);

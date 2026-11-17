@@ -1,4 +1,15 @@
 <?php
+$method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+$requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+if (in_array($method, ['GET', 'HEAD'], true) && preg_match('#/index\.php(?:\?|$)#', $requestUri) === 1) {
+    $target = preg_replace('#index\.php#', '', $requestUri, 1) ?? '/';
+    if ($target === '' || $target[0] !== '/') {
+        $target = '/' . $target;
+    }
+    header('Location: ' . $target, true, 301);
+    exit;
+}
+
 $pageAssets = ['owl', 'fancybox'];
 include('header.php');
 include('navbar&marqueetag.php');

@@ -25,6 +25,7 @@ if ($metaUrl === '') {
 } elseif (preg_match('#^https?://#i', $metaUrl) !== 1) {
     $metaUrl = publicAbsoluteUrl($metaUrl);
 }
+$metaUrl = publicCanonicalUrl($metaUrl);
 if (preg_match('#^https?://#i', $metaImage) !== 1) {
     $metaImage = publicAbsoluteUrl($metaImage);
 }
