@@ -34,7 +34,7 @@ final class ConcessionService
         string $value,
         string $reason,
         string $effectiveFrom
-    ): int {
+    ): array {
         if (!$actor->can(Capability::CONCESSION_REQUEST)) {
             throw AccessDeniedException::forCapability(Capability::CONCESSION_REQUEST);
         }
@@ -68,6 +68,8 @@ final class ConcessionService
             throw new RuntimeException('এই ফি হেডে আগের একটি ছাড়ের আবেদন অনুমোদনের অপেক্ষায় আছে।');
         }
 
+        $id = 0;
+        $applied = ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
         $this->db->beginTransaction();
         try {
             $this->db->prepare(
@@ -96,7 +98,7 @@ final class ConcessionService
                 'ব্যক্তিগত ছাড়ের আবেদন: ' . StudentDirectory::displayName($student) . ' — ' . $head['name_bn']
             );
             if ($actor->can(Capability::CONCESSION_APPROVE)) {
-                $this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি নির্ধারিত');
+                $applied = $this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি নির্ধারিত');
             }
             $this->db->commit();
         } catch (\Throwable $exception) {
@@ -104,10 +106,31 @@ final class ConcessionService
             throw $exception;
         }
 
-        return $id;
+        return ['id' => $id] + $applied;
     }
 
-    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): void
+    /** @param array{applied?: int, capped?: int, skipped_waiver?: int} $result */
+    public static function appliedToBillsNote(array $result): string
+    {
+        $applied = (int) ($result['applied'] ?? 0);
+        $capped = (int) ($result['capped'] ?? 0);
+        $skipped = (int) ($result['skipped_waiver'] ?? 0);
+        $note = '';
+        if ($applied > 0) {
+            $note .= ' আগের ' . \bnDigits((string) $applied) . 'টি বিলে ছাড় বসানো হয়েছে।';
+            if ($capped > 0) {
+                $note .= ' তার মধ্যে ' . \bnDigits((string) $capped) . 'টিতে আদায় থাকায় বকেয়া শূন্য পর্যন্ত ছাড় হয়েছে; আদায় করা টাকা ফেরত যায় না।';
+            }
+        }
+        if ($skipped > 0) {
+            $note .= ' ' . \bnDigits((string) $skipped) . 'টিতে মওকুফের আবেদন অপেক্ষমাণ থাকায় ছাড় বসানো হয়নি।';
+        }
+
+        return $note;
+    }
+
+    /** @return array{applied: int, capped: int, skipped_waiver: int} */
+    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): array
     {
         if (!$actor->can(Capability::CONCESSION_APPROVE)) {
             throw AccessDeniedException::forCapability(Capability::CONCESSION_APPROVE);
@@ -119,7 +142,10 @@ final class ConcessionService
         $this->db->beginTransaction();
         try {
             if ($approve) {
-                $this->approveLocked($actor, $audit, $id, $note);
+                $applied = $this->approveLocked($actor, $audit, $id, $note);
+                $this->db->commit();
+
+                return $applied;
             } else {
                 $this->lockPending($id);
                 $this->db->prepare(
@@ -138,6 +164,8 @@ final class ConcessionService
             $this->db->rollBack();
             throw $exception;
         }
+
+        return ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
     }
 
     /** Ends an approved concession from a date onward (head only). */
@@ -246,7 +274,8 @@ final class ConcessionService
         );
     }
 
-    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): void
+    /** @return array{applied: int, capped: int, skipped_waiver: int} */
+    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): array
     {
         $row = $this->lockPending($id);
         ApprovalWorkflow::supersede(
@@ -265,7 +294,17 @@ final class ConcessionService
             'note' => $note === '' ? null : $note,
             'id' => $id,
         ]);
-        $audit->record('concession.approve', 'concession', $id, ['status' => ApprovalStatus::PENDING], ['status' => ApprovalStatus::APPROVED], 'ব্যক্তিগত ছাড় অনুমোদিত');
+        $applied = \accInvoices()->applyApprovedConcession($row);
+        $audit->record(
+            'concession.approve',
+            'concession',
+            $id,
+            ['status' => ApprovalStatus::PENDING],
+            ['status' => ApprovalStatus::APPROVED] + $applied,
+            'ব্যক্তিগত ছাড় অনুমোদিত'
+        );
+
+        return $applied;
     }
 
     /** @return array<string, mixed> */

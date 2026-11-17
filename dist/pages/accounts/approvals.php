@@ -39,8 +39,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($decision === 'reject' && mb_strlen(trim($note), 'UTF-8') < 3) {
             throw new RuntimeException('প্রত্যাখ্যানের কারণ লিখুন।');
         }
-        ($kinds[$kind]['service'])()->decide($access, accAudit(), $id, $decision === 'approve', $note);
-        redirectWithMessage('approvals.php#' . $kind, 'success', $kinds[$kind]['label'] . ' আবেদন ' . ($decision === 'approve' ? 'অনুমোদিত' : 'প্রত্যাখ্যাত') . ' হয়েছে।');
+        $result = ($kinds[$kind]['service'])()->decide($access, accAudit(), $id, $decision === 'approve', $note);
+        $message = $kinds[$kind]['label'] . ' আবেদন ' . ($decision === 'approve' ? 'অনুমোদিত' : 'প্রত্যাখ্যাত') . ' হয়েছে।';
+        if ($kind === 'concession' && $decision === 'approve' && is_array($result)) {
+            $message .= ConcessionService::appliedToBillsNote($result);
+        }
+        redirectWithMessage('approvals.php#' . $kind, 'success', $message);
     } catch (Throwable $exception) {
         redirectWithMessage('approvals.php', 'danger', userFacingError($exception));
     }

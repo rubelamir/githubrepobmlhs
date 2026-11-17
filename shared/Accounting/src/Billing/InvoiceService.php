@@ -300,6 +300,115 @@ final class InvoiceService
         return $paid > 0 ? self::PARTIAL : self::UNPAID;
     }
 
+    /**
+     * Discount to store on a bill that already exists.
+     * The issued net never goes up, and it never falls below money already collected.
+     *
+     * @param array<string, mixed> $concession
+     * @return array{discount: int, net: int, capped: bool, changed: bool}
+     */
+    public static function concessionForExistingLine(array $concession, int $amount, int $discount, int $waived, int $paid, int $net): array
+    {
+        $desired = ConcessionService::discountFor($concession, $amount);
+        $target = $amount - $desired - $waived;
+        $nextNet = min($net, max($paid, $target));
+        $nextDiscount = $amount - $waived - $nextNet;
+        if ($nextDiscount < 0 || $nextNet < $paid) {
+            return ['discount' => $discount, 'net' => $net, 'capped' => false, 'changed' => false];
+        }
+
+        return [
+            'discount' => $nextDiscount,
+            'net' => $nextNet,
+            'capped' => $paid > 0 && $nextDiscount < $desired && $nextNet === $paid && $target < $paid,
+            'changed' => $nextDiscount !== $discount || $nextNet !== $net,
+        ];
+    }
+
+    /**
+     * Writes an approved concession onto this student's open bills for that fee.
+     * Caller holds the transaction. Collected money and the ledger are left as they are.
+     *
+     * @param array<string, mixed> $concession
+     * @return array{applied: int, capped: int, skipped_waiver: int}
+     */
+    public function applyApprovedConcession(array $concession): array
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('ছাড় আগের বিলে বসাতে লেনদেনের ভিতরে থাকতে হবে।');
+        }
+        $result = ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
+        $from = (string) ($concession['effective_from'] ?? '');
+        $to = $concession['effective_to'] ?? null;
+        $to = $to !== null && (string) $to !== '' ? (string) $to : null;
+        $lines = \fetchRows(
+            $this->db,
+            'SELECT i.id, i.invoice_id, i.billing_key, i.amount, i.discount, i.waived, i.paid, i.net, inv.issue_date
+             FROM acc_invoice_items i
+             JOIN acc_invoices inv ON inv.id = i.invoice_id
+             WHERE i.student_id = :student AND inv.session_year = :session AND i.fee_head_id = :head
+               AND i.line_kind = :kind AND inv.status <> :cancelled AND i.uniq_key IS NOT NULL
+             FOR UPDATE',
+            [
+                'student' => (int) $concession['student_id'],
+                'session' => (string) $concession['session_year'],
+                'head' => (int) $concession['fee_head_id'],
+                'kind' => self::LINE_FEE,
+                'cancelled' => self::CANCELLED,
+            ]
+        );
+        if ($lines === []) {
+            return $result;
+        }
+        $pending = [];
+        foreach (\fetchRows(
+            $this->db,
+            'SELECT invoice_item_id FROM acc_waivers WHERE status = :status AND invoice_item_id IN (' . implode(',', array_map(static fn (array $line): int => (int) $line['id'], $lines)) . ')',
+            ['status' => ApprovalStatus::PENDING]
+        ) as $waiver) {
+            $pending[(int) $waiver['invoice_item_id']] = true;
+        }
+        $update = $this->db->prepare('UPDATE acc_invoice_items SET discount = :discount, concession_id = :concession, net = :net WHERE id = :id');
+        $touched = [];
+        foreach ($lines as $line) {
+            $reference = BillingPeriod::referenceDateForKey((string) $line['billing_key'], (string) $line['issue_date']);
+            if ($reference === null || $reference < $from || ($to !== null && $reference > $to)) {
+                continue;
+            }
+            if (isset($pending[(int) $line['id']])) {
+                $result['skipped_waiver']++;
+                continue;
+            }
+            $next = self::concessionForExistingLine(
+                $concession,
+                Money::fromDb($line['amount']),
+                Money::fromDb($line['discount']),
+                Money::fromDb($line['waived']),
+                Money::fromDb($line['paid']),
+                Money::fromDb($line['net'])
+            );
+            if (!$next['changed']) {
+                continue;
+            }
+            $update->execute([
+                'discount' => Money::toDb($next['discount']),
+                'concession' => (int) $concession['id'],
+                'net' => Money::toDb($next['net']),
+                'id' => (int) $line['id'],
+            ]);
+            $touched[(int) $line['invoice_id']] = true;
+            $result['applied']++;
+            if ($next['capped']) {
+                $result['capped']++;
+            }
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->recompute($invoiceId);
+        }
+
+        return $result;
+    }
+
     public static function uniqKey(int $studentId, int $headId, string $billingKey, string $lineKind): string
     {
         return $studentId . ':' . $headId . ':' . $billingKey . ':' . $lineKind;

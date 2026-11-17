@@ -116,6 +116,17 @@ $check(FeeStructureRepository::resolve($inactive, 1, 13, $general, $general, '20
 $check(ConcessionService::discountFor(['kind' => ConcessionService::PERCENT, 'value' => '25.00'], 90000) === 22500, '25% concession');
 $check(ConcessionService::discountFor(['kind' => ConcessionService::FIXED, 'value' => '1000.00'], 40000) === 40000, 'fixed concession capped at amount');
 $check(ConcessionService::describe(['kind' => ConcessionService::PERCENT, 'value' => '12.50']) === '১২.৫%', 'describe percent');
+$check(BillingPeriod::referenceDateForKey('M:2026-01', '2026-01-31') === '2026-01-01', 'January bill is covered from the 1st');
+$check(BillingPeriod::referenceDateForKey('S:2026', '2026-03-01') === '2026-01-01', 'session bill is covered from 1 January');
+$check(BillingPeriod::referenceDateForKey('A:2026', '2026-02-01') === '2026-01-01', 'admission bill is covered from 1 January');
+$check(BillingPeriod::referenceDateForKey('E:2026:4', '2026-06-15') === '2026-06-15', 'exam bill uses its issue date');
+$half = ['kind' => ConcessionService::PERCENT, 'value' => '50.00'];
+$open = InvoiceService::concessionForExistingLine($half, 100000, 0, 0, 0, 100000);
+$check($open['changed'] && $open['discount'] === 50000 && $open['net'] === 50000 && !$open['capped'], 'full concession reduces an unpaid existing line');
+$partlyPaid = InvoiceService::concessionForExistingLine($half, 100000, 0, 0, 80000, 100000);
+$check($partlyPaid['changed'] && $partlyPaid['discount'] === 20000 && $partlyPaid['net'] === 80000 && $partlyPaid['capped'], 'concession stops at money already collected');
+$smaller = InvoiceService::concessionForExistingLine(['kind' => ConcessionService::PERCENT, 'value' => '10.00'], 100000, 40000, 0, 0, 60000);
+$check(!$smaller['changed'] && $smaller['net'] === 60000, 'a smaller concession does not raise an existing bill');
 
 // A student's bills: session fee, admission fee, then each month's tuition,
 // with exam and other fees after the tuition of the month they were created.

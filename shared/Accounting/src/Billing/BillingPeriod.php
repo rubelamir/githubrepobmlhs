@@ -104,6 +104,26 @@ final class BillingPeriod
         return new self(self::SESSION, 'A:' . $sessionYear, 'ভর্তি ' . \bnDigits($sessionYear), $session->referenceDate());
     }
 
+    /**
+     * Date used to decide whether a concession covers an existing bill.
+     * Monthly and other bills use the 1st of that month. Session and admission use 1 January.
+     * An exam bill uses its issue date.
+     */
+    public static function referenceDateForKey(string $billingKey, string $issueDate): ?string
+    {
+        if (preg_match('/^[MO]:(\d{4})-(\d{2})$/', $billingKey, $match) === 1 && (int) $match[2] >= 1 && (int) $match[2] <= 12) {
+            return $match[1] . '-' . $match[2] . '-01';
+        }
+        if (preg_match('/^[SA]:(\d{4})$/', $billingKey, $match) === 1) {
+            return $match[1] . '-01-01';
+        }
+        if (preg_match('/^E:\d{4}:\d+$/', $billingKey) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $issueDate) === 1) {
+            return $issueDate;
+        }
+
+        return null;
+    }
+
     /** Session, then admission, then later months before earlier ones. */
     public static function compareKeys(string $left, string $right): int
     {

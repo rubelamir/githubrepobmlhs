@@ -35,7 +35,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
     try {
         if ($action === 'concession_request') {
-            accConcessions()->request(
+            $concession = accConcessions()->request(
                 $access,
                 accAudit(),
                 $studentId,
@@ -45,7 +45,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 (string) ($_POST['reason'] ?? ''),
                 (string) ($_POST['effective_from'] ?? '')
             );
-            redirectWithMessage($self . '#concessions', 'success', $canApprove ? 'ব্যক্তিগত ছাড় নির্ধারিত হয়েছে।' : 'ছাড়ের আবেদন অনুমোদনের জন্য পাঠানো হয়েছে।');
+            $message = $canApprove ? 'ব্যক্তিগত ছাড় নির্ধারিত হয়েছে।' : 'ছাড়ের আবেদন অনুমোদনের জন্য পাঠানো হয়েছে।';
+            redirectWithMessage($self . '#concessions', 'success', $message . ConcessionService::appliedToBillsNote($concession));
         }
         if ($action === 'concession_end') {
             accConcessions()->end($access, accAudit(), postedRecordId('acc_concession', 'concession_ref'), (string) ($_POST['last_day'] ?? ''), (string) ($_POST['note'] ?? ''));
@@ -230,7 +231,10 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="row g-3">
               <div class="col-lg-7">
                 <div class="card h-100">
-                  <div class="card-header"><h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3></div>
+                  <div class="card-header">
+                    <h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3>
+                    <p class="small text-secondary mb-0 mt-1">অনুমোদিত হলে এই ফির আগের বিলের বকেয়াতেও ছাড় বসে। আদায় করা টাকা কমে না।</p>
+                  </div>
                   <div class="card-body p-0">
                     <?php if ($concessions === []): ?>
                       <p class="text-secondary p-3 mb-0">কোনো ব্যক্তিগত ছাড় নেই।</p>
