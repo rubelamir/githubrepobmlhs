@@ -362,13 +362,18 @@ final class InvoiceService
     /** @return list<array<string, mixed>> */
     public function items(int $invoiceId): array
     {
-        return \fetchRows(
+        $rows = \fetchRows(
             $this->db,
-            'SELECT i.*, c.name_bn AS category_name FROM acc_invoice_items i
+            'SELECT i.*, c.name_bn AS category_name, h.code AS head_code, h.name_bn AS head_name, h.billing_kind, h.sort_order
+             FROM acc_invoice_items i
              LEFT JOIN acc_fee_categories c ON c.id = i.fee_category_id
-             WHERE i.invoice_id = :id ORDER BY i.line_kind, i.id',
+             LEFT JOIN acc_fee_heads h ON h.id = i.fee_head_id
+             WHERE i.invoice_id = :id',
             ['id' => $invoiceId]
         );
+        usort($rows, static fn (array $a, array $b): int => self::lineDisplaySortKey($a) <=> self::lineDisplaySortKey($b));
+
+        return $rows;
     }
 
     /**
@@ -399,11 +404,117 @@ final class InvoiceService
     /** @return list<array<string, mixed>> */
     public function forStudent(int $studentId): array
     {
-        return \fetchRows(
+        $rows = \fetchRows(
             $this->db,
-            'SELECT * FROM acc_invoices WHERE student_id = :student ORDER BY issue_date DESC, id DESC',
+            'SELECT * FROM acc_invoices WHERE student_id = :student',
             ['student' => $studentId]
         );
+        if ($rows === []) {
+            return [];
+        }
+        $heads = [];
+        foreach (\fetchRows(
+            $this->db,
+            'SELECT it.invoice_id, h.code, h.name_bn
+             FROM acc_invoice_items it
+             JOIN acc_fee_heads h ON h.id = it.fee_head_id
+             WHERE it.student_id = :student AND it.line_kind = :kind',
+            ['student' => $studentId, 'kind' => self::LINE_FEE]
+        ) as $head) {
+            $heads[(int) $head['invoice_id']][] = $head;
+        }
+        foreach ($rows as &$row) {
+            $row['heads'] = $heads[(int) $row['id']] ?? [];
+        }
+        unset($row);
+        usort($rows, static fn (array $a, array $b): int => self::displaySortKey($a) <=> self::displaySortKey($b));
+        foreach ($rows as &$row) {
+            unset($row['heads']);
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Session fee, then admission fee, then each month's tuition, then the exam
+     * and other fees created in that month.
+     *
+     * @param array<string, mixed> $invoice billing_key, issue_date, session_year, id, heads
+     * @return array{0: string, 1: int, 2: int, 3: int, 4: string, 5: int}
+     */
+    public static function displaySortKey(array $invoice): array
+    {
+        $key = (string) ($invoice['billing_key'] ?? '');
+        $issue = (string) ($invoice['issue_date'] ?? '');
+        $session = (string) ($invoice['session_year'] ?? '');
+        if ($session === '') {
+            $session = substr($issue, 0, 4);
+        }
+        $id = (int) ($invoice['id'] ?? 0);
+        $heads = is_array($invoice['heads'] ?? null) ? $invoice['heads'] : [];
+
+        if (str_starts_with($key, 'S:')) {
+            return [$session, self::sessionInvoiceFamily($heads), 0, 0, $issue, $id];
+        }
+        if (preg_match('/^M:(\d{4})-(\d{2})$/', $key, $match) === 1) {
+            return [$match[1], 2, (int) $match[2], 0, $issue, $id];
+        }
+        $year = substr($issue, 0, 4);
+        $month = (int) substr($issue, 5, 2);
+        if (preg_match('/^\d{4}$/', $year) !== 1 || $month < 1 || $month > 12) {
+            $year = $session;
+            $month = 12;
+        }
+
+        return [$year, 2, $month, 1, $issue, $id];
+    }
+
+    /**
+     * @param array<string, mixed> $line
+     * @return array{0: int, 1: int, 2: int}
+     */
+    public static function lineDisplaySortKey(array $line): array
+    {
+        if ((string) ($line['line_kind'] ?? self::LINE_FEE) !== self::LINE_FEE) {
+            return [9, 0, (int) ($line['id'] ?? 0)];
+        }
+        $rank = match ((string) ($line['billing_kind'] ?? '')) {
+            BillingPeriod::SESSION => self::headIsAdmission($line) ? 1 : 0,
+            BillingPeriod::MONTHLY => 2,
+            BillingPeriod::EXAM => 3,
+            default => 4,
+        };
+
+        return [$rank, (int) ($line['sort_order'] ?? 0), (int) ($line['id'] ?? 0)];
+    }
+
+    /** @param list<array<string, mixed>> $heads */
+    private static function sessionInvoiceFamily(array $heads): int
+    {
+        $sawAdmission = false;
+        $sawOther = false;
+        foreach ($heads as $head) {
+            if (!is_array($head)) {
+                continue;
+            }
+            if (self::headIsAdmission($head)) {
+                $sawAdmission = true;
+            } else {
+                $sawOther = true;
+            }
+        }
+
+        return $sawAdmission && !$sawOther ? 1 : 0;
+    }
+
+    /** @param array<string, mixed> $head */
+    private static function headIsAdmission(array $head): bool
+    {
+        $code = strtoupper(trim((string) ($head['code'] ?? $head['head_code'] ?? '')));
+        $name = (string) ($head['name_bn'] ?? $head['head_name'] ?? '');
+
+        return $code === 'ADMISSION' || str_contains($name, 'ভর্তি');
     }
 
     /** @return array<string, string> billing_key => label */
