@@ -50,7 +50,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $student) {
                 array_map('intval', is_array($_POST['invoices'] ?? null) ? $_POST['invoices'] : []),
                 (string) ($_POST['allow_advance'] ?? '') === '1',
                 (string) ($_POST['payer_name'] ?? ''),
-                (string) ($_POST['note'] ?? '')
+                (string) ($_POST['note'] ?? ''),
+                true
             );
             $receiptUrl = signedRecordUrl('receipt.php', $result['payment_id'], 'acc_payment');
             if ($result['duplicate']) {
