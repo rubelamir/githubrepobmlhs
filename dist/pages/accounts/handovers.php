@@ -21,7 +21,8 @@ $basePath = '../../';
 $pageTitle = 'টাকা জমা | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
-$status = (string) ($_GET['status'] ?? ($canReceive ? HandoverService::SUBMITTED : ''));
+$seeAllHandovers = $canReceive || $access->can(Capability::REPORTS_VIEW_ALL);
+$status = (string) ($_GET['status'] ?? ($seeAllHandovers ? HandoverService::SUBMITTED : ''));
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
@@ -51,7 +52,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 $pending = $canSubmit ? $handovers->pendingPayments($access->teacherId()) : [];
 $pendingTotal = array_sum(array_map(static fn (array $row): int => Money::fromDb($row['amount']), $pending));
-$list = $handovers->search($status, $canReceive ? 0 : $access->teacherId());
+$list = $handovers->search($status, $seeAllHandovers ? 0 : $access->teacherId());
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>

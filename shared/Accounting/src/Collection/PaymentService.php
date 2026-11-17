@@ -114,7 +114,28 @@ final class PaymentService
     }
 
     /**
-     * @param list<int> $invoiceIds only settle these invoices; empty = all outstanding
+     * The collection form posts no invoice ids when every box is unchecked.
+     * That must not settle every bill. An empty list still means "all outstanding"
+     * for callers that did not show a bill list ($onlySelected = false).
+     *
+     * @param list<int|string> $postedIds
+     * @return array{ids: list<int>, settle_none: bool}
+     */
+    public static function resolveInvoiceSelection(array $postedIds, bool $onlySelected, bool $allowAdvance): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $postedIds), static fn (int $id): bool => $id > 0)));
+        if ($ids !== [] || !$onlySelected) {
+            return ['ids' => $ids, 'settle_none' => false];
+        }
+        if (!$allowAdvance) {
+            throw new RuntimeException('কোনো বিল টিক দেওয়া হয়নি। যে বিল পরিশোধ হবে তা টিক দিন।');
+        }
+
+        return ['ids' => [], 'settle_none' => true];
+    }
+
+    /**
+     * @param list<int> $invoiceIds only settle these invoices; empty = all outstanding unless $onlySelected
      * @return array{payment_id: int, duplicate: bool}
      */
     public function collect(
@@ -126,7 +147,8 @@ final class PaymentService
         array $invoiceIds,
         bool $allowAdvance,
         string $payerName,
-        string $note
+        string $note,
+        bool $onlySelected = false
     ): array {
         $student = $this->students->requireInScope($actor, Capability::FEES_COLLECT, $studentId);
         if (preg_match('/^[a-f0-9]{32}$/', $idempotencyKey) !== 1) {
@@ -138,7 +160,8 @@ final class PaymentService
         }
         $payerName = FeeCatalog::text($payerName, 120);
         $note = FeeCatalog::text($note, 255);
-        $invoiceIds = array_values(array_unique(array_filter(array_map('intval', $invoiceIds), static fn (int $id): bool => $id > 0)));
+        $selection = self::resolveInvoiceSelection($invoiceIds, $onlySelected, $allowAdvance);
+        $invoiceIds = $selection['ids'];
 
         $existing = $this->byIdempotencyKey($idempotencyKey);
         if ($existing !== null) {
@@ -147,8 +170,8 @@ final class PaymentService
 
         $this->db->beginTransaction();
         try {
-            $lines = $this->outstandingLines($studentId, true);
-            if ($invoiceIds !== []) {
+            $lines = $selection['settle_none'] ? [] : $this->outstandingLines($studentId, true);
+            if (!$selection['settle_none'] && $invoiceIds !== []) {
                 $lines = array_values(array_filter($lines, static fn (array $line): bool => in_array((int) $line['invoice_id'], $invoiceIds, true)));
             }
             $split = Allocator::allocate(

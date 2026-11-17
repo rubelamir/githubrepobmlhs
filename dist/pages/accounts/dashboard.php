@@ -73,7 +73,8 @@ $staffAdvance = null;
 if ($access->can(Capability::REPORTS_VIEW_ALL)) {
     $staffAdvance = accChart()->balance(accChart()->idOf(SimpleBooks::STAFF_ADVANCE));
 }
-$vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() + accBank()->submittedCount() : null;
+$vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() : null;
+$bankWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accBank()->submittedCount() : null;
 $bkashBalance = null;
 $nagadBalance = null;
 if ($access->can(Capability::REPORTS_VIEW_ALL)) {
@@ -112,8 +113,12 @@ $steps = [];
 if ($access->can(Capability::OFFICERS_MANAGE)) {
     $steps[] = ['হিসাব রক্ষক', 'নিয়োগ ও প্রত্যাহার', 'officers.php', 'bi-person-gear'];
 }
+if ($access->can(Capability::CONCESSION_APPROVE)) {
+    $steps[] = ['ছাড়ের অনুমোদন', 'আবেদন দেখে সিদ্ধান্ত', 'approvals.php', 'bi-check2-square'];
+}
 if ($access->can(Capability::VOUCHER_APPROVE)) {
-    $steps[] = ['যাচাই', 'ছাড়, খরচ ও জমা', 'vouchers.php?status=submitted', 'bi-check2-square'];
+    $steps[] = ['খরচ যাচাই', 'জমা দেওয়া খরচ', 'vouchers.php?status=submitted', 'bi-journal-check'];
+    $steps[] = ['ব্যাংক জমা', 'স্লিপ দেখে যাচাই', 'bank.php', 'bi-bank'];
 }
 if ($access->can(Capability::FEE_STRUCTURE_MANAGE)) {
     $steps[] = ['শ্রেণীর হার', 'বছরের শুরুতে একবার', 'fee-structure.php', 'bi-grid-3x3-gap'];
@@ -300,8 +305,16 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($vouchersWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="vouchers.php?status=submitted">
-                  <div class="acc-stat-label">যাচাইয়ের অপেক্ষায় খরচ ও ব্যাংক জমা</div>
+                  <div class="acc-stat-label">যাচাইয়ের অপেক্ষায় খরচ</div>
                   <div class="acc-stat-value<?= $vouchersWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $vouchersWaiting)) ?>টি</div>
+                </a>
+              </div>
+              <?php endif; ?>
+              <?php if ($bankWaiting !== null): ?>
+              <div class="col-6 col-lg-3">
+                <a class="acc-stat d-block text-decoration-none text-body" href="bank.php">
+                  <div class="acc-stat-label">যাচাইয়ের অপেক্ষায় ব্যাংক জমা</div>
+                  <div class="acc-stat-value<?= $bankWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $bankWaiting)) ?>টি</div>
                 </a>
               </div>
               <?php endif; ?>

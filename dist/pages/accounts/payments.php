@@ -53,14 +53,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $rows = $payments->search(['from' => $from, 'to' => $to, 'collector' => $collector, 'status' => $status, 'q' => $q]);
-$totals = ['confirmed' => 0, 'count' => 0, 'reversed' => 0, 'teacher' => 0, 'office' => 0];
+$totals = ['confirmed' => 0, 'count' => 0, 'reversed' => 0, 'teacher' => 0, 'office' => 0, 'online' => 0];
 $collectors = [];
 foreach ($rows as $row) {
     $paisa = Money::fromDb($row['amount']);
     if ($row['status'] === PaymentService::CONFIRMED) {
         $totals['confirmed'] += $paisa;
         $totals['count']++;
-        $totals[$row['custody'] === PaymentService::CUSTODY_TEACHER ? 'teacher' : 'office'] += $paisa;
+        $bucket = match ((string) $row['custody']) {
+            PaymentService::CUSTODY_TEACHER => 'teacher',
+            PaymentService::CUSTODY_OFFICE => 'office',
+            default => 'online',
+        };
+        $totals[$bucket] += $paisa;
     } else {
         $totals['reversed'] += $paisa;
     }
@@ -115,6 +120,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="row g-3 mb-3">
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মোট আদায় (<?= h(bnDigits((string) $totals['count'])) ?>টি রসিদ)</div><div class="acc-stat-value text-success"><?= h(Money::format($totals['confirmed'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">অফিসের ক্যাশে</div><div class="acc-stat-value"><?= h(Money::format($totals['office'])) ?></div></div></div>
+              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বিকাশ ও নগদ (অনলাইন)</div><div class="acc-stat-value"><?= h(Money::format($totals['online'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">শিক্ষকের কাছে</div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($totals['teacher'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বাতিল</div><div class="acc-stat-value text-secondary"><?= h(Money::format($totals['reversed'])) ?></div></div></div>
             </div>

@@ -16,7 +16,7 @@ use School\Accounting\Support\Money;
 
 /**
  * Month closing. Nothing can be posted, approved or reversed with a date in a
- * closed month; the head can reopen it with a recorded reason.
+ * closed month; the accounts officer can reopen it with a recorded reason.
  */
 final class PeriodClosing
 {
@@ -54,7 +54,7 @@ final class PeriodClosing
     {
         $period = self::periodOf($date);
         if ($this->isClosed($period)) {
-            throw new RuntimeException(self::label($period) . ' মাসের হিসাব বন্ধ (closed)। এই তারিখে কোনো এন্ট্রি দেওয়া যাবে না; প্রয়োজনে প্রধান শিক্ষক মাসটি পুনরায় খুলবেন।');
+            throw new RuntimeException(self::label($period) . ' মাসের হিসাব বন্ধ। এই তারিখে কোনো এন্ট্রি দেওয়া যাবে না; প্রয়োজনে হিসাব রক্ষক মাসটি পুনরায় খুলবেন।');
         }
     }
 
