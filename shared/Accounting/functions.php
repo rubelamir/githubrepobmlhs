@@ -473,13 +473,13 @@ function accCurrentPage(): string
 function accNavItems(AccessContext $access): array
 {
     $items = [
-        ['group' => 'প্রতিদিন', 'page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'হিসাব ড্যাশবোর্ড', 'capability' => Capability::DASHBOARD_VIEW],
-        ['group' => 'প্রতিদিন', 'page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
-        ['group' => 'প্রতিদিন', 'page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
-        ['group' => 'প্রতিদিন', 'page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'রসিদ', 'capability' => [Capability::FEES_COLLECT, Capability::FEES_VIEW_ALL]],
-        ['group' => 'প্রতিদিন', 'page' => 'expense', 'icon' => 'bi-wallet2', 'label' => 'আয় ও খরচ', 'capability' => Capability::VOUCHER_CREATE],
-        ['group' => 'প্রতিদিন', 'page' => 'books', 'icon' => 'bi-safe', 'label' => 'ক্যাশ ও ব্যাংক', 'capability' => [Capability::REPORTS_VIEW_ALL, Capability::VOUCHER_CREATE]],
-        ['group' => 'প্রতিদিন', 'page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা জমা', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE, Capability::REPORTS_VIEW_ALL]],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'হিসাব ড্যাশবোর্ড', 'capability' => Capability::DASHBOARD_VIEW],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'রসিদ', 'capability' => [Capability::FEES_COLLECT, Capability::FEES_VIEW_ALL]],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'expense', 'icon' => 'bi-wallet2', 'label' => 'আয় ও খরচ', 'capability' => Capability::VOUCHER_CREATE],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'books', 'icon' => 'bi-safe', 'label' => 'ক্যাশ ও ব্যাংক', 'capability' => [Capability::REPORTS_VIEW_ALL, Capability::VOUCHER_CREATE]],
+        ['group' => 'এ্যাকাউন্টস', 'page' => 'handovers', 'icon' => 'bi-arrow-left-right', 'label' => 'টাকা জমা', 'capability' => [Capability::HANDOVER_SUBMIT, Capability::HANDOVER_RECEIVE, Capability::REPORTS_VIEW_ALL]],
         ['group' => 'বিল ও হার', 'page' => 'invoices', 'icon' => 'bi-receipt', 'label' => 'মাসের বিল', 'capability' => [Capability::INVOICE_MANAGE, Capability::FEES_VIEW_ALL]],
         ['group' => 'বিল ও হার', 'page' => 'fee-structure', 'icon' => 'bi-grid-3x3-gap', 'label' => 'শ্রেণীর হার', 'capability' => Capability::FEES_VIEW_ALL],
         ['group' => 'বিল ও হার', 'page' => 'fee-setup', 'icon' => 'bi-sliders', 'label' => 'ফির নাম', 'capability' => [Capability::FEE_STRUCTURE_MANAGE, Capability::FEES_VIEW_ALL]],
