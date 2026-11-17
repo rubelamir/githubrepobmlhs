@@ -87,7 +87,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                 $accMoreBadge = 0;
                 $accMoreOpen = false;
                 foreach ($accNavItems as $accItem) {
-                    if (($accItem['group'] ?? '') === 'প্রতিদিন') {
+                    if (($accItem['group'] ?? '') === 'এ্যাকাউন্টস') {
                         $accDaily[] = $accItem;
                     } else {
                         $accMore[] = $accItem;
@@ -97,7 +97,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                 }
                 $accGroup = '';
               ?>
-              <?php if ($accDaily !== []): ?><li class="nav-header">প্রতিদিন</li><?php endif; ?>
+              <?php if ($accDaily !== []): ?><li class="nav-header">এ্যাকাউন্টস</li><?php endif; ?>
               <?php foreach ($accDaily as $accItem): ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
@@ -110,7 +110,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
               <li class="nav-item<?= $accMoreOpen ? ' menu-open' : '' ?>">
                 <a href="#" class="nav-link<?= $accMoreOpen ? ' active' : '' ?>">
                   <i class="nav-icon bi bi-grid"></i>
-                  <p>আরও হিসাব<?php if ($accMoreBadge > 0): ?> <span class="nav-badge badge text-bg-warning me-3"><?= h(bnDigits((string) $accMoreBadge)) ?></span><?php endif; ?><i class="nav-arrow bi bi-chevron-right"></i></p>
+                  <p>হিসাব<?php if ($accMoreBadge > 0): ?> <span class="nav-badge badge text-bg-warning me-3"><?= h(bnDigits((string) $accMoreBadge)) ?></span><?php endif; ?><i class="nav-arrow bi bi-chevron-right"></i></p>
                 </a>
                 <ul class="nav nav-treeview">
                   <?php foreach ($accMore as $accItem): ?>
