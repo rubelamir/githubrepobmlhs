@@ -78,6 +78,12 @@ foreach ($waivers as $waiver) {
         $pendingWaiverItems[(int) $waiver['invoice_item_id']] = true;
     }
 }
+$pendingRelief = count($pendingWaiverItems);
+foreach ($concessions as $concession) {
+    if ($concession['status'] === ApprovalStatus::PENDING) {
+        $pendingRelief++;
+    }
+}
 $defaultEffective = $today->format('Y') === $sessionYear ? $today->format('Y-m-d') : $sessionYear . '-01-01';
 
 include __DIR__ . '/../../includes/layout-head.php';
@@ -108,6 +114,88 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">অগ্রিম জমা</div><div class="acc-stat-value"><?= h(Money::format($advance)) ?></div></div></div>
             </div>
 
+            <div class="card mb-3" id="invoices">
+              <div class="card-header"><h3 class="card-title mb-0">বিল</h3></div>
+              <div class="card-body">
+                <?php if ($invoiceRows === []): ?>
+                  <p class="text-secondary mb-0">এখনো কোনো বিল তৈরি হয়নি।</p>
+                <?php endif; ?>
+                <?php foreach ($invoiceRows as $invoice): ?>
+                  <?php
+                  $invoiceId = (int) $invoice['id'];
+                  $cancelled = $invoice['status'] === InvoiceService::CANCELLED;
+                  $lines = accInvoices()->items($invoiceId);
+                  ?>
+                  <div class="border rounded mb-3" id="inv-<?= $invoiceId ?>">
+                    <div class="d-flex flex-wrap gap-2 align-items-center p-2 bg-body-tertiary border-bottom">
+                      <code><?= h((string) $invoice['invoice_no']) ?></code>
+                      <strong><?= h((string) $invoice['billing_label']) ?></strong>
+                      <span class="badge <?= h(InvoiceService::STATUS_BADGES[$invoice['status']] ?? 'text-bg-light') ?>"><?= h(InvoiceService::STATUS_LABELS[$invoice['status']] ?? (string) $invoice['status']) ?></span>
+                      <span class="small text-secondary ms-auto">তারিখ <?= h(bnDigits((string) $invoice['issue_date'])) ?> · শেষ তারিখ <?= h(bnDigits((string) $invoice['due_date'])) ?></span>
+                    </div>
+                    <?php if ($cancelled): ?>
+                      <div class="small text-danger px-2 pt-2">বাতিল: <?= h((string) $invoice['cancel_reason']) ?> (<?= h(accFormatDateTime((string) $invoice['cancelled_at'])) ?>)</div>
+                    <?php endif; ?>
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0 acc-invoice-lines acc-table-stack">
+                        <thead><tr><th>খাত</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বাকি</th><th></th></tr></thead>
+                        <tbody>
+                          <?php foreach ($lines as $line): ?>
+                            <?php
+                            $itemId = (int) $line['id'];
+                            $outstanding = Money::fromDb($line['net']) - Money::fromDb($line['paid']);
+                            $isFine = $line['line_kind'] === InvoiceService::LINE_LATE_FINE;
+                            if ($isFine && $outstanding <= 0 && Money::fromDb($line['paid']) === 0) {
+                                continue;
+                            }
+                            $reliefNotes = [];
+                            if (!$isFine && Money::fromDb($line['category_concession']) !== 0) {
+                                $reliefNotes[] = 'শ্রেণী ছাড় ' . Money::format(Money::fromDb($line['category_concession']));
+                            }
+                            if (Money::fromDb($line['discount']) !== 0) {
+                                $reliefNotes[] = 'ব্যক্তিগত ছাড় ' . Money::format(Money::fromDb($line['discount']));
+                            }
+                            if (Money::fromDb($line['waived']) !== 0) {
+                                $reliefNotes[] = 'মওকুফ ' . Money::format(Money::fromDb($line['waived']));
+                            }
+                            ?>
+                            <tr>
+                              <td data-label="খাত"><?= h((string) $line['description']) ?><?= $isFine ? ' <span class="badge text-bg-warning">জরিমানা</span>' : '' ?><?php if ($reliefNotes !== []): ?><div class="small text-secondary"><?= h(implode(' · ', $reliefNotes)) ?></div><?php endif; ?></td>
+                              <td class="text-end" data-label="প্রাপ্য"><strong><?= h(Money::format(Money::fromDb($line['net']))) ?></strong></td>
+                              <td class="text-end" data-label="আদায়"><?= h(Money::format(Money::fromDb($line['paid']))) ?></td>
+                              <td class="text-end" data-label="বাকি"><?= $cancelled ? '—' : h(Money::format(max(0, $outstanding))) ?></td>
+                              <td class="text-end" data-label="মওকুফ আবেদন">
+                                <?php if ($canRequestWaiver && !$cancelled && $outstanding > 0 && !isset($pendingWaiverItems[$itemId])): ?>
+                                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#waive-<?= $itemId ?>">মওকুফ</button>
+                                <?php elseif (isset($pendingWaiverItems[$itemId])): ?>
+                                  <span class="badge text-bg-warning">মওকুফ অপেক্ষমাণ</span>
+                                <?php endif; ?>
+                              </td>
+                            </tr>
+                            <?php if ($canRequestWaiver && !$cancelled && $outstanding > 0 && !isset($pendingWaiverItems[$itemId])): ?>
+                              <tr class="collapse" id="waive-<?= $itemId ?>">
+                                <td colspan="5">
+                                  <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $line['description']) ?>-এ মওকুফ <?= $access->can(Capability::WAIVER_APPROVE) ? 'দেবেন' : 'আবেদন পাঠাবেন' ?>?">
+                                    <?= csrfField() ?>
+                                    <?= signedRecordField($studentId, 'acc_student') ?>
+                                    <?= signedRecordField($itemId, 'acc_invoice_item', 'item_ref') ?>
+                                    <input type="hidden" name="action" value="waiver_request">
+                                    <input class="form-control form-control-sm" style="max-width:9rem" name="amount" inputmode="decimal" required placeholder="সর্বোচ্চ <?= h(Money::toInput($outstanding)) ?>" aria-label="মওকুফের পরিমাণ">
+                                    <input class="form-control form-control-sm flex-grow-1" style="max-width:24rem" name="reason" minlength="3" maxlength="255" required placeholder="কারণ" aria-label="মওকুফের কারণ">
+                                    <button class="btn btn-sm btn-primary" type="submit">পাঠান</button>
+                                  </form>
+                                </td>
+                              </tr>
+                            <?php endif; ?>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+
             <div class="card mb-3" id="receipts">
               <div class="card-header"><h3 class="card-title mb-0">রসিদ</h3></div>
               <div class="card-body p-0">
@@ -136,84 +224,11 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
             </div>
 
-            <div class="card mb-3" id="invoices">
-              <div class="card-header"><h3 class="card-title mb-0">বিল</h3></div>
+            <details class="card mb-3 acc-fold" id="concessions"<?= $pendingRelief > 0 ? ' open' : '' ?>>
+              <summary class="card-header">ছাড় ও মওকুফ<?php if ($pendingRelief > 0): ?> <span class="badge text-bg-warning ms-1"><?= h(bnDigits((string) $pendingRelief)) ?></span><?php endif; ?></summary>
               <div class="card-body">
-                <?php if ($invoiceRows === []): ?>
-                  <p class="text-secondary mb-0">এখনো কোনো বিল তৈরি হয়নি।</p>
-                <?php endif; ?>
-                <?php foreach ($invoiceRows as $invoice): ?>
-                  <?php
-                  $invoiceId = (int) $invoice['id'];
-                  $cancelled = $invoice['status'] === InvoiceService::CANCELLED;
-                  $lines = accInvoices()->items($invoiceId);
-                  ?>
-                  <div class="border rounded mb-3" id="inv-<?= $invoiceId ?>">
-                    <div class="d-flex flex-wrap gap-2 align-items-center p-2 bg-body-tertiary border-bottom">
-                      <code><?= h((string) $invoice['invoice_no']) ?></code>
-                      <strong><?= h((string) $invoice['billing_label']) ?></strong>
-                      <span class="badge <?= h(InvoiceService::STATUS_BADGES[$invoice['status']] ?? 'text-bg-light') ?>"><?= h(InvoiceService::STATUS_LABELS[$invoice['status']] ?? (string) $invoice['status']) ?></span>
-                      <span class="small text-secondary ms-auto">তারিখ <?= h(bnDigits((string) $invoice['issue_date'])) ?> · শেষ তারিখ <?= h(bnDigits((string) $invoice['due_date'])) ?></span>
-                    </div>
-                    <?php if ($cancelled): ?>
-                      <div class="small text-danger px-2 pt-2">বাতিল: <?= h((string) $invoice['cancel_reason']) ?> (<?= h(accFormatDateTime((string) $invoice['cancelled_at'])) ?>)</div>
-                    <?php endif; ?>
-                    <div class="table-responsive">
-                      <table class="table table-sm align-middle mb-0 acc-invoice-lines acc-table-stack">
-                        <thead><tr><th>খাত</th><th>ফি-শ্রেণী</th><th class="text-end">সাধারণ হার</th><th class="text-end">শ্রেণী ছাড়</th><th class="text-end">ব্যক্তিগত ছাড়</th><th class="text-end">মওকুফ</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th></th></tr></thead>
-                        <tbody>
-                          <?php foreach ($lines as $line): ?>
-                            <?php
-                            $itemId = (int) $line['id'];
-                            $outstanding = Money::fromDb($line['net']) - Money::fromDb($line['paid']);
-                            $isFine = $line['line_kind'] === InvoiceService::LINE_LATE_FINE;
-                            if ($isFine && $outstanding <= 0 && Money::fromDb($line['paid']) === 0) {
-                                continue;
-                            }
-                            ?>
-                            <tr>
-                              <td data-label="খাত"><?= h((string) $line['description']) ?><?= $isFine ? ' <span class="badge text-bg-warning">জরিমানা</span>' : '' ?></td>
-                              <td data-label="ফি-শ্রেণী"><?= $isFine ? '—' : h((string) ($line['category_name'] ?? 'সাধারণ')) ?></td>
-                              <td class="text-end" data-label="সাধারণ হার"><?= h(Money::format($isFine ? Money::fromDb($line['amount']) : Money::fromDb($line['standard_amount']))) ?></td>
-                              <td class="text-end" data-label="শ্রেণী ছাড়"><?= Money::fromDb($line['category_concession']) !== 0 ? h(Money::format(Money::fromDb($line['category_concession']))) : '—' ?></td>
-                              <td class="text-end" data-label="ব্যক্তিগত ছাড়"><?= Money::fromDb($line['discount']) !== 0 ? h(Money::format(Money::fromDb($line['discount']))) : '—' ?></td>
-                              <td class="text-end" data-label="মওকুফ"><?= Money::fromDb($line['waived']) !== 0 ? h(Money::format(Money::fromDb($line['waived']))) : '—' ?></td>
-                              <td class="text-end" data-label="প্রাপ্য"><strong><?= h(Money::format(Money::fromDb($line['net']))) ?></strong></td>
-                              <td class="text-end" data-label="আদায়"><?= h(Money::format(Money::fromDb($line['paid']))) ?></td>
-                              <td class="text-end" data-label="মওকুফ আবেদন">
-                                <?php if ($canRequestWaiver && !$cancelled && $outstanding > 0 && !isset($pendingWaiverItems[$itemId])): ?>
-                                  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#waive-<?= $itemId ?>">মওকুফ</button>
-                                <?php elseif (isset($pendingWaiverItems[$itemId])): ?>
-                                  <span class="badge text-bg-warning">মওকুফ অপেক্ষমাণ</span>
-                                <?php endif; ?>
-                              </td>
-                            </tr>
-                            <?php if ($canRequestWaiver && !$cancelled && $outstanding > 0 && !isset($pendingWaiverItems[$itemId])): ?>
-                              <tr class="collapse" id="waive-<?= $itemId ?>">
-                                <td colspan="9">
-                                  <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $line['description']) ?>-এ মওকুফ <?= $access->can(Capability::WAIVER_APPROVE) ? 'দেবেন' : 'আবেদন পাঠাবেন' ?>?">
-                                    <?= csrfField() ?>
-                                    <?= signedRecordField($studentId, 'acc_student') ?>
-                                    <?= signedRecordField($itemId, 'acc_invoice_item', 'item_ref') ?>
-                                    <input type="hidden" name="action" value="waiver_request">
-                                    <input class="form-control form-control-sm" style="max-width:9rem" name="amount" inputmode="decimal" required placeholder="সর্বোচ্চ <?= h(Money::toInput($outstanding)) ?>" aria-label="মওকুফের পরিমাণ">
-                                    <input class="form-control form-control-sm flex-grow-1" style="max-width:24rem" name="reason" minlength="3" maxlength="255" required placeholder="কারণ" aria-label="মওকুফের কারণ">
-                                    <button class="btn btn-sm btn-primary" type="submit">পাঠান</button>
-                                  </form>
-                                </td>
-                              </tr>
-                            <?php endif; ?>
-                          <?php endforeach; ?>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                <?php endforeach; ?>
-              </div>
-            </div>
-
             <div class="row g-3">
-              <div class="col-lg-7" id="concessions">
+              <div class="col-lg-7">
                 <div class="card h-100">
                   <div class="card-header"><h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3></div>
                   <div class="card-body p-0">
@@ -222,11 +237,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <?php else: ?>
                       <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0 acc-table-stack">
-                          <thead><tr><th>ফি হেড</th><th>ছাড়</th><th>মেয়াদ</th><th>কারণ</th><th>অবস্থা</th><th></th></tr></thead>
+                          <thead><tr><th>ফির নাম</th><th>ছাড়</th><th>মেয়াদ</th><th>কারণ</th><th>অবস্থা</th><th></th></tr></thead>
                           <tbody>
                             <?php foreach ($concessions as $concession): ?>
                               <tr>
-                                <td data-label="ফি হেড"><?= h((string) $concession['head_name']) ?></td>
+                                <td data-label="ফির নাম"><?= h((string) $concession['head_name']) ?></td>
                                 <td data-label="ছাড়"><strong><?= h(ConcessionService::describe($concession)) ?></strong></td>
                                 <td data-label="মেয়াদ"><?= h(bnDigits((string) $concession['effective_from'])) ?> — <?= $concession['effective_to'] ? h(bnDigits((string) $concession['effective_to'])) : 'চলমান' ?></td>
                                 <td data-label="কারণ"><?= h((string) $concession['reason']) ?><?php if ((string) $concession['decision_note'] !== ''): ?><div class="small text-secondary"><?= h((string) $concession['decision_note']) ?></div><?php endif; ?></td>
@@ -257,7 +272,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <input type="hidden" name="action" value="concession_request">
                       <div class="row g-2 align-items-end">
                         <div class="col-sm-4">
-                          <label class="form-label small mb-1" for="con-head">ফি হেড</label>
+                          <label class="form-label small mb-1" for="con-head">ফির নাম</label>
                           <select class="form-select form-select-sm" name="fee_head_id" id="con-head" required>
                             <option value="">নির্বাচন করুন</option>
                             <?php foreach ($heads as $head): ?><option value="<?= (int) $head['id'] ?>"><?= h((string) $head['name_bn']) ?></option><?php endforeach; ?>
@@ -325,6 +340,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
               </div>
             </div>
+              </div>
+            </details>
           </div>
         </div>
 <?php include __DIR__ . '/../../includes/layout-end.php'; ?>
