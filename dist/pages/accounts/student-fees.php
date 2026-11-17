@@ -224,8 +224,8 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
             </div>
 
-            <details class="card mb-3 acc-fold" id="concessions"<?= $pendingRelief > 0 ? ' open' : '' ?>>
-              <summary class="card-header">ছাড় ও মওকুফ<?php if ($pendingRelief > 0): ?> <span class="badge text-bg-warning ms-1"><?= h(bnDigits((string) $pendingRelief)) ?></span><?php endif; ?></summary>
+            <div class="card mb-3" id="concessions">
+              <div class="card-header"><h3 class="card-title mb-0">ছাড় ও মওকুফ<?php if ($pendingRelief > 0): ?> <span class="badge text-bg-warning ms-1"><?= h(bnDigits((string) $pendingRelief)) ?></span><?php endif; ?></h3></div>
               <div class="card-body">
             <div class="row g-3">
               <div class="col-lg-7">
@@ -341,7 +341,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
             </div>
               </div>
-            </details>
+            </div>
           </div>
         </div>
 <?php include __DIR__ . '/../../includes/layout-end.php'; ?>
