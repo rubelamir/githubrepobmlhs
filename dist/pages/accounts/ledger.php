@@ -12,7 +12,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::REPORTS_VIEW_ALL);
 $chart = accChart();
 $basePath = '../../';
-$pageTitle = 'খতিয়ান | School Admin';
+$pageTitle = 'বিস্তারিত খাতা | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -32,16 +32,26 @@ if ($accountId === 0) {
 }
 $account = $chart->account($accountId);
 $ledger = null;
+$debitHead = 'বাড়ে';
+$creditHead = 'কমে';
 if ($account !== null && (int) $account['is_group'] === 0) {
     $ledger = accVouchers()->ledger($accountId, $from, $to);
+    $moneyBook = in_array((string) $account['money_kind'], [...ChartOfAccounts::SPENDABLE_KINDS, 'teacher_custody'], true);
+    if ($moneyBook) {
+        $debitHead = 'টাকা এসেছে';
+        $creditHead = 'টাকা গেছে';
+    } elseif (!ChartOfAccounts::isDebitNormal((string) $account['account_type'])) {
+        $debitHead = 'কমে';
+        $creditHead = 'বাড়ে';
+    }
 }
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1">খতিয়ান</h3>
-            <p class="text-secondary mb-0">একটি হিসাবের সব অনুমোদিত লেনদেন, প্রারম্ভিক ও সমাপনী স্থিতিসহ। নগদ হিসাব (১১১০) নির্বাচন করলে এটিই ক্যাশ বুক।</p>
+            <h3 class="mb-1">বিস্তারিত খাতা</h3>
+            <p class="text-secondary mb-0">একটি খাতের যাচাই হওয়া লেনদেন। নগদ, ব্যাংক, বিকাশ ও নগদে টাকা এসেছে ও টাকা গেছে। আয়, খরচ ও অন্য খাতে বাড়ে ও কমে।</p>
           </div>
         </div>
         <div class="app-content">
@@ -69,23 +79,23 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="card">
                 <div class="card-header d-flex flex-wrap gap-2 align-items-center">
                   <h3 class="card-title mb-0 me-auto"><code><?= h((string) $account['code']) ?></code> <?= h((string) $account['name_bn']) ?> <span class="small text-secondary">(<?= h(bnDigits($from)) ?> — <?= h(bnDigits($to)) ?>)</span></h3>
-                  <span class="small text-secondary">প্রারম্ভিক: <strong><?= h(Money::format($ledger['opening'])) ?></strong></span>
-                  <span class="small text-secondary">সমাপনী: <strong class="<?= $ledger['closing'] < 0 ? 'text-danger' : '' ?>"><?= h(Money::format($ledger['closing'])) ?></strong></span>
+                  <span class="small text-secondary">শুরুর স্থিতি: <strong><?= h(Money::format($ledger['opening'])) ?></strong></span>
+                  <span class="small text-secondary">শেষ স্থিতি: <strong class="<?= $ledger['closing'] < 0 ? 'text-danger' : '' ?>"><?= h(Money::format($ledger['closing'])) ?></strong></span>
                 </div>
                 <div class="card-body p-0">
                   <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0 acc-table-stack">
-                      <thead><tr><th>তারিখ</th><th>ভাউচার</th><th>বিবরণ</th><th class="text-end">ডেবিট</th><th class="text-end">ক্রেডিট</th><th class="text-end">স্থিতি</th></tr></thead>
+                      <thead><tr><th>তারিখ</th><th>নম্বর</th><th>বিবরণ</th><th class="text-end"><?= h($debitHead) ?></th><th class="text-end"><?= h($creditHead) ?></th><th class="text-end">স্থিতি</th></tr></thead>
                       <tbody>
-                        <tr class="table-light"><td colspan="5">প্রারম্ভিক স্থিতি</td><td class="text-end text-nowrap"><?= h(Money::format($ledger['opening'])) ?></td></tr>
+                        <tr class="table-light"><td colspan="5">শুরুর স্থিতি</td><td class="text-end text-nowrap"><?= h(Money::format($ledger['opening'])) ?></td></tr>
                         <?php if ($ledger['rows'] === []): ?><tr><td colspan="6" class="text-secondary">এই সময়ে কোনো লেনদেন নেই।</td></tr><?php endif; ?>
                         <?php foreach ($ledger['rows'] as $row): ?>
                           <tr>
                             <td data-label="তারিখ" class="text-nowrap"><?= h(bnDigits((string) $row['voucher_date'])) ?></td>
-                            <td data-label="ভাউচার"><a href="<?= h(signedRecordUrl('voucher.php', (int) $row['voucher_id'], 'acc_voucher')) ?>"><code><?= h((string) $row['voucher_no']) ?></code></a></td>
+                            <td data-label="নম্বর"><a href="<?= h(signedRecordUrl('voucher.php', (int) $row['voucher_id'], 'acc_voucher')) ?>"><code><?= h((string) $row['voucher_no']) ?></code></a></td>
                             <td data-label="বিবরণ"><?= h((string) $row['narration']) ?><?= (string) $row['memo'] !== '' ? '<div class="small text-secondary">' . h((string) $row['memo']) . '</div>' : '' ?></td>
-                            <td class="text-end text-nowrap" data-label="ডেবিট"><?= Money::fromDb($row['debit']) > 0 ? h(Money::format(Money::fromDb($row['debit']))) : '' ?></td>
-                            <td class="text-end text-nowrap" data-label="ক্রেডিট"><?= Money::fromDb($row['credit']) > 0 ? h(Money::format(Money::fromDb($row['credit']))) : '' ?></td>
+                            <td class="text-end text-nowrap" data-label="<?= h($debitHead) ?>"><?= Money::fromDb($row['debit']) > 0 ? h(Money::format(Money::fromDb($row['debit']))) : '' ?></td>
+                            <td class="text-end text-nowrap" data-label="<?= h($creditHead) ?>"><?= Money::fromDb($row['credit']) > 0 ? h(Money::format(Money::fromDb($row['credit']))) : '' ?></td>
                             <td class="text-end text-nowrap" data-label="স্থিতি"><?= h(Money::format($row['running'])) ?></td>
                           </tr>
                         <?php endforeach; ?>

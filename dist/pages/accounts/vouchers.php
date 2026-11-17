@@ -13,7 +13,7 @@ $access = accBootPage([Capability::VOUCHER_CREATE, Capability::VOUCHER_APPROVE])
 $canCreate = $access->can(Capability::VOUCHER_CREATE);
 $canApprove = $access->can(Capability::VOUCHER_APPROVE);
 $basePath = '../../';
-$pageTitle = 'ভাউচার | School Admin';
+$pageTitle = 'আয়-খরচ তালিকা | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
@@ -35,10 +35,15 @@ include __DIR__ . '/../../includes/layout-head.php';
           <div class="container-fluid">
             <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between">
               <div>
-                <h3 class="mb-1">ভাউচার</h3>
-                <p class="text-secondary mb-0">আয়, ব্যয়, নগদ-ব্যাংক স্থানান্তর ও সমন্বয়ের ভাউচার। হিসাব রক্ষক খসড়া করে জমা দেবেন, প্রধান শিক্ষক অনুমোদন করলে তবেই হিসাবে যোগ হবে। ফি আদায়, হস্তান্তর ও ব্যাংক জমার ভাউচার স্বয়ংক্রিয়ভাবে তৈরি হয়।</p>
+                <h3 class="mb-1">আয়-খরচ তালিকা</h3>
+                <p class="text-secondary mb-0">প্রতিদিনের খরচ, অন্য আয় ও টাকা সরানো «আয় ও খরচ» থেকে হয়। প্রধান শিক্ষক যাচাই করলে তবেই খাতায় ওঠে। ফি আদায় নিজে থেকেই যোগ হয়।</p>
               </div>
-              <?php if ($canCreate): ?><a class="btn btn-primary" href="voucher-form.php"><i class="bi bi-plus-lg me-1"></i>নতুন ভাউচার</a><?php endif; ?>
+              <?php if ($canCreate): ?>
+                <div class="d-flex flex-wrap gap-2">
+                  <a class="btn btn-primary" href="expense.php"><i class="bi bi-plus-lg me-1"></i>আয় বা খরচ</a>
+                  <a class="btn btn-outline-secondary" href="voucher-form.php">বিশেষ এন্ট্রি</a>
+                </div>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -72,13 +77,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <div class="col-6 col-md-2"><label class="form-label small mb-1" for="vf-from">শুরু</label><input class="form-control form-control-sm" type="date" id="vf-from" name="from" value="<?= h($filter['from']) ?>"></div>
                 <div class="col-6 col-md-2"><label class="form-label small mb-1" for="vf-to">শেষ</label><input class="form-control form-control-sm" type="date" id="vf-to" name="to" value="<?= h($filter['to']) ?>"></div>
                 <div class="col-6 col-md-2"><label class="form-label small mb-1" for="vf-q">নং / বিবরণ</label><input class="form-control form-control-sm" id="vf-q" name="q" value="<?= h($filter['q']) ?>"></div>
-                <div class="col-12"><button class="btn btn-sm btn-primary" type="submit">দেখুন</button> <a class="btn btn-sm btn-outline-secondary" href="vouchers.php?status=">সব ভাউচার</a></div>
+                <div class="col-12"><button class="btn btn-sm btn-primary" type="submit">দেখুন</button> <a class="btn btn-sm btn-outline-secondary" href="vouchers.php?status=">সব এন্ট্রি</a></div>
               </div>
             </form>
 
             <div class="card">
               <div class="card-header d-flex gap-2 align-items-center">
-                <h3 class="card-title mb-0 me-auto"><?= h(bnDigits((string) count($list))) ?>টি ভাউচার</h3>
+                <h3 class="card-title mb-0 me-auto"><?= h(bnDigits((string) count($list))) ?>টি এন্ট্রি</h3>
                 <span class="fw-semibold"><?= h(Money::format($total)) ?></span>
               </div>
               <div class="card-body p-0">
@@ -86,7 +91,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <table class="table table-sm table-hover align-middle mb-0 acc-table-stack">
                     <thead><tr><th>নং</th><th>তারিখ</th><th>ধরন</th><th>বিবরণ</th><th>তৈরি</th><th class="text-end">টাকা</th><th>অবস্থা</th></tr></thead>
                     <tbody>
-                      <?php if ($list === []): ?><tr><td colspan="7" class="text-secondary">কোনো ভাউচার নেই।</td></tr><?php endif; ?>
+                      <?php if ($list === []): ?><tr><td colspan="7" class="text-secondary">কোনো এন্ট্রি নেই।</td></tr><?php endif; ?>
                       <?php foreach ($list as $row): ?>
                         <tr>
                           <td data-label="নং"><a href="<?= h(signedRecordUrl('voucher.php', (int) $row['id'], 'acc_voucher')) ?>"><code><?= h($row['voucher_no'] !== null ? (string) $row['voucher_no'] : 'খসড়া #' . bnDigits((string) $row['id'])) ?></code></a></td>

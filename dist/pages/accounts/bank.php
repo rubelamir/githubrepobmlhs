@@ -49,7 +49,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         if ($action === 'verify' || $action === 'reject') {
             $bank->decideDeposit($access, accAudit(), postedRecordId('acc_deposit'), $action === 'verify', (string) ($_POST['remark'] ?? ''));
-            redirectWithMessage('bank.php', 'success', $action === 'verify' ? 'জমা যাচাই হয়েছে; নগদ থেকে ব্যাংকে কন্ট্রা ভাউচার পোস্ট হয়েছে।' : 'জমা ফেরত দেওয়া হয়েছে।');
+            redirectWithMessage('bank.php', 'success', $action === 'verify' ? 'জমা যাচাই হয়েছে; নগদ থেকে ব্যাংকে টাকা সরানো হয়েছে।' : 'জমা ফেরত দেওয়া হয়েছে।');
         }
         if ($action === 'slip') {
             $depositId = postedRecordId('acc_deposit');
@@ -187,7 +187,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 
             <?php if ($canRecord && $bankAccounts !== []): ?>
               <div class="card" id="reconcile">
-                <div class="card-header"><h3 class="card-title mb-0">ব্যাংক মিলকরণ (রিকনসিলিয়েশন)</h3></div>
+                <div class="card-header"><h3 class="card-title mb-0">ব্যাংক স্টেটমেন্ট মিলান</h3></div>
                 <div class="card-body border-bottom">
                   <form method="get" class="row g-2 align-items-end">
                     <div class="col-md-4"><label class="form-label small mb-1" for="rc-account">ব্যাংক হিসাব</label>

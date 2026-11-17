@@ -74,7 +74,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">হিসাবের নাম</h3>
-            <p class="text-secondary mb-0">সব আয়, ব্যয়, নগদ, ব্যাংক ও দায়ের হিসাব। স্থিতি শুধু অনুমোদিত ভাউচার থেকে গণনা হয়। <i class="bi bi-lock-fill"></i> চিহ্নিত সিস্টেম হিসাব স্বয়ংক্রিয় এন্ট্রিতে ব্যবহৃত হয়, তাই এগুলো নিষ্ক্রিয় করা যায় না।</p>
+            <p class="text-secondary mb-0">সব আয়, ব্যয়, নগদ, ব্যাংক ও দায়ের হিসাব। স্থিতি শুধু যাচাই হওয়া এন্ট্রি থেকে গণনা হয়। <i class="bi bi-lock-fill"></i> চিহ্নিত সিস্টেম হিসাব স্বয়ংক্রিয় এন্ট্রিতে ব্যবহৃত হয়, তাই এগুলো নিষ্ক্রিয় করা যায় না।</p>
           </div>
         </div>
         <div class="app-content">
@@ -128,7 +128,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                                       <button class="btn btn-sm btn-primary" type="submit">সংরক্ষণ</button>
                                     </form>
                                     <?php if ((int) $account['is_system'] !== 1): ?>
-                                      <form method="post" data-acc-confirm="<?= $active ? 'হিসাবটি নিষ্ক্রিয় করবেন? নতুন ভাউচারে আর ব্যবহার করা যাবে না।' : 'হিসাবটি আবার সক্রিয় করবেন?' ?>">
+                                      <form method="post" data-acc-confirm="<?= $active ? 'হিসাবটি নিষ্ক্রিয় করবেন? নতুন এন্ট্রিতে আর ব্যবহার করা যাবে না।' : 'হিসাবটি আবার সক্রিয় করবেন?' ?>">
                                         <?= csrfField() ?><input type="hidden" name="action" value="<?= $active ? 'deactivate' : 'activate' ?>"><?= signedRecordField($accountId, 'acc_account') ?>
                                         <button class="btn btn-sm <?= $active ? 'btn-outline-danger' : 'btn-outline-success' ?>" type="submit"><?= $active ? 'নিষ্ক্রিয়' : 'সক্রিয়' ?></button>
                                       </form>
@@ -196,17 +196,17 @@ include __DIR__ . '/../../includes/layout-head.php';
 
             <div class="card" id="trial-balance">
               <div class="card-header d-flex flex-wrap gap-2 align-items-center">
-                <h3 class="card-title mb-0 me-auto">রেওয়ামিল (ট্রায়াল ব্যালান্স) — <?= h(bnDigits($asOf)) ?> পর্যন্ত</h3>
+                <h3 class="card-title mb-0 me-auto">উদ্বৃত্ত — <?= h(bnDigits($asOf)) ?> পর্যন্ত</h3>
                 <?php if ($trial['debit'] === $trial['credit']): ?>
-                  <span class="badge text-bg-success"><i class="bi bi-check2"></i> ডেবিট = ক্রেডিট</span>
+                  <span class="badge text-bg-success"><i class="bi bi-check2"></i> দুই পাশ মিলেছে</span>
                 <?php else: ?>
-                  <span class="badge text-bg-danger">মেলেনি</span>
+                  <span class="badge text-bg-danger">দুই পাশ মিলছে না</span>
                 <?php endif; ?>
               </div>
               <div class="card-body p-0">
                 <div class="table-responsive">
                   <table class="table table-sm mb-0">
-                    <thead><tr><th>কোড</th><th>হিসাব</th><th class="text-end">ডেবিট</th><th class="text-end">ক্রেডিট</th></tr></thead>
+                    <thead><tr><th>কোড</th><th>হিসাব</th><th class="text-end">সম্পদ ও খরচ</th><th class="text-end">আয় ও দায়</th></tr></thead>
                     <tbody>
                       <?php if ($trial['rows'] === []): ?><tr><td colspan="4" class="text-secondary">এখনো কোনো অনুমোদিত লেনদেন নেই।</td></tr><?php endif; ?>
                       <?php foreach ($trial['rows'] as $row): ?>
