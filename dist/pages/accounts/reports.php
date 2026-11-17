@@ -27,7 +27,7 @@ $validDate = static fn (string $value): bool => preg_match('/^\d{4}-\d{2}-\d{2}$
     && DateTimeImmutable::createFromFormat('!Y-m-d', $value)?->format('Y-m-d') === $value;
 $type = (string) ($_GET['report'] ?? '');
 if (!$reports->allows($access, $type)) {
-    $type = $access->can(Capability::REPORTS_VIEW_ALL) ? ReportService::TRIAL : ReportService::COLLECTION;
+    $type = $access->can(Capability::REPORTS_VIEW_ALL) ? ReportService::INCOME : ReportService::COLLECTION;
 }
 $from = $validDate((string) ($_GET['from'] ?? '')) ? (string) $_GET['from'] : $today->modify('first day of this month')->format('Y-m-d');
 $to = $validDate((string) ($_GET['to'] ?? '')) ? (string) $_GET['to'] : $today->format('Y-m-d');
@@ -62,12 +62,14 @@ $headers = [];
 $htmlRows = [];
 $excelRows = [];
 $subtitle = '';
+$balanced = null;
 $built = $rangeError === '';
 if ($built) {
     if ($type === ReportService::TRIAL) {
         $trial = $reports->trial($to);
         $subtitle = 'তারিখ পর্যন্ত ' . bnDigits($to);
-        $headers = ['কোড', 'হিসাব', 'ডেবিট', 'ক্রেডিট'];
+        $headers = ['কোড', 'হিসাব', 'সম্পদ ও খরচ', 'আয় ও দায়'];
+        $balanced = $trial['debit'] === $trial['credit'];
         foreach ($trial['rows'] as $row) {
             $htmlRows[] = [h($row['code']), h($row['name']), h(Money::format($row['debit'])), h(Money::format($row['credit']))];
             $excelRows[] = [$row['code'], $row['name'], Money::toDb($row['debit']), Money::toDb($row['credit'])];
@@ -96,7 +98,7 @@ if ($built) {
     } elseif ($type === ReportService::CASH) {
         $cash = $reports->cash($from, $to);
         $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to);
-        $headers = ['কোড', 'হিসাব', 'প্রারম্ভিক', 'জমা', 'খরচ', 'সমাপনী'];
+        $headers = ['কোড', 'হিসাব', 'শুরুর স্থিতি', 'টাকা এসেছে', 'টাকা গেছে', 'শেষ স্থিতি'];
         foreach ($cash['rows'] as $row) {
             $htmlRows[] = [h($row['code']), h($row['name']), h(Money::format($row['opening'])), h(Money::format($row['debit'])), h(Money::format($row['credit'])), h(Money::format($row['closing']))];
             $excelRows[] = [$row['code'], $row['name'], Money::toDb($row['opening']), Money::toDb($row['debit']), Money::toDb($row['credit']), Money::toDb($row['closing'])];
@@ -119,7 +121,7 @@ if ($built) {
         $excelRows[] = ['মোট', '', $count, Money::toDb($total)];
     } elseif ($type === ReportService::DUES) {
         $subtitle = 'সেশন ' . bnDigits($sessionYear);
-        $headers = ['শ্রেণী / শাখা', 'ইনভয়েস', 'বকেয়াদার শিক্ষার্থী', 'প্রাপ্য', 'আদায়', 'বকেয়া'];
+        $headers = ['শ্রেণী / শাখা', 'বিল', 'বকেয়াদার শিক্ষার্থী', 'প্রাপ্য', 'আদায়', 'বকেয়া'];
         $sums = ['invoices' => 0, 'students' => 0, 'net' => 0, 'paid' => 0, 'due' => 0];
         foreach ($reports->dues($access, $sessionYear) as $row) {
             $sums['invoices'] += $row['invoices'];
@@ -169,7 +171,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">রিপোর্ট</h3>
-            <p class="text-secondary mb-0">ট্রায়াল ব্যালেন্স, আয়-ব্যয়, নগদ ও ব্যাংক, ফি আদায়, বকেয়া এবং বৃত্তি/উপবৃত্তির ছাড়। শ্রেণিশিক্ষক শুধু নিজ শ্রেণীর আদায়, বকেয়া ও ছাড় দেখেন।</p>
+            <p class="text-secondary mb-0">আয়-খরচ, নগদ ও ব্যাংক, ফি আদায়, বকেয়া, উদ্বৃত্ত এবং বৃত্তি/উপবৃত্তির ছাড়। একজন শিক্ষার্থীর বিবরণ ফি আদায়ের পাতা থেকে খোলে। শ্রেণিশিক্ষক শুধু নিজ শ্রেণীর আদায়, বকেয়া ও ছাড় দেখেন।</p>
           </div>
         </div>
         <div class="app-content">
@@ -226,6 +228,9 @@ include __DIR__ . '/../../includes/layout-head.php';
                     </table>
                   </div>
                 </div>
+                <?php if ($balanced !== null): ?>
+                  <div class="card-footer small"><?= $balanced ? 'দুই পাশ মিলেছে।' : 'দুই পাশ মিলছে না। হিসাব রক্ষককে জানান।' ?></div>
+                <?php endif; ?>
               </div>
             <?php endif; ?>
           </div>
