@@ -50,6 +50,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 BillingPeriod::MONTHLY => BillingPeriod::monthly((string) ($_POST['month'] ?? '')),
                 BillingPeriod::OTHER => BillingPeriod::other((string) ($_POST['month'] ?? '')),
                 BillingPeriod::SESSION => BillingPeriod::session($sessionYear),
+                BillingPeriod::ADMISSION => BillingPeriod::admission($sessionYear),
                 BillingPeriod::EXAM => (static function () use ($exams, $sessionYear, $issueDate): BillingPeriod {
                     $examId = (int) ($_POST['exam_id'] ?? 0);
                     foreach ($exams as $exam) {
@@ -67,7 +68,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             ));
             $allowedHeads = [];
             foreach (accCatalog()->heads(true) as $head) {
-                if (($head['billing_kind'] ?? '') === $kind) {
+                if (BillingPeriod::headMatchesInvoiceKind($head, $kind)) {
                     $allowedHeads[] = (int) $head['id'];
                 }
             }
@@ -191,7 +192,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <label class="form-label" for="inv-kind">বিলের ধরন</label>
                           <select class="form-select" name="billing_kind" id="inv-kind" required data-acc-kind-select>
                             <option value="">নির্বাচন করুন</option>
-                            <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
+                            <?php foreach (BillingPeriod::INVOICE_KIND_LABELS as $kind => $label): ?>
                               <option value="<?= h($kind) ?>"><?= h($label) ?></option>
                             <?php endforeach; ?>
                           </select>
@@ -207,16 +208,16 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php foreach ($exams as $exam): ?><option value="<?= (int) $exam['id'] ?>"><?= h((string) $exam['exam_name_bangla']) ?></option><?php endforeach; ?>
                           </select>
                         </div>
-                        <div class="col-md-6 col-lg-3" data-acc-kind="monthly session exam other" hidden>
+                        <div class="col-md-6 col-lg-3" data-acc-kind="monthly session admission exam other" hidden>
                           <label class="form-label" for="inv-issue">বিলের তারিখ <span class="text-secondary small">(পরে বদলানো যাবে)</span></label>
                           <input class="form-control" type="date" name="issue_date" id="inv-issue" data-acc-issue-date required value="<?= h($today->format('Y-m-d')) ?>">
                         </div>
                       </div>
-                      <div class="mt-3" data-acc-kind="monthly session exam other" hidden>
+                      <div class="mt-3" data-acc-kind="monthly session admission exam other" hidden>
                         <span class="form-label d-block">কোন ফি <span class="text-secondary small">(অন্তত একটিতে টিক দিন)</span></span>
-                        <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
+                        <?php foreach (BillingPeriod::INVOICE_KIND_LABELS as $kind => $label): ?>
                           <div data-acc-kind="<?= h($kind) ?>" hidden>
-                            <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
+                            <?php $kindHeads = array_filter($heads, static fn (array $head): bool => BillingPeriod::headMatchesInvoiceKind($head, $kind)); ?>
                             <?php if ($kindHeads === []): ?><span class="small text-secondary">এই ধরনের কোনো সক্রিয় ফি নেই।</span><?php endif; ?>
                             <?php foreach ($kindHeads as $head): ?>
                               <div class="form-check form-check-inline">

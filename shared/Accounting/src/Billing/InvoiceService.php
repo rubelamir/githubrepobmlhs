@@ -511,10 +511,7 @@ final class InvoiceService
     /** @param array<string, mixed> $head */
     private static function headIsAdmission(array $head): bool
     {
-        $code = strtoupper(trim((string) ($head['code'] ?? $head['head_code'] ?? '')));
-        $name = (string) ($head['name_bn'] ?? $head['head_name'] ?? '');
-
-        return $code === 'ADMISSION' || str_contains($name, 'ভর্তি');
+        return BillingPeriod::isAdmissionHead($head);
     }
 
     /** @return array<string, string> billing_key => label */

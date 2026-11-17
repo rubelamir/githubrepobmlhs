@@ -17,12 +17,23 @@ final class BillingPeriod
 {
     public const MONTHLY = 'monthly';
     public const SESSION = 'session';
+    /** Invoice-form choice only. Admission heads stay stored as billing_kind session. */
+    public const ADMISSION = 'admission';
     public const EXAM = 'exam';
     public const OTHER = 'other';
 
     public const KIND_LABELS = [
         self::MONTHLY => 'মাসিক',
         self::SESSION => 'সেশন / ভর্তি (বছরে একবার)',
+        self::EXAM => 'পরীক্ষা',
+        self::OTHER => 'অন্যান্য',
+    ];
+
+    /** Bill-creation choices. Session and admission are separate even though both bill once a year. */
+    public const INVOICE_KIND_LABELS = [
+        self::MONTHLY => 'মাসিক',
+        self::SESSION => 'সেশন',
+        self::ADMISSION => 'ভর্তি',
         self::EXAM => 'পরীক্ষা',
         self::OTHER => 'অন্যান্য',
     ];
@@ -55,6 +66,40 @@ final class BillingPeriod
         }
 
         return new self(self::SESSION, 'S:' . $sessionYear, 'সেশন ' . \bnDigits($sessionYear), new DateTimeImmutable($sessionYear . '-01-01'));
+    }
+
+    /**
+     * Same period key as session(), so an admission head already billed this year is not billed again.
+     * The stored fee-head kind stays session; only the invoice label says admission.
+     */
+    public static function admission(string $sessionYear): self
+    {
+        $session = self::session($sessionYear);
+
+        return new self(self::SESSION, $session->key(), 'ভর্তি ' . \bnDigits($sessionYear), $session->referenceDate());
+    }
+
+    /** @param array<string, mixed> $head */
+    public static function isAdmissionHead(array $head): bool
+    {
+        $code = strtoupper(trim((string) ($head['code'] ?? $head['head_code'] ?? '')));
+        $name = (string) ($head['name_bn'] ?? $head['head_name'] ?? '');
+
+        return $code === 'ADMISSION' || str_contains($name, 'ভর্তি');
+    }
+
+    /** @param array<string, mixed> $head */
+    public static function headMatchesInvoiceKind(array $head, string $invoiceKind): bool
+    {
+        $stored = (string) ($head['billing_kind'] ?? '');
+        if ($invoiceKind === self::ADMISSION) {
+            return $stored === self::SESSION && self::isAdmissionHead($head);
+        }
+        if ($invoiceKind === self::SESSION) {
+            return $stored === self::SESSION && !self::isAdmissionHead($head);
+        }
+
+        return $stored === $invoiceKind;
     }
 
     public static function exam(int $examId, string $examName, string $sessionYear, DateTimeImmutable $issueDate): self

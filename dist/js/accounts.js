@@ -129,7 +129,7 @@
     return `${match[1]}-${match[2]}-${String(last).padStart(2, '0')}`;
   };
 
-  // Monthly bills open on the last day of the chosen month. Session bills open on 1 January.
+  // Monthly bills open on the last day of the chosen month. Session and admission bills open on 1 January.
   // The collector can still change the date afterwards.
   const applyBillDate = (form) => {
     const kind = form.querySelector('[data-acc-kind-select]');
@@ -144,7 +144,7 @@
         issue.value = end;
       }
     }
-    if (kind.value === 'session') {
+    if (kind.value === 'session' || kind.value === 'admission') {
       const session = form.querySelector('input[name="session_year"]');
       if (session && /^\d{4}$/.test(session.value)) {
         issue.value = `${session.value}-01-01`;
