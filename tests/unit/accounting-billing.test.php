@@ -100,6 +100,40 @@ $check(ConcessionService::discountFor(['kind' => ConcessionService::PERCENT, 'va
 $check(ConcessionService::discountFor(['kind' => ConcessionService::FIXED, 'value' => '1000.00'], 40000) === 40000, 'fixed concession capped at amount');
 $check(ConcessionService::describe(['kind' => ConcessionService::PERCENT, 'value' => '12.50']) === '১২.৫%', 'describe percent');
 
+// A student's bills: session fee, admission fee, then each month's tuition,
+// with exam and other fees after the tuition of the month they were created.
+$bill = static function (int $id, string $key, string $issued, array $heads = []) {
+    return [
+        'id' => $id,
+        'billing_key' => $key,
+        'issue_date' => $issued,
+        'session_year' => '2026',
+        'heads' => $heads,
+    ];
+};
+$sessionHead = ['code' => 'SESSION', 'name_bn' => 'সেশন ফি'];
+$admissionHead = ['code' => 'ADMISSION', 'name_bn' => 'ভর্তি ফি'];
+$bills = [
+    $bill(9, 'E:2026:3', '2026-03-12', [['code' => 'EXAM', 'name_bn' => 'পরীক্ষার ফি']]),
+    $bill(4, 'M:2026-03', '2026-03-01'),
+    $bill(2, 'S:2026', '2026-01-05', [$admissionHead]),
+    $bill(7, 'O:2026-01', '2026-01-20', [['code' => 'LAB', 'name_bn' => 'ল্যাব ফি']]),
+    $bill(1, 'S:2026', '2026-01-04', [$sessionHead]),
+    $bill(5, 'M:2026-01', '2026-03-20'),
+    $bill(8, 'E:2026:1', '2026-01-18', [['code' => 'EXAM', 'name_bn' => 'পরীক্ষার ফি']]),
+    $bill(6, 'M:2026-02', '2026-02-01'),
+];
+usort($bills, static fn (array $a, array $b): int => InvoiceService::displaySortKey($a) <=> InvoiceService::displaySortKey($b));
+$check(array_column($bills, 'id') === [1, 2, 5, 8, 7, 6, 4, 9], 'student bills follow session, admission, then each month');
+
+$lines = [
+    ['id' => 3, 'line_kind' => 'fee', 'billing_kind' => 'session', 'code' => 'ADMISSION', 'name_bn' => 'ভর্তি ফি', 'sort_order' => 20],
+    ['id' => 1, 'line_kind' => 'fee', 'billing_kind' => 'session', 'code' => 'SESSION', 'name_bn' => 'সেশন ফি', 'sort_order' => 30],
+    ['id' => 2, 'line_kind' => 'late_fine', 'billing_kind' => 'session', 'code' => 'SESSION', 'name_bn' => 'সেশন ফি', 'sort_order' => 30],
+];
+usort($lines, static fn (array $a, array $b): int => InvoiceService::lineDisplaySortKey($a) <=> InvoiceService::lineDisplaySortKey($b));
+$check(array_column($lines, 'id') === [1, 3, 2], 'session fee line comes before admission, then any fine');
+
 // Invoice status follows the numbers.
 $check(InvoiceService::statusFor(90000, 0) === InvoiceService::UNPAID, 'unpaid');
 $check(InvoiceService::statusFor(90000, 100) === InvoiceService::PARTIAL, 'partial');
