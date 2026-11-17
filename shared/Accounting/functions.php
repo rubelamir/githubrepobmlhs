@@ -19,7 +19,6 @@ use School\Accounting\Collection\HandoverService;
 use School\Accounting\Collection\PaymentService;
 use School\Accounting\Gateway\BkashGateway;
 use School\Accounting\Gateway\GatewayConfig;
-use School\Accounting\Gateway\NagadGateway;
 use School\Accounting\Gateway\OnlinePaymentService;
 use School\Accounting\Gateway\RefundService;
 use School\Accounting\Gateway\SettlementService;
@@ -218,7 +217,7 @@ function accSettlements(): SettlementService
 /** @return list<\School\Accounting\Gateway\PaymentGateway> */
 function accGateways(PDO $db): array
 {
-    return [new BkashGateway($db, GatewayConfig::for('bkash')), new NagadGateway()];
+    return [new BkashGateway($db, GatewayConfig::for('bkash'))];
 }
 
 /**

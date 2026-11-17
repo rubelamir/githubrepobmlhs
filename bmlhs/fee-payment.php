@@ -255,9 +255,6 @@ schoolPageHero('অনলাইনে ফি পরিশোধ', 'শিক্�
                 <tr class="table-success"><th colspan="2">মোট পরিশোধ করবেন</th><th class="text-end text-nowrap fs-5"><?= h(Money::format($portalReview['quote']['payable'])) ?></th></tr>
             </tfoot>
         </table>
-        <?php if ($portalReview['quote']['bearer'] === 'school'): ?>
-        <p class="small text-muted">গেটওয়ে চার্জ বিদ্যালয় বহন করবে; আপনাকে শুধু ফি পরিশোধ করতে হবে।</p>
-        <?php endif; ?>
         <form method="post" data-fee-portal-pay>
             <?= csrfField() ?>
             <input type="hidden" name="action" value="pay">

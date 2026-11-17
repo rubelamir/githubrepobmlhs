@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Local stand-in for the bKash Tokenized Checkout v2 endpoints used by
  * BkashGateway. Behaviour of the next execute/query/refund is read from
  * the mode file (rewritten by the test between calls). Nothing here is a
- * guess at undocumented Nagad or live bKash fields beyond what BkashGateway
+ * guess at live bKash fields beyond what BkashGateway
  * already sends and reads.
  */
 

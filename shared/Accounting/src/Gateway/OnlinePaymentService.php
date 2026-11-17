@@ -57,6 +57,8 @@ final class OnlinePaymentService
         self::EXPIRED => 'text-bg-light border',
         self::REVIEW => 'text-bg-danger',
     ];
+    /** The guardian always pays the bKash charge on top of the fee. */
+    public const CHARGE_BEARER = 'payer';
     public const BEARERS = ['school' => 'স্কুল বহন করবে', 'payer' => 'অভিভাবক বহন করবেন'];
 
     private const MAX_PAYABLE = 50000000;
@@ -99,7 +101,7 @@ final class OnlinePaymentService
         return [
             'gateway' => $code,
             'enabled' => (int) ($row['enabled'] ?? 0) === 1,
-            'charge_bearer' => isset(self::BEARERS[$row['charge_bearer'] ?? '']) ? (string) $row['charge_bearer'] : 'school',
+            'charge_bearer' => self::CHARGE_BEARER,
             'charge_rate_bp' => (int) ($row['charge_rate_bp'] ?? 0),
             'updated_at' => $row['updated_at'] ?? null,
         ];
@@ -117,10 +119,7 @@ final class OnlinePaymentService
         if ($enabled && !$gateway->isReady()) {
             throw new RuntimeException($gateway->label() . ' চালু করা যাচ্ছে না: অ্যাডাপ্টার বা ক্রেডেনশিয়াল প্রস্তুত নয়।');
         }
-        $bearer = (string) ($input['charge_bearer'] ?? '');
-        if (!isset(self::BEARERS[$bearer])) {
-            throw new RuntimeException('গেটওয়ে চার্জ কে বহন করবে তা নির্বাচন করুন।');
-        }
+        $bearer = self::CHARGE_BEARER;
         $rate = Money::parsePercent((string) ($input['charge_rate'] ?? '0'));
         if ($rate > 1000) {
             throw new RuntimeException('গেটওয়ে চার্জের হার ১০%-এর বেশি হতে পারে না।');

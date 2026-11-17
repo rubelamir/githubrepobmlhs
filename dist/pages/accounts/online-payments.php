@@ -68,7 +68,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">অনলাইন পেমেন্ট</h3>
-            <p class="text-secondary mb-0">bKash ও Nagad-এর মাধ্যমে ফি আদায়। সফল হয়েছে কি না তা কলব্যাকের ঠিকানা দেখে নয়, সার্ভার থেকে গেটওয়ের Execute/Query দিয়ে যাচাই করা হয়।</p>
+            <p class="text-secondary mb-0">অভিভাবক বিকাশে ফি দেন। সফল হয়েছে কি না তা কলব্যাকের ঠিকানা দেখে নয়, সার্ভার থেকে বিকাশের Execute/Query দিয়ে যাচাই করা হয়।</p>
           </div>
         </div>
         <div class="app-content">
@@ -110,19 +110,15 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </div>
                         <div class="row g-2">
                           <div class="col-sm-7">
-                            <label class="form-label" for="gw-bearer-<?= h($code) ?>">গেটওয়ে চার্জ কে বহন করবে</label>
-                            <select class="form-select form-select-sm" id="gw-bearer-<?= h($code) ?>" name="charge_bearer">
-                              <?php foreach (OnlinePaymentService::BEARERS as $bearer => $label): ?>
-                                <option value="<?= h($bearer) ?>"<?= $settings['charge_bearer'] === $bearer ? ' selected' : '' ?>><?= h($label) ?></option>
-                              <?php endforeach; ?>
-                            </select>
+                            <label class="form-label" for="gw-bearer-<?= h($code) ?>">গেটওয়ে চার্জ</label>
+                            <input class="form-control form-control-sm" id="gw-bearer-<?= h($code) ?>" value="অভিভাবক বহন করবেন" readonly>
                           </div>
                           <div class="col-sm-5">
                             <label class="form-label" for="gw-rate-<?= h($code) ?>">চার্জের হার (%)</label>
                             <input class="form-control form-control-sm" id="gw-rate-<?= h($code) ?>" name="charge_rate" inputmode="decimal" value="<?= h(Money::toInput($settings['charge_rate_bp'])) ?>">
                           </div>
                         </div>
-                        <p class="small text-secondary mt-2 mb-0">অভিভাবক বহন করলে চার্জ আলাদা আদায় (আয় নয়) হিসেবে খাতায় ওঠে। স্কুল বহন করলে চার্জ সেটেলমেন্টের সময় খরচ হয়।</p>
+                        <p class="small text-secondary mt-2 mb-0">চার্জ ফির সাথে যোগ হয়ে অভিভাবক পরিশোধ করেন। সেটি আয় নয়; খাতায় আলাদা আদায়।</p>
                       </div>
                       <div class="card-footer"><button class="btn btn-sm btn-primary" type="submit">সংরক্ষণ</button></div>
                     </form>

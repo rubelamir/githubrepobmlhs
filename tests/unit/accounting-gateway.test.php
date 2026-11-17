@@ -6,8 +6,7 @@ require_once __DIR__ . '/../../shared/Accounting/bootstrap.php';
 
 use School\Accounting\Gateway\GatewayConfig;
 use School\Accounting\Gateway\GatewayHttpClient;
-use School\Accounting\Gateway\GatewayResult;
-use School\Accounting\Gateway\NagadGateway;
+use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Support\Money;
 
 $failures = 0;
@@ -58,12 +57,7 @@ try {
     $over = true;
 }
 $check($over, 'percent above 100 is rejected');
-
-$nagad = new NagadGateway();
-$check($nagad->code() === 'nagad' && $nagad->isReady() === false, 'Nagad adapter is not ready without documentation');
-$result = $nagad->createPayment(1, 'OLP-2026-000001', 10000, 'SID1', 'https://example.test/cb');
-$check($result->is(GatewayResult::ERROR) && $result->errorCode === 'not_implemented', 'Nagad create does not invent an API');
-$check($nagad->refundHistory(1, 'p', 't') === null, 'Nagad refund history is unavailable');
+$check(!in_array('nagad', ChartOfAccounts::SPENDABLE_KINDS, true), 'Nagad is not a spendable purse');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' failure(s)' . PHP_EOL);

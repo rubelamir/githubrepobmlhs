@@ -51,7 +51,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">বিস্তারিত খাতা</h3>
-            <p class="text-secondary mb-0">একটি খাতের যাচাই হওয়া লেনদেন। নগদ, ব্যাংক, বিকাশ ও নগদে টাকা এসেছে ও টাকা গেছে। আয়, খরচ ও অন্য খাতে বাড়ে ও কমে।</p>
+            <p class="text-secondary mb-0">একটি খাতের যাচাই হওয়া লেনদেন। নগদ, ব্যাংক ও বিকাশে টাকা এসেছে ও টাকা গেছে। আয়, খরচ ও অন্য খাতে বাড়ে ও কমে।</p>
           </div>
         </div>
         <div class="app-content">
