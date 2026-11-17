@@ -53,6 +53,13 @@ $check(Sequence::format('INV', '2026', 42) === 'INV-2026-000042', 'invoice numbe
 // Billing periods: the key is what prevents double billing.
 $january = BillingPeriod::monthly('2026-01');
 $check($january->key() === 'M:2026-01' && $january->kind() === BillingPeriod::MONTHLY, 'monthly key');
+$check(BillingPeriod::nextOpenMonth('2026', []) === '2026-01', 'monthly bill starts at January');
+$check(BillingPeriod::nextOpenMonth('2026', ['M:2026-01']) === '2026-02', 'February follows a created January bill');
+$check(BillingPeriod::nextOpenMonth('2026', ['M:2026-01', 'M:2026-02', 'O:2026-03', 'S:2026']) === '2026-03', 'other and session keys do not fill a month');
+$check(BillingPeriod::nextOpenMonth('2026', ['M:2026-02']) === '2026-01', 'a later month does not skip an open January');
+$check(BillingPeriod::nextOpenMonth('2026', array_map(static fn (int $month): string => sprintf('M:2026-%02d', $month), range(1, 11))) === '2026-12', 'December is next after November');
+$check(BillingPeriod::nextOpenMonth('2026', array_map(static fn (int $month): string => sprintf('M:2026-%02d', $month), range(1, 12))) === '2026-12', 'December stays selected when every month exists');
+$check($throws(static fn () => BillingPeriod::nextOpenMonth('20', [])), 'next month rejects a bad session');
 $check($january->referenceDate()->format('Y-m-d') === '2026-01-01', 'monthly reference date');
 $check(BillingPeriod::session('2026')->key() === 'S:2026', 'session key');
 $admissionPeriod = BillingPeriod::admission('2026');

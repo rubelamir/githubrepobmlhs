@@ -141,8 +141,10 @@ if (!isset(InvoiceService::STATUS_LABELS[$status])) {
 $searched = (string) ($_GET['searched'] ?? '') === '1';
 $totals = ['net' => 0, 'paid' => 0, 'due' => 0];
 $search = '';
+$defaultMonth = $sessionYear . '-01';
 if ($ready) {
     $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
+    $defaultMonth = BillingPeriod::nextOpenMonth($sessionYear, $invoices->liveMonthlyKeys($sessionYear, $classId, $sectionId));
     if (!isset($billingKeys[$billingKey])) {
         $billingKey = '';
     }
@@ -224,7 +226,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </div>
                         <div class="col-md-6 col-lg-3" data-acc-kind="monthly other" hidden>
                           <label class="form-label" for="inv-month">মাস</label>
-                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($today->format('Y') === $sessionYear ? $today->format('Y-m') : $sessionYear . '-01') ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
+                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($defaultMonth) ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
                         </div>
                         <div class="col-md-6 col-lg-3" data-acc-kind="exam" hidden>
                           <label class="form-label" for="inv-exam">পরীক্ষা</label>

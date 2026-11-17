@@ -51,6 +51,31 @@ final class BillingPeriod
     ) {
     }
 
+    /**
+     * Month to offer for a new monthly bill: January, then the next month through
+     * December once that month already has a live bill. $existingKeys are M:YYYY-MM keys.
+     *
+     * @param array<int|string, mixed> $existingKeys
+     */
+    public static function nextOpenMonth(string $sessionYear, array $existingKeys): string
+    {
+        if (preg_match('/^\d{4}$/', $sessionYear) !== 1) {
+            throw new RuntimeException('সেশন সঠিক নয়।');
+        }
+        $have = [];
+        foreach ($existingKeys as $key => $value) {
+            $have[is_int($key) ? (string) $value : (string) $key] = true;
+        }
+        for ($month = 1; $month <= 12; $month++) {
+            $value = sprintf('%s-%02d', $sessionYear, $month);
+            if (!isset($have['M:' . $value])) {
+                return $value;
+            }
+        }
+
+        return $sessionYear . '-12';
+    }
+
     /** $month = "YYYY-MM" */
     public static function monthly(string $month): self
     {

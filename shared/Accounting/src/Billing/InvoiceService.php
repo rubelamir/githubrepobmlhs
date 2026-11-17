@@ -517,6 +517,33 @@ final class InvoiceService
         return BillingPeriod::isAdmissionHead($head);
     }
 
+    /**
+     * Live monthly bill keys (M:YYYY-MM) for this class. A cancelled month does not count,
+     * so that month can be offered again.
+     *
+     * @return list<string>
+     */
+    public function liveMonthlyKeys(string $sessionYear, int $classId, int $sectionId): array
+    {
+        $sql = 'SELECT DISTINCT billing_key FROM acc_invoices WHERE session_year = :session AND class_id = :class AND status <> :cancelled AND billing_key LIKE :prefix';
+        $params = [
+            'session' => $sessionYear,
+            'class' => $classId,
+            'cancelled' => self::CANCELLED,
+            'prefix' => 'M:' . $sessionYear . '-%',
+        ];
+        if ($sectionId > 0) {
+            $sql .= ' AND section_id = :section';
+            $params['section'] = $sectionId;
+        }
+        $keys = [];
+        foreach (\fetchRows($this->db, $sql, $params) as $row) {
+            $keys[] = (string) $row['billing_key'];
+        }
+
+        return $keys;
+    }
+
     /** @return array<string, string> billing_key => label */
     public function billingKeys(string $sessionYear, int $classId, int $sectionId): array
     {
