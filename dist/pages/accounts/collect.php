@@ -84,6 +84,9 @@ $sessionYear = (string) ($_GET['session_year'] ?? AuditTrail::now()->format('Y')
 if (!in_array($sessionYear, accSessionYears(), true)) {
     $sessionYear = AuditTrail::now()->format('Y');
 }
+$q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 40);
+$searchHits = !$student && $q !== '' ? accStudents()->search($access, Capability::FEES_COLLECT, $sessionYear, $q) : [];
+$searchDues = $searchHits === [] ? [] : accInvoices()->duesByStudent(array_map(static fn (array $hit): int => (int) $hit['id'], $searchHits), $sessionYear);
 $selection = accClassSelection($access, (int) ($_GET['cls'] ?? ($student['cls'] ?? 0)), (int) ($_GET['sections'] ?? ($student ? StudentDirectory::sectionIdOf($student) : 0)));
 $classId = $selection['class_id'];
 $sectionId = $selection['section_id'];
@@ -122,7 +125,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ফি আদায়</h3>
-            <p class="text-secondary mb-0">নগদ টাকা গ্রহণ করে রসিদ দিন। টাকা প্রথমে সবচেয়ে পুরনো বকেয়ায় সমন্বয় হয়; আংশিক পরিশোধ করা যায়, অতিরিক্ত টাকা অগ্রিম হিসেবে থাকে।<?= $officeCustody ? '' : ' আদায়কৃত টাকা পরে "টাকা হস্তান্তর" পাতা থেকে অফিসে জমা দিন।' ?></p>
+            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আংশিক হয়; বেশি দিলে বাকিটা অগ্রিম থাকে।</p>
           </div>
         </div>
         <div class="app-content">
@@ -130,6 +133,53 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
 
             <?php if (!$student): ?>
+              <form method="get" class="card mb-3">
+                <div class="card-body">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-sm-4 col-lg-2">
+                      <label class="form-label" for="collect-session">সেশন</label>
+                      <select class="form-select" id="collect-session" name="session_year">
+                        <?php foreach (accSessionYears() as $year): ?><option value="<?= h($year) ?>"<?= $year === $sessionYear ? ' selected' : '' ?>><?= h(bnDigits($year)) ?></option><?php endforeach; ?>
+                      </select>
+                    </div>
+                    <div class="col-sm-8 col-lg-10">
+                      <label class="form-label" for="collect-q">নাম বা রোল</label>
+                      <div class="input-group">
+                        <input class="form-control" id="collect-q" name="q" value="<?= h($q) ?>" maxlength="40" placeholder="নাম বা রোল লিখুন" autocomplete="off">
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>খুঁজুন</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+              <?php if ($q !== ''): ?>
+                <div class="card mb-3">
+                  <div class="card-header"><h3 class="card-title mb-0">খোঁজার ফল</h3></div>
+                  <div class="card-body p-0">
+                    <?php if ($searchHits === []): ?>
+                      <p class="text-secondary p-3 mb-0">এই নাম বা রোলে কেউ নেই। শ্রেণী দিয়েও দেখতে পারেন।</p>
+                    <?php else: ?>
+                      <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 acc-table-stack">
+                          <thead><tr><th>রোল</th><th>নাম</th><th>শ্রেণী</th><th class="text-end">বকেয়া</th><th class="text-end"></th></tr></thead>
+                          <tbody>
+                            <?php foreach ($searchHits as $hit): ?>
+                              <?php $hitDue = $searchDues[(int) $hit['id']]['due'] ?? 0; ?>
+                              <tr>
+                                <td data-label="রোল"><?= h(bnDigits((string) $hit['cls_roll'])) ?></td>
+                                <td data-label="নাম"><?= h(StudentDirectory::displayName($hit)) ?></td>
+                                <td data-label="শ্রেণী"><?= h((string) $hit['class_name_ban']) ?><?= trim((string) $hit['section_name_ban']) !== '' ? ' — ' . h((string) $hit['section_name_ban']) : '' ?></td>
+                                <td class="text-end" data-label="বকেয়া"><strong class="<?= $hitDue > 0 ? 'text-danger' : 'text-secondary' ?>"><?= h(Money::format($hitDue)) ?></strong></td>
+                                <td class="text-end" data-label="আদায়"><a class="btn btn-sm btn-primary" href="<?= h(signedRecordUrl('collect.php', (int) $hit['id'], 'acc_student')) ?>">আদায়</a></td>
+                              </tr>
+                            <?php endforeach; ?>
+                          </tbody>
+                        </table>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
               <div class="card mb-3">
                 <form method="get" class="card-body" data-student-filter>
                   <div class="row g-2 align-items-end">
@@ -196,19 +246,19 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <input type="hidden" name="idempotency_key" value="<?= h(PaymentService::newIdempotencyKey()) ?>">
                 <div class="col-lg-7">
                   <div class="card h-100">
-                    <div class="card-header"><h3 class="card-title mb-0">বকেয়া <span class="small text-secondary fw-normal">(যে ইনভয়েস পরিশোধ হবে তা টিক দিন)</span></h3></div>
+                    <div class="card-header"><h3 class="card-title mb-0">বকেয়া <span class="small text-secondary fw-normal">(যে বিল পরিশোধ হবে তা টিক দিন)</span></h3></div>
                     <div class="card-body p-0">
                       <?php if ($invoiceGroups === []): ?>
                         <p class="text-secondary p-3 mb-0">কোনো বকেয়া নেই। টাকা নিলে তা অগ্রিম হিসেবে জমা থাকবে।</p>
                       <?php else: ?>
                         <div class="table-responsive">
                           <table class="table table-sm align-middle mb-0 acc-table-stack">
-                            <thead><tr><th style="width:2.5rem"><input class="form-check-input" type="checkbox" checked data-acc-check-all="invoices[]" aria-label="সব ইনভয়েস"></th><th>ইনভয়েস</th><th>খাত</th><th>শেষ তারিখ</th><th class="text-end">বকেয়া</th></tr></thead>
+                            <thead><tr><th style="width:2.5rem"><input class="form-check-input" type="checkbox" checked data-acc-check-all="invoices[]" aria-label="সব বিল"></th><th>বিল</th><th>খাত</th><th>শেষ তারিখ</th><th class="text-end">বকেয়া</th></tr></thead>
                             <tbody>
                               <?php foreach ($invoiceGroups as $invoiceId => $group): ?>
                                 <tr>
                                   <td data-label="নির্বাচন"><input class="form-check-input" type="checkbox" name="invoices[]" value="<?= (int) $invoiceId ?>" checked data-acc-due="<?= (int) $group['total'] ?>" aria-label="<?= h((string) $group['invoice_no']) ?>"></td>
-                                  <td data-label="ইনভয়েস"><code><?= h((string) $group['invoice_no']) ?></code><div class="small"><?= h((string) $group['label']) ?></div></td>
+                                  <td data-label="বিল"><code><?= h((string) $group['invoice_no']) ?></code><div class="small"><?= h((string) $group['label']) ?></div></td>
                                   <td data-label="খাত">
                                     <?php foreach ($group['lines'] as $line): ?>
                                       <div class="small"><?= h((string) $line['description']) ?>: <?= h(Money::format($line['outstanding'])) ?></div>
