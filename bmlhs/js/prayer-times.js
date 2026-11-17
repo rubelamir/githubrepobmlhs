@@ -5,19 +5,103 @@
   var LONGITUDE = '90.8300';
   var METHOD = '1';
   var SCHOOL = '1';
-  var CACHE_KEY = 'bmlhs:prayerTimes:v5';
+  var CACHE_KEY = 'bmlhs:prayerTimes:v6';
   var TIMEZONE = 'Asia/Dhaka';
-  var PRAYERS = [
-    { key: 'Fajr', name: 'ফজর', start: 'Fajr', end: 'Sunrise' },
-    { key: 'Dhuhr', name: 'যোহর', start: 'Dhuhr', end: 'Asr' },
-    { key: 'Asr', name: 'আসর', start: 'Asr', end: 'SunsetForbid' },
-    { key: 'Maghrib', name: 'মাগরিব', start: 'Maghrib', end: 'Isha' },
-    { key: 'Isha', name: 'এশা', start: 'Isha', end: 'Midnight' }
-  ];
-  var TIMING_KEYS = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Midnight'];
-  var SUNRISE_FORBID_MIN = 20;
-  var SUNSET_FORBID_MIN = 20;
+  var TIMING_KEYS = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   var BN_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  var SUNRISE_GAP_MIN = 15;
+  var SUNSET_GAP_MIN = 15;
+  var ZAWAL_BEFORE_MIN = 6;
+
+  function toMinutes(raw) {
+    var match = String(raw || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!match) {
+      return null;
+    }
+    return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+  }
+
+  function fromMinutes(total) {
+    var minutes = ((total % 1440) + 1440) % 1440;
+    var hour = Math.floor(minutes / 60);
+    var minute = minutes % 60;
+    return hour + ':' + String(minute).padStart(2, '0');
+  }
+
+  function nightLength(startRaw, endRaw) {
+    var start = toMinutes(startRaw);
+    var end = toMinutes(endRaw);
+    if (start === null || end === null) {
+      return null;
+    }
+    return (end - start + 1440) % 1440;
+  }
+
+  /**
+   * Calendar day in Lakshmipur. Tahajjud is the last third of last night
+   * (yesterday's maghrib until today's fajr). Isha ends at the middle of
+   * tonight (today's maghrib until tomorrow's fajr). The other windows follow
+   * the same gaps as the local Karachi/Hanafi timetable.
+   */
+  function buildSchedule(timings, bounds) {
+    var extra = bounds || {};
+    var fajr = toMinutes(timings.Fajr);
+    var sunrise = toMinutes(timings.Sunrise);
+    var dhuhr = toMinutes(timings.Dhuhr);
+    var asr = toMinutes(timings.Asr);
+    var maghrib = toMinutes(timings.Maghrib);
+    var isha = toMinutes(timings.Isha);
+    if ([fajr, sunrise, dhuhr, asr, maghrib, isha].indexOf(null) !== -1) {
+      return null;
+    }
+
+    var prevMaghrib = extra.prevMaghrib || timings.Maghrib;
+    var nextFajr = extra.nextFajr || timings.Fajr;
+    var morningNight = nightLength(prevMaghrib, timings.Fajr);
+    var eveningNight = nightLength(timings.Maghrib, nextFajr);
+    if (!morningNight || !eveningNight) {
+      return null;
+    }
+
+    var tahajjudStart = toMinutes(prevMaghrib) + Math.floor(morningNight * 2 / 3);
+    var ishaEnd = maghrib + Math.round(eveningNight / 2);
+    var midMorning = Math.floor((sunrise + dhuhr) / 2);
+
+    function span(start, end) {
+      return { start: fromMinutes(start), end: fromMinutes(end) };
+    }
+
+    return {
+      prayers: [
+        Object.assign({ key: 'Tahajjud', name: 'তাহাজ্জুদ' }, span(tahajjudStart, fajr - 1)),
+        Object.assign({ key: 'Fajr', name: 'ফজর' }, span(fajr, sunrise - 1)),
+        Object.assign({ key: 'Ishraq', name: 'ইশরাক' }, span(sunrise + SUNRISE_GAP_MIN, midMorning)),
+        Object.assign({ key: 'Duha', name: 'চাশত' }, span(midMorning + 1, dhuhr - (ZAWAL_BEFORE_MIN + 1))),
+        Object.assign({ key: 'Dhuhr', name: 'যোহর' }, span(dhuhr + 1, asr - 1)),
+        Object.assign({ key: 'Asr', name: 'আসর' }, span(asr, maghrib - SUNSET_GAP_MIN)),
+        Object.assign({ key: 'Maghrib', name: 'মাগরিব' }, span(maghrib, isha - 1)),
+        Object.assign({ key: 'Awwabin', name: 'আওয়াবিন' }, span(maghrib, isha - 1)),
+        Object.assign({ key: 'Isha', name: 'এশা' }, span(isha, ishaEnd))
+      ],
+      forbidden: [
+        Object.assign({ name: 'সূর্যোদয়' }, span(sunrise, sunrise + SUNRISE_GAP_MIN - 1)),
+        Object.assign({ name: 'যাওয়াল' }, span(dhuhr - ZAWAL_BEFORE_MIN, dhuhr - 1)),
+        Object.assign({ name: 'সূর্যাস্ত' }, span(maghrib - SUNSET_GAP_MIN, maghrib - 1))
+      ]
+    };
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      buildSchedule: buildSchedule,
+      toMinutes: toMinutes,
+      fromMinutes: fromMinutes
+    };
+  }
+
+  if (typeof document === 'undefined') {
+    return;
+  }
 
   var root = document.getElementById('schoolPrayerTimes');
   if (!root) {
@@ -45,59 +129,38 @@
     }).format(new Date());
   }
 
+  function addDays(isoDate, days) {
+    var parts = String(isoDate).split('-');
+    var date = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10) + days));
+    var month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    var day = String(date.getUTCDate()).padStart(2, '0');
+    return date.getUTCFullYear() + '-' + month + '-' + day;
+  }
+
+  function toAladhanDate(isoDate) {
+    var parts = String(isoDate).split('-');
+    return parts[2] + '-' + parts[1] + '-' + parts[0];
+  }
+
   function toBanglaDigits(value) {
     return String(value).replace(/[0-9]/g, function (digit) {
       return BN_DIGITS[digit];
     });
   }
 
-  function parseHm(raw) {
-    var match = String(raw || '').match(/^(\d{1,2}):(\d{2})/);
-    if (!match) {
-      return null;
-    }
-    return { hour: parseInt(match[1], 10), minute: parseInt(match[2], 10) };
-  }
-
-  function shiftTime(raw, minutes) {
-    var parts = parseHm(raw);
-    if (!parts) {
-      return '';
-    }
-    var total = ((parts.hour * 60 + parts.minute + minutes) % 1440 + 1440) % 1440;
-    var hour = Math.floor(total / 60);
-    var minute = total % 60;
-    return hour + ':' + String(minute).padStart(2, '0');
-  }
-
-  function withWindows(timings) {
-    var sunsetForbid = shiftTime(timings.Maghrib, -SUNSET_FORBID_MIN);
-    var sunriseForbidEnd = shiftTime(timings.Sunrise, SUNRISE_FORBID_MIN);
-    return {
-      Fajr: timings.Fajr,
-      Sunrise: timings.Sunrise,
-      Dhuhr: timings.Dhuhr,
-      Asr: timings.Asr,
-      Maghrib: timings.Maghrib,
-      Isha: timings.Isha,
-      Midnight: timings.Midnight,
-      SunsetForbid: sunsetForbid,
-      SunriseForbidEnd: sunriseForbidEnd
-    };
-  }
-
   function formatTime(raw) {
-    var parts = parseHm(raw);
-    if (!parts) {
+    var minutes = toMinutes(raw);
+    if (minutes === null) {
       return '—';
     }
-    var hour12 = parts.hour % 12;
+    var hour = Math.floor(minutes / 60);
+    var minute = minutes % 60;
+    var hour12 = hour % 12;
     if (hour12 === 0) {
       hour12 = 12;
     }
-    var minute = String(parts.minute).padStart(2, '0');
-    var ampm = parts.hour < 12 ? 'AM' : 'PM';
-    return toBanglaDigits(hour12 + ':' + minute) + ' ' + ampm;
+    var ampm = hour < 12 ? 'AM' : 'PM';
+    return toBanglaDigits(hour12 + ':' + String(minute).padStart(2, '0')) + ' ' + ampm;
   }
 
   function dhakaMinutesNow() {
@@ -120,46 +183,41 @@
     return hour * 60 + minute;
   }
 
-  function toMinutes(raw) {
-    var parts = parseHm(raw);
-    if (!parts) {
-      return null;
-    }
-    return parts.hour * 60 + parts.minute;
-  }
-
   function isTimeInWindow(now, startRaw, endRaw) {
     var start = toMinutes(startRaw);
     var end = toMinutes(endRaw);
     if (start === null || end === null) {
       return false;
     }
-    if (start === end) {
-      return false;
+    if (start <= end) {
+      return now >= start && now <= end;
     }
-    if (start < end) {
-      return now >= start && now < end;
-    }
-    return now >= start || now < end;
+    return now >= start || now <= end;
   }
 
-  function selectedPrayerKey(windows) {
+  function activeKeys(prayers) {
     var now = dhakaMinutesNow();
+    var active = {};
     var i;
-    for (i = 0; i < PRAYERS.length; i += 1) {
-      var current = PRAYERS[i];
-      if (isTimeInWindow(now, windows[current.start], windows[current.end])) {
-        return current.key;
+    for (i = 0; i < prayers.length; i += 1) {
+      if (isTimeInWindow(now, prayers[i].start, prayers[i].end)) {
+        active[prayers[i].key] = true;
       }
     }
-    for (i = 0; i < PRAYERS.length; i += 1) {
-      var upcoming = PRAYERS[i];
-      var start = toMinutes(windows[upcoming.start]);
+    if (Object.keys(active).length > 0) {
+      return active;
+    }
+    for (i = 0; i < prayers.length; i += 1) {
+      var start = toMinutes(prayers[i].start);
       if (start !== null && start > now) {
-        return upcoming.key;
+        active[prayers[i].key] = true;
+        return active;
       }
     }
-    return PRAYERS[0].key;
+    if (prayers[0]) {
+      active[prayers[0].key] = true;
+    }
+    return active;
   }
 
   function readCache() {
@@ -173,9 +231,12 @@
         return null;
       }
       for (var i = 0; i < TIMING_KEYS.length; i += 1) {
-        if (!parseHm(data.timings[TIMING_KEYS[i]])) {
+        if (toMinutes(data.timings[TIMING_KEYS[i]]) === null) {
           return null;
         }
+      }
+      if (toMinutes(data.prevMaghrib) === null || toMinutes(data.nextFajr) === null) {
+        return null;
       }
       return data;
     } catch (error) {
@@ -183,7 +244,7 @@
     }
   }
 
-  function writeCache(timings) {
+  function writeCache(timings, prevMaghrib, nextFajr) {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         date: todayKey(),
@@ -193,7 +254,9 @@
         longitude: longitude,
         method: method,
         school: school,
-        timings: timings
+        timings: timings,
+        prevMaghrib: prevMaghrib,
+        nextFajr: nextFajr
       }));
     } catch (error) {
       /* private mode / quota */
@@ -238,43 +301,6 @@
     }).format(new Date());
   }
 
-  function render(timings) {
-    if (!listEl) {
-      return;
-    }
-    var windows = withWindows(timings);
-    var selected = selectedPrayerKey(windows);
-    listEl.replaceChildren();
-    for (var i = 0; i < PRAYERS.length; i += 1) {
-      var prayer = PRAYERS[i];
-      var item = document.createElement('li');
-      item.className = 'school-prayer-item' + (prayer.key === selected ? ' is-next' : '');
-
-      var name = document.createElement('span');
-      name.className = 'school-prayer-name';
-      name.textContent = prayerDisplayName(prayer);
-
-      var start = document.createElement('span');
-      start.className = 'school-prayer-time';
-      start.textContent = formatTime(windows[prayer.start]);
-
-      var end = document.createElement('span');
-      end.className = 'school-prayer-time';
-      end.textContent = formatTime(windows[prayer.end]);
-
-      item.appendChild(name);
-      item.appendChild(start);
-      item.appendChild(end);
-      listEl.appendChild(item);
-    }
-    renderForbidden(windows);
-    if (boardEl) {
-      boardEl.hidden = false;
-    }
-    setStatus('');
-    renderDate();
-  }
-
   function appendTimeRow(list, name, startRaw, endRaw, extraClass) {
     var item = document.createElement('li');
     item.className = 'school-prayer-item' + (extraClass ? ' ' + extraClass : '');
@@ -297,13 +323,36 @@
     list.appendChild(item);
   }
 
-  function renderForbidden(timings) {
-    if (!forbiddenListEl) {
+  function render(timings, prevMaghrib, nextFajr) {
+    var schedule = buildSchedule(timings, { prevMaghrib: prevMaghrib, nextFajr: nextFajr });
+    if (!schedule || !listEl) {
+      setStatus('সময়সূচি লোড করা যায়নি। পরে আবার চেষ্টা করুন।', true);
       return;
     }
-    forbiddenListEl.replaceChildren();
-    appendTimeRow(forbiddenListEl, 'সূর্যোদয়', timings.Sunrise, timings.SunriseForbidEnd, 'is-forbidden');
-    appendTimeRow(forbiddenListEl, 'সূর্যাস্ত', timings.SunsetForbid, timings.Maghrib, 'is-forbidden');
+    var active = activeKeys(schedule.prayers);
+    listEl.replaceChildren();
+    for (var i = 0; i < schedule.prayers.length; i += 1) {
+      var prayer = schedule.prayers[i];
+      appendTimeRow(
+        listEl,
+        prayerDisplayName(prayer),
+        prayer.start,
+        prayer.end,
+        active[prayer.key] ? 'is-next' : ''
+      );
+    }
+    if (forbiddenListEl) {
+      forbiddenListEl.replaceChildren();
+      for (var j = 0; j < schedule.forbidden.length; j += 1) {
+        var blocked = schedule.forbidden[j];
+        appendTimeRow(forbiddenListEl, blocked.name, blocked.start, blocked.end, 'is-forbidden');
+      }
+    }
+    if (boardEl) {
+      boardEl.hidden = false;
+    }
+    setStatus('');
+    renderDate();
   }
 
   function pickTimings(payload) {
@@ -315,7 +364,7 @@
     for (var i = 0; i < TIMING_KEYS.length; i += 1) {
       var key = TIMING_KEYS[i];
       var value = String(source[key] || '').trim();
-      if (!parseHm(value)) {
+      if (toMinutes(value) === null) {
         return null;
       }
       timings[key] = value;
@@ -323,8 +372,8 @@
     return timings;
   }
 
-  function fetchToday() {
-    var url = 'https://api.aladhan.com/v1/timings?' + new URLSearchParams({
+  function fetchDay(isoDate) {
+    var url = 'https://api.aladhan.com/v1/timings/' + toAladhanDate(isoDate) + '?' + new URLSearchParams({
       latitude: latitude,
       longitude: longitude,
       method: method,
@@ -352,12 +401,7 @@
       if (!timings) {
         throw new Error('prayer-data');
       }
-      writeCache(timings);
-      render(timings);
-    }).catch(function () {
-      if (!readCache()) {
-        setStatus('সময়সূচি লোড করা যায়নি। পরে আবার চেষ্টা করুন।', true);
-      }
+      return timings;
     }).finally(function () {
       if (timer) {
         window.clearTimeout(timer);
@@ -365,13 +409,36 @@
     });
   }
 
+  function fetchSchedule() {
+    var today = todayKey();
+    return fetchDay(today).then(function (timings) {
+      return Promise.all([
+        fetchDay(addDays(today, -1)).catch(function () {
+          return null;
+        }),
+        fetchDay(addDays(today, 1)).catch(function () {
+          return null;
+        })
+      ]).then(function (neighbours) {
+        var prevMaghrib = neighbours[0] ? neighbours[0].Maghrib : timings.Maghrib;
+        var nextFajr = neighbours[1] ? neighbours[1].Fajr : timings.Fajr;
+        writeCache(timings, prevMaghrib, nextFajr);
+        render(timings, prevMaghrib, nextFajr);
+      });
+    }).catch(function () {
+      if (!readCache()) {
+        setStatus('সময়সূচি লোড করা যায়নি। পরে আবার চেষ্টা করুন।', true);
+      }
+    });
+  }
+
   var cached = readCache();
   renderDate();
   if (cached) {
-    render(cached.timings);
+    render(cached.timings, cached.prevMaghrib, cached.nextFajr);
     return;
   }
 
   setStatus('Loading...');
-  fetchToday();
+  fetchSchedule();
 })();
