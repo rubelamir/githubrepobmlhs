@@ -81,11 +81,24 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
               <?php endif; ?>
 
               <?php if ($accNavItems !== []): ?>
-              <?php $accGroup = ''; ?>
-              <?php foreach ($accNavItems as $accItem): ?>
-              <?php if (($accItem['group'] ?? '') !== '' && $accItem['group'] !== $accGroup): $accGroup = $accItem['group']; ?>
-              <li class="nav-header"><?= h($accGroup) ?></li>
-              <?php endif; ?>
+              <?php
+                $accDaily = [];
+                $accMore = [];
+                $accMoreBadge = 0;
+                $accMoreOpen = false;
+                foreach ($accNavItems as $accItem) {
+                    if (($accItem['group'] ?? '') === 'প্রতিদিন') {
+                        $accDaily[] = $accItem;
+                    } else {
+                        $accMore[] = $accItem;
+                        $accMoreBadge += (int) $accItem['badge'];
+                        $accMoreOpen = $accMoreOpen || $accActive === $accItem['page'];
+                    }
+                }
+                $accGroup = '';
+              ?>
+              <?php if ($accDaily !== []): ?><li class="nav-header">প্রতিদিন</li><?php endif; ?>
+              <?php foreach ($accDaily as $accItem): ?>
               <li class="nav-item">
                 <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
                   <i class="nav-icon bi <?= h($accItem['icon']) ?>"></i>
@@ -93,6 +106,27 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                 </a>
               </li>
               <?php endforeach; ?>
+              <?php if ($accMore !== []): ?>
+              <li class="nav-item<?= $accMoreOpen ? ' menu-open' : '' ?>">
+                <a href="#" class="nav-link<?= $accMoreOpen ? ' active' : '' ?>">
+                  <i class="nav-icon bi bi-grid"></i>
+                  <p>আরও হিসাব<?php if ($accMoreBadge > 0): ?> <span class="nav-badge badge text-bg-warning me-3"><?= h(bnDigits((string) $accMoreBadge)) ?></span><?php endif; ?><i class="nav-arrow bi bi-chevron-right"></i></p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <?php foreach ($accMore as $accItem): ?>
+                  <?php if (($accItem['group'] ?? '') !== '' && $accItem['group'] !== $accGroup): $accGroup = $accItem['group']; ?>
+                  <li class="nav-header"><?= h($accGroup) ?></li>
+                  <?php endif; ?>
+                  <li class="nav-item">
+                    <a href="<?= $basePath ?>pages/accounts/<?= h($accItem['page']) ?>.php" class="nav-link<?= $accActive === $accItem['page'] ? ' active' : '' ?>">
+                      <i class="nav-icon bi <?= h($accItem['icon']) ?>"></i>
+                      <p><?= h($accItem['label']) ?><?php if ($accItem['badge'] > 0): ?> <span class="nav-badge badge text-bg-warning me-3"><?= h(bnDigits((string) $accItem['badge'])) ?></span><?php endif; ?></p>
+                    </a>
+                  </li>
+                  <?php endforeach; ?>
+                </ul>
+              </li>
+              <?php endif; ?>
               <?php endif; ?>
 
               <?php if ($showStructure || $showStudents || $can('teachers') || $can('committee') || $can('retirement-teachers')): ?>

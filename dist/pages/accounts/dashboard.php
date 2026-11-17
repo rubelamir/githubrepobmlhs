@@ -110,25 +110,34 @@ if ($access->hasRole(Role::CLASS_TEACHER)) {
 
 $steps = [];
 if ($access->can(Capability::OFFICERS_MANAGE)) {
-    $steps[] = ['হিসাব রক্ষক', 'হিসাবের কাজ তাঁর মাধ্যমে চলবে। আপনি নিয়োগ দেন এবং প্রত্যাহার করেন।', 'officers.php', 'নিয়োগ দিন'];
+    $steps[] = ['হিসাব রক্ষক', 'নিয়োগ ও প্রত্যাহার', 'officers.php', 'bi-person-gear'];
 }
 if ($access->can(Capability::VOUCHER_APPROVE)) {
-    $steps[] = ['যাচাই', 'ছাড়, ভাউচার, ব্যাংক জমা ও টাকা ফেরত মিলিয়ে অনুমোদন করুন। এন্ট্রি হিসাব রক্ষক করেন।', 'vouchers.php?status=submitted', 'যাচাই করুন'];
+    $steps[] = ['যাচাই', 'ছাড়, খরচ ও জমা', 'vouchers.php?status=submitted', 'bi-check2-square'];
 }
 if ($access->can(Capability::FEE_STRUCTURE_MANAGE)) {
-    $steps[] = ['শ্রেণীর হার', 'বছরের শুরুতে একবার। সাধারণ শিক্ষার্থী ও বৃত্তি/উপবৃত্তির টাকা আলাদা দিন।', 'fee-structure.php', 'হার দেখুন'];
+    $steps[] = ['শ্রেণীর হার', 'বছরের শুরুতে একবার', 'fee-structure.php', 'bi-grid-3x3-gap'];
 }
 if ($access->can(Capability::INVOICE_MANAGE)) {
-    $steps[] = ['এই মাসের বিল', 'প্রতি মাসে শ্রেণী বেছে বিল তৈরি করুন। বিল না থাকলে বকেয়া তালিকা খালি থাকে। একই মাস দুবার বিল হয় না।', 'invoices.php', 'বিল তৈরি'];
+    $steps[] = ['মাসের বিল', 'শ্রেণী বেছে তৈরি', 'invoices.php', 'bi-receipt'];
 }
 if ($access->can(Capability::FEES_VIEW_CLASS)) {
-    $steps[] = ['বকেয়া', 'শ্রেণী ও শাখা বাছলে কার কত বাকি তা দেখায়।', 'dues.php', 'বকেয়া দেখুন'];
+    $steps[] = ['বকেয়া', 'কার কত বাকি', 'dues.php', 'bi-exclamation-diamond'];
 }
 if ($access->can(Capability::FEES_COLLECT)) {
-    $steps[] = ['টাকা নিন', 'শিক্ষার্থী খুলে বকেয়া বেছে নগদ নিন। একই ফর্ম দুবার দিলে নতুন রসিদ হয় না।', 'collect.php', 'ফি আদায়'];
+    $steps[] = ['ফি আদায়', 'নাম বা রোল দিয়ে', 'collect.php', 'bi-cash-stack'];
+}
+if ($access->can(Capability::VOUCHER_CREATE)) {
+    $steps[] = ['খরচ যোগ', 'আয়, খরচ, অগ্রিম', 'expense.php', 'bi-wallet2'];
+}
+if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPORTS_VIEW_CLASS)) {
+    $steps[] = ['রিপোর্ট', 'আয়, বকেয়া, উদ্বৃত্ত', 'reports.php', 'bi-bar-chart'];
+}
+if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::VOUCHER_CREATE)) {
+    $steps[] = ['ক্যাশ ও ব্যাংক', 'স্থিতি ও সরানো', 'books.php', 'bi-safe'];
 }
 if ($access->can(Capability::HANDOVER_SUBMIT) && !$access->hasSchoolWideScope()) {
-    $steps[] = ['টাকা জমা', 'নেওয়া নগদ অফিসে জমা দিন। গ্রহণ না হওয়া পর্যন্ত টাকা আপনার কাছে দেখায়।', 'handovers.php', 'জমা দিন'];
+    $steps[] = ['টাকা জমা', 'নেওয়া নগদ অফিসে', 'handovers.php', 'bi-arrow-left-right'];
 }
 
 include __DIR__ . '/../../includes/layout-head.php';
@@ -138,7 +147,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
               <div>
                 <h3 class="mb-1">আজকের কাজ</h3>
-                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং সব হিসাব দেখে যাচাই করেন। এন্ট্রি, বিল ও আদায় হিসাব রক্ষক করেন।' : 'প্রতিদিনের কাজ বাঁ দিকের প্রথম অংশে। হিসাবের খাতা আলাদা অংশে, দরকার হলে খুলবেন।' ?></p>
+                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং হিসাব দেখে যাচাই করেন।' : 'নিচের কার্ড থেকে আজকের কাজ শুরু করুন।' ?></p>
               </div>
               <div class="acc-role-badges d-flex flex-wrap gap-1">
                 <?php foreach ($access->roles() as $role): ?>
@@ -153,23 +162,18 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
 
             <?php if ($steps !== []): ?>
-            <div class="acc-steps mb-3">
-              <?php foreach ($steps as $index => [$title, $text, $href, $action]): ?>
-                <div class="acc-step">
-                  <div class="acc-step-no"><?= h(bnDigits((string) ($index + 1))) ?>. <?= h($title) ?></div>
-                  <p class="text-secondary small mb-2"><?= h($text) ?></p>
-                  <a class="btn btn-sm btn-primary align-self-start" href="<?= h($href) ?>"><?= h($action) ?></a>
-                </div>
+            <div class="acc-tiles mb-3">
+              <?php foreach ($steps as [$title, $text, $href, $icon]): ?>
+                <a class="acc-tile" href="<?= h($href) ?>">
+                  <span class="acc-tile-icon"><i class="bi <?= h($icon) ?>"></i></span>
+                  <span>
+                    <span class="acc-tile-title"><?= h($title) ?></span>
+                    <span class="acc-tile-text"><?= h($text) ?></span>
+                  </span>
+                </a>
               <?php endforeach; ?>
             </div>
             <?php endif; ?>
-
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              <?php if ($access->can(Capability::FEES_COLLECT)): ?><a class="btn btn-primary" href="collect.php">ফি আদায়</a><?php endif; ?>
-              <?php if ($access->can(Capability::VOUCHER_CREATE)): ?><a class="btn btn-primary" href="expense.php">খরচ যোগ</a><?php endif; ?>
-              <?php if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPORTS_VIEW_CLASS)): ?><a class="btn btn-outline-primary" href="reports.php">রিপোর্ট</a><?php endif; ?>
-              <?php if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::VOUCHER_CREATE)): ?><a class="btn btn-outline-primary" href="books.php">ক্যাশ ও ব্যাংক</a><?php endif; ?>
-            </div>
 
             <?php if ($flow !== null): ?>
             <div class="row g-3 mb-3">
