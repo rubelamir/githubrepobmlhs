@@ -56,8 +56,11 @@ $check($january->key() === 'M:2026-01' && $january->kind() === BillingPeriod::MO
 $check($january->referenceDate()->format('Y-m-d') === '2026-01-01', 'monthly reference date');
 $check(BillingPeriod::session('2026')->key() === 'S:2026', 'session key');
 $admissionPeriod = BillingPeriod::admission('2026');
-$check($admissionPeriod->key() === 'S:2026' && $admissionPeriod->kind() === BillingPeriod::SESSION, 'admission reuses the session period so it cannot be billed twice');
+$check($admissionPeriod->key() === 'A:2026' && $admissionPeriod->kind() === BillingPeriod::SESSION, 'admission has its own yearly key and is still billed from session heads');
 $check($admissionPeriod->label() !== BillingPeriod::session('2026')->label(), 'admission invoice has its own label');
+$billKeys = ['M:2026-03', 'A:2026', 'S:2026', 'M:2026-01'];
+usort($billKeys, [BillingPeriod::class, 'compareKeys']);
+$check($billKeys === ['S:2026', 'A:2026', 'M:2026-03', 'M:2026-01'], 'bill filter lists session, then admission, then later months');
 $sessionHead = ['billing_kind' => 'session', 'code' => 'SESSION', 'name_bn' => 'সেশন ফি'];
 $admissionHead = ['billing_kind' => 'session', 'code' => 'ADMISSION', 'name_bn' => 'ভর্তি ফি'];
 $check(BillingPeriod::headMatchesInvoiceKind($sessionHead, BillingPeriod::SESSION) && !BillingPeriod::headMatchesInvoiceKind($sessionHead, BillingPeriod::ADMISSION), 'session fee stays on the session bill');
@@ -123,7 +126,7 @@ $admissionHead = ['code' => 'ADMISSION', 'name_bn' => 'ভর্তি ফি'];
 $bills = [
     $bill(9, 'E:2026:3', '2026-03-12', [['code' => 'EXAM', 'name_bn' => 'পরীক্ষার ফি']]),
     $bill(4, 'M:2026-03', '2026-03-01'),
-    $bill(2, 'S:2026', '2026-01-05', [$admissionHead]),
+    $bill(2, 'A:2026', '2026-01-05', [$admissionHead]),
     $bill(7, 'O:2026-01', '2026-01-20', [['code' => 'LAB', 'name_bn' => 'ল্যাব ফি']]),
     $bill(1, 'S:2026', '2026-01-04', [$sessionHead]),
     $bill(5, 'M:2026-01', '2026-03-20'),

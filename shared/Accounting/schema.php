@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 10;
+const ACC_SCHEMA_VERSION = 11;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -980,6 +980,235 @@ function accMigrationV9(PDO $db): void
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
     $db->prepare("UPDATE acc_gateway_settings SET charge_bearer = 'payer', updated_at = :now WHERE charge_bearer <> 'payer'")
         ->execute(['now' => $now]);
+}
+
+/**
+ * Session fee and admission fee are separate yearly bills.
+ * Older rows kept both on S:YYYY; admission lines move to A:YYYY without being billed again.
+ */
+function accMigrationV11(PDO $db): void
+{
+    if (!tableExists($db, 'acc_invoices') || !tableExists($db, 'acc_invoice_items') || !tableExists($db, 'acc_fee_heads')) {
+        return;
+    }
+    $admissionIds = array_map(
+        static fn (array $row): int => (int) $row['id'],
+        fetchRows(
+            $db,
+            "SELECT id FROM acc_fee_heads
+             WHERE billing_kind = 'session' AND (UPPER(code) = 'ADMISSION' OR name_bn LIKE '%ভর্তি%')"
+        )
+    );
+    if ($admissionIds === []) {
+        return;
+    }
+    $idList = implode(',', $admissionIds);
+    $invoiceIds = array_map(
+        static fn (array $row): int => (int) $row['invoice_id'],
+        fetchRows(
+            $db,
+            "SELECT DISTINCT invoice_id FROM acc_invoice_items
+             WHERE billing_key LIKE 'S:%' AND fee_head_id IN ($idList)"
+        )
+    );
+    if ($invoiceIds === []) {
+        return;
+    }
+
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT * FROM acc_invoices WHERE id = :id FOR UPDATE');
+        foreach ($invoiceIds as $invoiceId) {
+            $lock->execute(['id' => $invoiceId]);
+            $invoice = $lock->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($invoice) || preg_match('/^S:(\d{4})$/', (string) $invoice['billing_key'], $match) !== 1) {
+                continue;
+            }
+            accSeparateAdmissionInvoice($db, $invoice, $match[1], $admissionIds);
+        }
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $exception;
+    }
+}
+
+/** @param array<string, mixed> $invoice @param list<int> $admissionIds */
+function accSeparateAdmissionInvoice(PDO $db, array $invoice, string $year, array $admissionIds): void
+{
+    $invoiceId = (int) $invoice['id'];
+    $items = fetchRows(
+        $db,
+        'SELECT id, fee_head_id, line_kind, parent_item_id, uniq_key, billing_key
+         FROM acc_invoice_items WHERE invoice_id = :id',
+        ['id' => $invoiceId]
+    );
+    $moving = [];
+    foreach ($items as $item) {
+        if (in_array((int) $item['fee_head_id'], $admissionIds, true) && str_starts_with((string) $item['billing_key'], 'S:')) {
+            $moving[] = (int) $item['id'];
+        }
+    }
+    foreach ($items as $item) {
+        $parent = (int) ($item['parent_item_id'] ?? 0);
+        if ((string) $item['line_kind'] === 'late_fine' && in_array($parent, $moving, true)) {
+            $moving[] = (int) $item['id'];
+        }
+    }
+    $moving = array_values(array_unique($moving));
+    if ($moving === []) {
+        return;
+    }
+
+    $newKey = 'A:' . $year;
+    $targetId = $invoiceId;
+    if (count($moving) < count($items)) {
+        $targetId = accInsertSplitInvoice($db, $invoice, $newKey, 'ভর্তি ' . bnDigits($year));
+        $moved = implode(',', $moving);
+        $db->exec('UPDATE acc_invoice_items SET invoice_id = ' . $targetId . ' WHERE id IN (' . $moved . ')');
+        if (tableExists($db, 'acc_waivers')) {
+            $db->exec('UPDATE acc_waivers SET invoice_id = ' . $targetId . ' WHERE invoice_item_id IN (' . $moved . ')');
+        }
+        if (tableExists($db, 'acc_payment_allocations')) {
+            $db->exec('UPDATE acc_payment_allocations SET invoice_id = ' . $targetId . ' WHERE invoice_item_id IN (' . $moved . ')');
+        }
+        accAppendPendingGatewayInvoice($db, (int) $invoice['student_id'], $invoiceId, $targetId);
+        accRefreshInvoiceMoney($db, $invoiceId);
+    }
+    accRetagAdmissionBill($db, $targetId, $newKey, $year);
+    accRefreshInvoiceMoney($db, $targetId);
+}
+
+/** @param array<string, mixed> $invoice */
+function accInsertSplitInvoice(PDO $db, array $invoice, string $billingKey, string $label): int
+{
+    $sessionYear = (string) $invoice['session_year'];
+    $number = School\Accounting\Support\Sequence::format(
+        'INV',
+        $sessionYear,
+        School\Accounting\Support\Sequence::next($db, 'INV', $sessionYear)
+    );
+    $db->prepare(
+        'INSERT INTO acc_invoices
+            (invoice_no, student_id, session_year, class_id, section_id, roll_snapshot, name_snapshot,
+             billing_key, billing_label, issue_date, due_date, status, generated_by, created_at,
+             cancelled_by, cancelled_at, cancel_reason)
+         VALUES
+            (:no, :student, :session, :class, :section, :roll, :name,
+             :billing_key, :label, :issue, :due, :status, :actor, :created,
+             :cancelled_by, :cancelled_at, :reason)'
+    )->execute([
+        'no' => $number,
+        'student' => (int) $invoice['student_id'],
+        'session' => $sessionYear,
+        'class' => (int) $invoice['class_id'],
+        'section' => (int) $invoice['section_id'],
+        'roll' => (string) $invoice['roll_snapshot'],
+        'name' => (string) $invoice['name_snapshot'],
+        'billing_key' => $billingKey,
+        'label' => mb_substr($label, 0, 120),
+        'issue' => (string) $invoice['issue_date'],
+        'due' => (string) $invoice['due_date'],
+        'status' => (string) $invoice['status'],
+        'actor' => (int) $invoice['generated_by'],
+        'created' => (string) $invoice['created_at'],
+        'cancelled_by' => $invoice['cancelled_by'],
+        'cancelled_at' => $invoice['cancelled_at'],
+        'reason' => $invoice['cancel_reason'],
+    ]);
+
+    return (int) $db->lastInsertId();
+}
+
+function accRetagAdmissionBill(PDO $db, int $invoiceId, string $billingKey, string $year): void
+{
+    $db->prepare('UPDATE acc_invoices SET billing_key = :key, billing_label = :label WHERE id = :id')->execute([
+        'key' => $billingKey,
+        'label' => 'ভর্তি ' . bnDigits($year),
+        'id' => $invoiceId,
+    ]);
+    $items = fetchRows(
+        $db,
+        'SELECT id, uniq_key FROM acc_invoice_items WHERE invoice_id = :id AND billing_key LIKE :prefix',
+        ['id' => $invoiceId, 'prefix' => 'S:' . $year]
+    );
+    $update = $db->prepare('UPDATE acc_invoice_items SET billing_key = :key, uniq_key = :uniq WHERE id = :id');
+    $needle = ':S:' . $year . ':';
+    $replacement = ':A:' . $year . ':';
+    foreach ($items as $item) {
+        $uniq = $item['uniq_key'];
+        $update->execute([
+            'key' => $billingKey,
+            'uniq' => $uniq === null ? null : str_replace($needle, $replacement, (string) $uniq),
+            'id' => (int) $item['id'],
+        ]);
+    }
+}
+
+function accRefreshInvoiceMoney(PDO $db, int $invoiceId): void
+{
+    $db->prepare(
+        "UPDATE acc_invoices inv
+         INNER JOIN (
+            SELECT invoice_id,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN standard_amount ELSE 0 END), 0) AS standard_total,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN category_concession ELSE 0 END), 0) AS category_concession,
+                COALESCE(SUM(CASE WHEN line_kind = 'fee' THEN amount ELSE 0 END), 0) AS gross,
+                COALESCE(SUM(CASE WHEN line_kind = 'late_fine' THEN amount ELSE 0 END), 0) AS fine,
+                COALESCE(SUM(discount), 0) AS discount,
+                COALESCE(SUM(waived), 0) AS waived,
+                COALESCE(SUM(net), 0) AS net,
+                COALESCE(SUM(paid), 0) AS paid,
+                MIN(due_date) AS due_date
+            FROM acc_invoice_items
+            WHERE invoice_id = :id
+            GROUP BY invoice_id
+         ) s ON s.invoice_id = inv.id
+         SET inv.standard_total = s.standard_total,
+             inv.category_concession = s.category_concession,
+             inv.gross = s.gross,
+             inv.fine = s.fine,
+             inv.discount = s.discount,
+             inv.waived = s.waived,
+             inv.net = s.net,
+             inv.paid = s.paid,
+             inv.due_date = s.due_date,
+             inv.status = CASE
+                WHEN inv.status = 'cancelled' THEN 'cancelled'
+                WHEN s.net <= s.paid THEN 'paid'
+                WHEN s.paid > 0 THEN 'partial'
+                ELSE 'unpaid'
+             END
+         WHERE inv.id = :invoice_id"
+    )->execute(['id' => $invoiceId, 'invoice_id' => $invoiceId]);
+}
+
+function accAppendPendingGatewayInvoice(PDO $db, int $studentId, int $oldInvoiceId, int $newInvoiceId): void
+{
+    if (!tableExists($db, 'acc_gateway_transactions')) {
+        return;
+    }
+    $rows = fetchRows(
+        $db,
+        "SELECT id, invoice_ids FROM acc_gateway_transactions
+         WHERE student_id = :student AND status IN ('initiated', 'pending')",
+        ['student' => $studentId]
+    );
+    $update = $db->prepare('UPDATE acc_gateway_transactions SET invoice_ids = :ids WHERE id = :id');
+    foreach ($rows as $row) {
+        $ids = array_values(array_filter(explode(',', (string) $row['invoice_ids']), static fn (string $id): bool => $id !== ''));
+        if (!in_array((string) $oldInvoiceId, $ids, true) || in_array((string) $newInvoiceId, $ids, true)) {
+            continue;
+        }
+        $ids[] = (string) $newInvoiceId;
+        $joined = implode(',', $ids);
+        if (strlen($joined) > 255) {
+            continue;
+        }
+        $update->execute(['ids' => $joined, 'id' => (int) $row['id']]);
+    }
 }
 
 /** Stipend and scholarship students can be assigned without an order number. */

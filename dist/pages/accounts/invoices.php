@@ -123,7 +123,7 @@ $search = '';
 if ($ready) {
     $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
     if (!isset($billingKeys[$billingKey])) {
-        $billingKey = $billingKeys !== [] ? (string) array_key_last($billingKeys) : '';
+        $billingKey = $billingKeys !== [] ? (string) array_key_first($billingKeys) : '';
     }
     if ($billingKey !== '') {
         $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
@@ -245,7 +245,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <label class="form-label small mb-1" for="list-key">বিল</label>
                       <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : '' ?>>
                         <?php if ($billingKeys === []): ?><option>এখনো কোনো বিল নেই</option><?php endif; ?>
-                        <?php foreach (array_reverse($billingKeys, true) as $key => $label): ?>
+                        <?php foreach ($billingKeys as $key => $label): ?>
                           <option value="<?= h($key) ?>"<?= $key === $billingKey ? ' selected' : '' ?>><?= h($label) ?></option>
                         <?php endforeach; ?>
                       </select>

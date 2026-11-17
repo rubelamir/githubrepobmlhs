@@ -454,6 +454,9 @@ final class InvoiceService
         $id = (int) ($invoice['id'] ?? 0);
         $heads = is_array($invoice['heads'] ?? null) ? $invoice['heads'] : [];
 
+        if (preg_match('/^A:(\d{4})$/', $key, $match) === 1) {
+            return [$match[1], 1, 0, 0, $issue, $id];
+        }
         if (str_starts_with($key, 'S:')) {
             return [$session, self::sessionInvoiceFamily($heads), 0, 0, $issue, $id];
         }
@@ -528,6 +531,7 @@ final class InvoiceService
         foreach (\fetchRows($this->db, $sql, $params) as $row) {
             $keys[(string) $row['billing_key']] = (string) $row['label'];
         }
+        uksort($keys, [BillingPeriod::class, 'compareKeys']);
 
         return $keys;
     }

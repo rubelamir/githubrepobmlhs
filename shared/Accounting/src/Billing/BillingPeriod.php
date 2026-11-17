@@ -10,7 +10,7 @@ use RuntimeException;
 /**
  * What an invoice is for. The key is part of every invoice line's unique key,
  * so the same fee head can be billed only once per student and period:
- *   monthly  M:2026-03     session  S:2026
+ *   monthly  M:2026-03     session  S:2026     admission A:2026
  *   exam     E:2026:12     other    O:2026-03   (exam ids repeat every session)
  */
 final class BillingPeriod
@@ -69,14 +69,39 @@ final class BillingPeriod
     }
 
     /**
-     * Same period key as session(), so an admission head already billed this year is not billed again.
-     * The stored fee-head kind stays session; only the invoice label says admission.
+     * Its own yearly key, so an admission bill is not the same bill as the session fee.
+     * The stored fee-head kind stays session; the invoice is still collected only once a year.
      */
     public static function admission(string $sessionYear): self
     {
         $session = self::session($sessionYear);
 
-        return new self(self::SESSION, $session->key(), 'ভর্তি ' . \bnDigits($sessionYear), $session->referenceDate());
+        return new self(self::SESSION, 'A:' . $sessionYear, 'ভর্তি ' . \bnDigits($sessionYear), $session->referenceDate());
+    }
+
+    /** Session, then admission, then later months before earlier ones. */
+    public static function compareKeys(string $left, string $right): int
+    {
+        return self::keyRank($left) <=> self::keyRank($right);
+    }
+
+    /** @return array{0: string, 1: int, 2: int, 3: int, 4: string} */
+    private static function keyRank(string $key): array
+    {
+        if (preg_match('/^S:(\d{4})$/', $key, $match) === 1) {
+            return [$match[1], 0, 0, 0, $key];
+        }
+        if (preg_match('/^A:(\d{4})$/', $key, $match) === 1) {
+            return [$match[1], 1, 0, 0, $key];
+        }
+        if (preg_match('/^([MO]):(\d{4})-(\d{2})$/', $key, $match) === 1) {
+            return [$match[2], 2, -((int) $match[3]), $match[1] === 'M' ? 0 : 1, $key];
+        }
+        if (preg_match('/^E:(\d{4}):(\d+)$/', $key, $match) === 1) {
+            return [$match[1], 3, 0, (int) $match[2], $key];
+        }
+
+        return ['9999', 9, 0, 0, $key];
     }
 
     /** @param array<string, mixed> $head */
