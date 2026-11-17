@@ -17,7 +17,7 @@
 | মাস সমাপনী | বন্ধ মাসে (closed period) কোনো পোস্টিং হবে না; হিসাব রক্ষক কারণ লিখে মাস বন্ধ করেন বা পুনরায় খোলেন (অডিট লগসহ)। |
 | অডিট | `acc_audit_log`-এ কে, কখন, কোন IP থেকে, কী করেছেন এবং **আগের ও পরের মান (JSON)**। পাসওয়ার্ড/টোকেন জাতীয় কী স্বয়ংক্রিয়ভাবে মাস্ক হয়। |
 | গোপনীয়তা | শিক্ষার্থীর শুধু প্রয়োজনীয় পরিচিতি (id, নাম, শ্রেণী, রোল) ব্যবহার হয়; ওয়ালেট নম্বর মাস্ক করে (`017*****89`) রাখা হয়; কার্ড/পিন/OTP কখনো সংরক্ষণ নয়। |
-| ক্রেডেনশিয়াল | bKash/Nagad-এর `app_key`, `app_secret`, `username`, `password` কেবল পাবলিক ফোল্ডারের বাইরের `bmlhs-private-config.php` (বা env) থেকে পড়া হবে। |
+| ক্রেডেনশিয়াল | bKash-এর `app_key`, `app_secret`, `username`, `password` কেবল পাবলিক ফোল্ডারের বাইরের `bmlhs-private-config.php` (বা env) থেকে পড়া হবে। |
 
 ## ২. ভূমিকা ও অনুমতি (RBAC)
 
@@ -195,7 +195,7 @@ shared/Accounting/                 ← হিসাব মডিউলের স
     ├── Collection/                ← PaymentService, ReceiptService, HandoverService (ধাপ ৩)
     ├── Ledger/                    ← ChartOfAccounts, VoucherService, PostingRules, PeriodClosing (ধাপ ৪)
     ├── Gateway/                   ← PaymentGatewayInterface, GatewayResult, GatewayHttpClient,
-    │                                 Bkash/BkashTokenizedGateway, Nagad/NagadGateway (adapter stub) (ধাপ ৫)
+    │                                 Bkash/BkashTokenizedGateway (ধাপ ৫)
     └── Report/                    ← ReportService, Workbook (SpreadsheetML), ReportPdf (ধাপ ৬)
 
 dist/pages/accounts/               ← অ্যাডমিন প্যানেলের পাতলা পেজ (শুধু ইনপুট যাচাই → সার্ভিস কল → ভিউ)
@@ -224,7 +224,7 @@ docs/accounting/                   ← নকশা, ব্যবহার ন�
 ```php
 interface PaymentGatewayInterface
 {
-    public function code(): string;                                   // 'bkash', 'nagad'
+    public function code(): string;                                   // 'bkash'
     public function createPayment(PaymentRequest $request): GatewayResult;  // redirect URL দেয়
     public function confirmPayment(string $gatewayPaymentId): GatewayResult; // Execute (bKash) — সার্ভার থেকে
     public function queryPayment(string $gatewayPaymentId): GatewayResult;   // Query/Status — cron ও পুনর্যাচাই
@@ -233,7 +233,7 @@ interface PaymentGatewayInterface
 ```
 
 * **bKash Tokenized Checkout**: Grant Token → Create Payment → (গ্রাহক bKash পেজে অনুমোদন) → কলব্যাক → সার্ভার থেকে Execute → Execute অস্পষ্ট/টাইমআউট হলে Query → সফল হলে একটি ডাটাবেস ট্রানজাকশনে পেমেন্ট + বরাদ্দ + ভাউচার। Refund আলাদা অনুমোদন-প্রবাহে। প্রতিটি endpoint, হেডার ও ফিল্ডের নাম ধাপ ৫-এ developer.bka.sh-এর অফিসিয়াল ডকুমেন্টেশন ও sandbox ক্রেডেনশিয়াল দিয়ে মিলিয়ে লেখা হবে — অনুমানে নয়।
-* **Nagad**: অফিসিয়াল মার্চেন্ট ডকুমেন্টেশন ও sandbox অ্যাক্সেস না পাওয়া পর্যন্ত `NagadGateway` শুধু adapter কাঠামো থাকবে এবং "সক্রিয় নয়" ত্রুটি দেবে।
+* **Nagad**: ব্যবহার করা হয় না। অনলাইন আদায় শুধু bKash।
 * HTTP: cURL, `CURLOPT_TIMEOUT = 30`, `CURLOPT_SSL_VERIFYPEER = true`, `CURLOPT_SSL_VERIFYHOST = 2`।
 * লগ: প্রতিটি রিকোয়েস্ট/রেসপন্স `acc_gateway_logs`-এ; `app_key, app_secret, username, password, id_token, refresh_token, Authorization`, ওয়ালেট নম্বর মাস্ক।
 * অবস্থা: `initiated → pending → success | failed | cancelled | expired`; `success → refunded/partially_refunded`। কলব্যাকের `status=success` দেখে কখনো `success` করা হয় না।
@@ -248,10 +248,10 @@ interface PaymentGatewayInterface
 | ২ | ফি হেড, ফি-শ্রেণী (সাধারণ/উপবৃত্তি/বৃত্তি) অনুযায়ী আলাদা হারসহ শ্রেণীভিত্তিক ফি কাঠামো, ব্যক্তিগত ছাড়, স্বয়ংক্রিয় ইনভয়েস, বকেয়া তালিকা | ✔ বিলম্ব জরিমানা পরে তুলে দেওয়া হয়েছে |
 | ৩ | নগদ আদায়, ক্রমিক রসিদ (প্রিন্ট/SMS), আংশিক ও অগ্রিম পেমেন্ট, শিক্ষক → হিসাব রক্ষক হস্তান্তর | ✔ |
 | ৪ | চার্ট অব অ্যাকাউন্টস, Receipt/Payment/Journal/Contra ভাউচার, অনুমোদন, রিভার্সাল, সংযুক্তি, ব্যাংক জমা, মাস সমাপনী | ✔ |
-| ৫ | bKash Tokenized Checkout v2 (sandbox), Nagad adapter (ডকুমেন্টেশন ছাড়া নিষ্ক্রিয়), অভিভাবক পোর্টাল, cron, রিফান্ড, সেটেলমেন্ট | ✔ |
+| ৫ | bKash Tokenized Checkout v2 (sandbox), অভিভাবক পোর্টাল, cron, রিফান্ড, সেটেলমেন্ট। Nagad গেটওয়ে নেই | ✔ |
 | ৬ | রিপোর্ট (PDF/Excel) ও চার্টসহ ড্যাশবোর্ড | সম্পন্ন — `ReportService` (ট্রায়াল, আয়-ব্যয়, নগদ/ব্যাংক/গেটওয়ে, আদায়, বকেয়া, ছাড়), `reports.php`, SpreadsheetML ও বাংলা PDF, ড্যাশবোর্ডে Chart.js |
 | ৭ | নিরাপত্তা যাচাই, টেস্ট প্ল্যান, sandbox → live চেকলিস্ট, ব্যবহার নির্দেশিকা | সম্পন্ন — `02` থেকে `07` নথি। কোড রিভিউ; তৃতীয় পক্ষের অডিট নয়। স্যান্ডবক্স ক্রেডেনশিয়াল দিয়ে প্রথম আসল পেমেন্ট এখনো বাকি |
 
 ধাপ ৭-এর নথি: [নিরাপত্তা যাচাই](02-security-review.md), [টেস্ট প্ল্যান](03-test-plan.md), [sandbox থেকে live](04-sandbox-to-live.md), [প্রধান শিক্ষক](05-guide-head.md), [হিসাব রক্ষক](06-guide-officer.md), [শ্রেণী শিক্ষক](07-guide-teacher.md)। এগুলো `docs/`-এ থাকায় ওয়েবসাইটে ওঠে না।
 
-ধাপ ৫-এ কলব্যাকের `status` কখনো চূড়ান্ত নয়: সফলতার আগে সার্ভার Execute বা Query করে। একই লেনদেনে Execute একবার, প্রতিটি ইনভয়েস নম্বর ও idempotency key অনন্য। গেটওয়ে চার্জ অভিভাবক বহন করলে আদায়ের সঙ্গে ৫১৬০-এ আলাদা (আয় নয়); স্কুল বহন করলে সেটেলমেন্টের সময় খরচ হয়। ক্রেডেনশিয়াল শুধু প্রাইভেট কনফিগ `payment_gateways.bkash` বা `BMLHS_BKASH_*` এনভ্যারনমেন্টে। কলব্যাকের ভিত্তি ঠিকানা `payment_callback_base` দিয়ে Host হেডারের বাইরে রাখা যায়। Nagad-এর অফিসিয়াল ডকুমেন্টেশন না আসা পর্যন্ত `NagadGateway` কোনো অনুরোধ পাঠায় না।
+ধাপ ৫-এ কলব্যাকের `status` কখনো চূড়ান্ত নয়: সফলতার আগে সার্ভার Execute বা Query করে। একই লেনদেনে Execute একবার, প্রতিটি ইনভয়েস নম্বর ও idempotency key অনন্য। গেটওয়ে চার্জ অভিভাবক বহন করলে আদায়ের সঙ্গে ৫১৬০-এ আলাদা (আয় নয়); স্কুল বহন করলে সেটেলমেন্টের সময় খরচ হয়। ক্রেডেনশিয়াল শুধু প্রাইভেট কনফিগ `payment_gateways.bkash` বা `BMLHS_BKASH_*` এনভ্যারনমেন্টে। কলব্যাকের ভিত্তি ঠিকানা `payment_callback_base` দিয়ে Host হেডারের বাইরে রাখা যায়। অনলাইন আদায় শুধু bKash।

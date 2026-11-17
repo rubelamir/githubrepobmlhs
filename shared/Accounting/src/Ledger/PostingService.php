@@ -17,7 +17,7 @@ use School\Accounting\Support\Money;
  *   advance applied         Dr 2110 advance           Cr fee income
  *   receipt reversed        Dr fee income / 2110      Cr 1110 or 1120 (where the cash is)
  *   handover received       Dr 1110 cash              Cr 1120 teacher custody
- *   online payment          Dr 1130 bKash / 1140 Nagad  Cr fee income / 2110
+ *   online payment          Dr 1130 bKash              Cr fee income / 2110
  *     + charge paid by guardian  Dr 1130/1140         Cr 5160 gateway charge (recovery, not income)
  *   online refund           Dr fee income / 2110      Cr 1130/1140
  */

@@ -44,14 +44,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $list = $settlements->search($status);
-$wallets = ['bkash' => 'bKash', 'nagad' => 'Nagad'];
+$wallets = ['bkash' => 'bKash'];
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">bKash থেকে ব্যাংক</h3>
-            <p class="text-secondary mb-0">bKash/Nagad মার্চেন্ট হিসাব থেকে স্কুলের ব্যাংকে টাকা এলে স্টেটমেন্ট অনুযায়ী লিপিবদ্ধ করুন। মোট থেকে চার্জ বাদ দিয়ে নেট ব্যাংকে যায়; চার্জ আলাদা খরচ (৫১৬০)। প্রধান শিক্ষকের যাচাইয়ের আগে কোনো এন্ট্রি হয় না।</p>
+            <p class="text-secondary mb-0">বিকাশ মার্চেন্ট হিসাব থেকে স্কুলের ব্যাংকে টাকা এলে স্টেটমেন্ট অনুযায়ী লিপিবদ্ধ করুন। মোট থেকে চার্জ বাদ দিয়ে নেট ব্যাংকে যায়; চার্জ আলাদা খরচ (৫১৬০)। প্রধান শিক্ষকের যাচাইয়ের আগে কোনো এন্ট্রি হয় না।</p>
           </div>
         </div>
         <div class="app-content">
@@ -82,9 +82,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="row g-2">
                       <div class="col-sm-4 col-lg-2">
                         <label class="form-label" for="st-gw">গেটওয়ে</label>
-                        <select class="form-select" id="st-gw" name="gateway" required>
-                          <?php foreach ($wallets as $code => $label): ?><option value="<?= h($code) ?>"><?= h($label) ?></option><?php endforeach; ?>
-                        </select>
+                        <input type="hidden" name="gateway" value="bkash">
+                        <input class="form-control" id="st-gw" value="bKash" readonly>
                       </div>
                       <div class="col-sm-4 col-lg-2"><label class="form-label" for="st-date">তারিখ</label><input class="form-control" id="st-date" type="date" name="settlement_date" required value="<?= h(accToday()->format('Y-m-d')) ?>"></div>
                       <div class="col-sm-4 col-lg-2"><label class="form-label" for="st-gross">মোট (গ্রস)</label><input class="form-control" id="st-gross" name="gross" inputmode="decimal" required></div>
@@ -123,7 +122,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <div>
                         <strong><?= h((string) $row['settlement_no']) ?></strong>
                         <span class="badge <?= h(SettlementService::STATUS_BADGES[$row['status']] ?? 'text-bg-secondary') ?>"><?= h(SettlementService::STATUS_LABELS[$row['status']] ?? (string) $row['status']) ?></span>
-                        <div class="small text-secondary"><?= h($wallets[$row['gateway']] ?? (string) $row['gateway']) ?> · <?= h(bnDigits(date('d/m/Y', strtotime((string) $row['settlement_date'])))) ?> · রেফ <?= h((string) $row['reference']) ?> · <?= h((string) $row['bank_code']) ?> <?= h((string) $row['bank_name']) ?></div>
+                        <div class="small text-secondary"><?= h(($wallets + ['nagad' => 'Nagad'])[$row['gateway']] ?? (string) $row['gateway']) ?> · <?= h(bnDigits(date('d/m/Y', strtotime((string) $row['settlement_date'])))) ?> · রেফ <?= h((string) $row['reference']) ?> · <?= h((string) $row['bank_code']) ?> <?= h((string) $row['bank_name']) ?></div>
                       </div>
                       <div class="text-end">
                         <div>গ্রস <?= h(Money::format(Money::fromDb($row['gross']))) ?></div>

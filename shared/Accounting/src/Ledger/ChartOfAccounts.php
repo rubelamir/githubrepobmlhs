@@ -38,7 +38,7 @@ final class ChartOfAccounts
     ];
 
     /** Accounts whose credit balance can never exceed what is physically there. */
-    public const SPENDABLE_KINDS = ['cash', 'bank', 'bkash', 'nagad'];
+    public const SPENDABLE_KINDS = ['cash', 'bank', 'bkash'];
 
     public const CASH = '1110';
     public const TEACHER_CUSTODY = '1120';
@@ -288,6 +288,9 @@ final class ChartOfAccounts
         $account = $this->account($id);
         if ($account === null) {
             throw new RuntimeException('হিসাবটি পাওয়া যায়নি।');
+        }
+        if ($active && (string) $account['code'] === self::NAGAD) {
+            throw new RuntimeException('নগদ পেমেন্ট গেটওয়ে ব্যবহার করা হয় না। অনলাইন আদায় শুধু বিকাশে।');
         }
         if (!$active) {
             if ((int) $account['is_system'] === 1) {

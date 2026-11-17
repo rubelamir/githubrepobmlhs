@@ -68,7 +68,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">অনলাইন পেমেন্ট</h3>
-            <p class="text-secondary mb-0">bKash ও Nagad-এর মাধ্যমে ফি আদায়। সফল হয়েছে কি না তা কলব্যাকের ঠিকানা দেখে নয়, সার্ভার থেকে গেটওয়ের Execute/Query দিয়ে যাচাই করা হয়।</p>
+            <p class="text-secondary mb-0">অভিভাবক বিকাশে ফি দেন। সফল হয়েছে কি না তা কলব্যাকের ঠিকানা দেখে নয়, সার্ভার থেকে বিকাশের Execute/Query দিয়ে যাচাই করা হয়।</p>
           </div>
         </div>
         <div class="app-content">

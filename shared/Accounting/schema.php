@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 7;
+const ACC_SCHEMA_VERSION = 8;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -931,4 +931,42 @@ function accMigrationV7(PDO $db): void
     } finally {
         $db->exec('SET FOREIGN_KEY_CHECKS=1');
     }
+}
+
+/**
+ * Online collection is bKash only. The unused Nagad merchant account is
+ * switched off when nothing has been posted to it.
+ */
+function accMigrationV8(PDO $db): void
+{
+    if (tableExists($db, 'acc_gateway_settings')) {
+        $db->exec("UPDATE acc_gateway_settings SET enabled = 0 WHERE gateway = 'nagad'");
+    }
+    $used = false;
+    foreach ([
+        "SELECT id FROM acc_gateway_transactions WHERE gateway = 'nagad' LIMIT 1",
+        "SELECT id FROM acc_payments WHERE method = 'nagad' OR custody = 'nagad' LIMIT 1",
+        "SELECT id FROM acc_settlements WHERE gateway = 'nagad' LIMIT 1",
+    ] as $sql) {
+        $table = '';
+        if (preg_match('/FROM (acc_[a-z_]+)/', $sql, $match) === 1) {
+            $table = $match[1];
+        }
+        if ($table !== '' && tableExists($db, $table) && fetchRows($db, $sql) !== []) {
+            $used = true;
+            break;
+        }
+    }
+    if (!$used && tableExists($db, 'acc_accounts') && tableExists($db, 'acc_voucher_lines')) {
+        $account = fetchRows($db, "SELECT id FROM acc_accounts WHERE code = '1140' LIMIT 1");
+        if ($account !== [] && fetchRows($db, 'SELECT id FROM acc_voucher_lines WHERE account_id = :id LIMIT 1', ['id' => (int) $account[0]['id']]) !== []) {
+            $used = true;
+        }
+    }
+    if ($used || !tableExists($db, 'acc_accounts')) {
+        return;
+    }
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $db->prepare("UPDATE acc_accounts SET is_active = 0, updated_at = :now WHERE code = '1140' AND is_active = 1")
+        ->execute(['now' => $now]);
 }

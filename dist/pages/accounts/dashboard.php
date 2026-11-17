@@ -76,10 +76,8 @@ if ($access->can(Capability::REPORTS_VIEW_ALL)) {
 $vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() : null;
 $bankWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accBank()->submittedCount() : null;
 $bkashBalance = null;
-$nagadBalance = null;
 if ($access->can(Capability::REPORTS_VIEW_ALL)) {
     $bkashBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::BKASH));
-    $nagadBalance = accChart()->balance(accChart()->idOf(ChartOfAccounts::NAGAD));
 }
 $onlineReview = ($access->can(Capability::GATEWAY_SETTINGS) || $access->can(Capability::REFUND_REQUEST)) ? accOnline()->attentionCount() : null;
 $onlinePending = $onlineReview !== null
@@ -265,12 +263,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="acc-stat-value"><?= h(Money::format($bkashBalance)) ?></div>
                 </a>
               </div>
-              <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="books.php">
-                  <div class="acc-stat-label">নগদ (Nagad)</div>
-                  <div class="acc-stat-value"><?= h(Money::format($nagadBalance)) ?></div>
-                </a>
-              </div>
               <?php endif; ?>
               <?php if ($onlinePending !== null): ?>
               <div class="col-6 col-lg-3">
@@ -297,7 +289,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($settlementsWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="settlements.php">
-                  <div class="acc-stat-label">বিকাশ/নগদ জমা যাচাই বাকি</div>
+                  <div class="acc-stat-label">বিকাশ জমা যাচাই বাকি</div>
                   <div class="acc-stat-value<?= $settlementsWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $settlementsWaiting)) ?>টি</div>
                 </a>
               </div>

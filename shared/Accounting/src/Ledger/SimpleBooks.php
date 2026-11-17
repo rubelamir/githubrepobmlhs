@@ -56,7 +56,7 @@ final class SimpleBooks
     }
 
     /**
-     * Cash, bKash, Nagad and bank accounts moving money between themselves.
+     * Cash, bKash and bank accounts moving money between themselves.
      *
      * @return array{voucher_id: int, duplicate: bool}
      */
@@ -160,7 +160,7 @@ final class SimpleBooks
         $account = $this->chart->account($id);
         if ($account === null || (int) $account['is_active'] !== 1 || (int) $account['is_group'] === 1
             || !in_array((string) $account['money_kind'], ChartOfAccounts::SPENDABLE_KINDS, true)) {
-            throw new RuntimeException('নগদ, বিকাশ, নগদ (Nagad) বা ব্যাংক বাছুন।');
+            throw new RuntimeException('নগদ, বিকাশ বা ব্যাংক বাছুন।');
         }
 
         return $account;

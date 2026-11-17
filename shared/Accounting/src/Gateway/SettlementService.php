@@ -21,11 +21,11 @@ use School\Accounting\Support\Money;
 use School\Accounting\Support\Sequence;
 
 /**
- * Gateway settlements: money moving from the bKash/Nagad merchant account to
- * a bank account, less the gateway's charge. Recorded by the accounts office
- * from the gateway statement and verified by the head:
+ * Gateway settlements: money moving from the bKash merchant account to a bank
+ * account, less the gateway's charge. Recorded by the accounts office from
+ * the bKash statement and verified by the head:
  *
- *   Dr bank (net) + Dr 5160 gateway charge   Cr 1130 bKash / 1140 Nagad (gross)
+ *   Dr bank (net) + Dr 5160 gateway charge   Cr 1130 bKash (gross)
  */
 final class SettlementService
 {
@@ -73,8 +73,8 @@ final class SettlementService
             return ['settlement_id' => (int) $existing[0]['id'], 'duplicate' => true];
         }
         $gateway = (string) ($input['gateway'] ?? '');
-        if (!in_array($gateway, ['bkash', 'nagad'], true)) {
-            throw new RuntimeException('গেটওয়ে নির্বাচন করুন।');
+        if ($gateway !== 'bkash') {
+            throw new RuntimeException('অনলাইন আদায় শুধু বিকাশে। ব্যাংকে জমাও শুধু বিকাশ হিসাব থেকে।');
         }
         $date = (string) ($input['settlement_date'] ?? '');
         $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);

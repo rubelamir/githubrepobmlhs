@@ -102,7 +102,7 @@ $options = static function (array $rows, int $skip = 0): string {
           <div class="container-fluid d-flex flex-wrap justify-content-between gap-2">
             <div>
               <h3 class="mb-1">ক্যাশ ও ব্যাংক</h3>
-              <p class="text-secondary mb-0">নগদ, বিকাশ, নগদ (Nagad) ও ব্যাংক আলাদা। পুরোনো পরীক্ষামূলক লেনদেন সরানো হয়েছে, তাই শুরুর টাকা একবার প্রারম্ভিক স্থিতি হিসেবে দিন।</p>
+              <p class="text-secondary mb-0">নগদ, বিকাশ ও ব্যাংক আলাদা। পুরোনো পরীক্ষামূলক লেনদেন সরানো হয়েছে, তাই শুরুর টাকা একবার প্রারম্ভিক স্থিতি হিসেবে দিন।</p>
             </div>
             <a class="btn btn-outline-secondary align-self-start" href="bank.php">ব্যাংক স্টেটমেন্ট মিলান</a>
           </div>
