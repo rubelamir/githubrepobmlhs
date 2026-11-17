@@ -78,6 +78,20 @@
       event.preventDefault();
       return;
     }
+    if (form.querySelector('[data-acc-kind-select]')) {
+      const chosen = [...form.querySelectorAll('input[type="checkbox"][name="heads[]"]')].filter((box) => !box.disabled);
+      const headsError = form.querySelector('[data-acc-heads-error]');
+      if (chosen.length === 0 || !chosen.some((box) => box.checked)) {
+        event.preventDefault();
+        if (headsError) {
+          headsError.hidden = false;
+        }
+        return;
+      }
+      if (headsError) {
+        headsError.hidden = true;
+      }
+    }
     if (form.dataset.accConfirm && form.dataset.accConfirmed !== '1') {
       if (!confirmSubmit(form, event.submitter)) {
         event.preventDefault();
@@ -106,6 +120,38 @@
     box.addEventListener('change', () => syncClassWide(box));
   });
 
+  const monthEnd = (yearMonth) => {
+    const match = /^(\d{4})-(\d{2})$/.exec(yearMonth || '');
+    if (!match) {
+      return '';
+    }
+    const last = new Date(Date.UTC(Number(match[1]), Number(match[2]), 0)).getUTCDate();
+    return `${match[1]}-${match[2]}-${String(last).padStart(2, '0')}`;
+  };
+
+  // Monthly bills open on the last day of the chosen month. Session bills open on 1 January.
+  // The collector can still change the date afterwards.
+  const applyBillDate = (form) => {
+    const kind = form.querySelector('[data-acc-kind-select]');
+    const issue = form.querySelector('[data-acc-issue-date]');
+    if (!kind || !issue || issue.disabled) {
+      return;
+    }
+    if (kind.value === 'monthly') {
+      const month = form.querySelector('input[type="month"][name="month"]');
+      const end = monthEnd(month ? month.value : '');
+      if (end) {
+        issue.value = end;
+      }
+    }
+    if (kind.value === 'session') {
+      const session = form.querySelector('input[name="session_year"]');
+      if (session && /^\d{4}$/.test(session.value)) {
+        issue.value = `${session.value}-01-01`;
+      }
+    }
+  };
+
   // <select data-acc-kind-select> shows only the [data-acc-kind~="value"] blocks of its form.
   const syncKind = (select) => {
     select.form.querySelectorAll('[data-acc-kind]').forEach((block) => {
@@ -115,10 +161,19 @@
         field.disabled = !visible;
       });
     });
+    applyBillDate(select.form);
+    const headsError = select.form.querySelector('[data-acc-heads-error]');
+    if (headsError) {
+      headsError.hidden = true;
+    }
   };
   document.querySelectorAll('select[data-acc-kind-select]').forEach((select) => {
     syncKind(select);
     select.addEventListener('change', () => syncKind(select));
+    select.form.querySelectorAll('input[type="month"][name="month"]').forEach((month) => {
+      month.addEventListener('change', () => applyBillDate(select.form));
+      month.addEventListener('input', () => applyBillDate(select.form));
+    });
   });
 
   // <input type="checkbox" data-acc-check-all="name[]"> toggles every matching checkbox.

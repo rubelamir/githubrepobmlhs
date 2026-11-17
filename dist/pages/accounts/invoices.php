@@ -61,7 +61,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 })(),
                 default => throw new RuntimeException('বিলের ধরন নির্বাচন করুন।'),
             };
-            $headIds = array_map('intval', is_array($_POST['heads'] ?? null) ? $_POST['heads'] : []);
+            $postedHeads = array_values(array_filter(
+                array_map('intval', is_array($_POST['heads'] ?? null) ? $_POST['heads'] : []),
+                static fn (int $id): bool => $id > 0
+            ));
+            $allowedHeads = [];
+            foreach (accCatalog()->heads(true) as $head) {
+                if (($head['billing_kind'] ?? '') === $kind) {
+                    $allowedHeads[] = (int) $head['id'];
+                }
+            }
+            $headIds = array_values(array_intersect($postedHeads, $allowedHeads));
+            if ($headIds === []) {
+                throw new RuntimeException('যে ধরনের বিল তৈরি করছেন, সেই ধরনের অন্তত একটি ফিতে টিক দিন। টিক না দিলে বিল তৈরি হবে না।');
+            }
             $result = $invoices->generate($access, accAudit(), $sessionYear, $classId, $sectionId, $period, $headIds, $issueDate);
             $message = $period->label() . ': ' . bnDigits((string) $result['students']) . ' জন শিক্ষার্থী — নতুন বিল '
                 . bnDigits((string) $result['created']) . 'টি';
@@ -148,7 +161,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">মাসের বিল</h3>
-            <p class="text-secondary mb-0">শ্রেণী বেছে মাস দিন, তারপর বিল তৈরি করুন। না বাছলে এই ধরনের সব ফি উঠবে। একই ফি দুবার হয় না।</p>
+            <p class="text-secondary mb-0">শ্রেণী বেছে বিলের ধরন দিন। যে ফিতে টিক দেবেন, শুধু সেই ফির বিল তৈরি হবে। টিক না দিলে বিল তৈরি হবে না। একই ফি দুবার হয় না।</p>
           </div>
         </div>
         <div class="app-content">
@@ -174,48 +187,47 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="card-header"><h3 class="card-title mb-0">এই মাসের বিল তৈরি</h3></div>
                     <div class="card-body">
                       <div class="row g-2">
-                        <div class="col-sm-6" data-acc-kind="monthly other">
-                          <label class="form-label" for="inv-month">মাস</label>
-                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($today->format('Y') === $sessionYear ? $today->format('Y-m') : $sessionYear . '-01') ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
-                        </div>
-                        <div class="col-sm-6" data-acc-kind="exam" hidden>
-                          <label class="form-label" for="inv-exam">পরীক্ষা</label>
-                          <select class="form-select" name="exam_id" id="inv-exam">
-                            <option value="">নির্বাচন করুন</option>
-                            <?php foreach ($exams as $exam): ?><option value="<?= (int) $exam['id'] ?>"><?= h((string) $exam['exam_name_bangla']) ?></option><?php endforeach; ?>
-                          </select>
-                        </div>
-                        <div class="col-sm-6">
-                          <label class="form-label" for="inv-issue">বিলের তারিখ</label>
-                          <input class="form-control" type="date" name="issue_date" id="inv-issue" required value="<?= h($today->format('Y-m-d')) ?>">
-                        </div>
-                      </div>
-                      <details class="mt-3">
-                        <summary class="fw-semibold">অন্য ধরনের বিল বা নির্দিষ্ট ফি</summary>
-                        <div class="mt-2">
+                        <div class="col-md-6 col-lg-3">
                           <label class="form-label" for="inv-kind">বিলের ধরন</label>
                           <select class="form-select" name="billing_kind" id="inv-kind" required data-acc-kind-select>
+                            <option value="">নির্বাচন করুন</option>
                             <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
                               <option value="<?= h($kind) ?>"><?= h($label) ?></option>
                             <?php endforeach; ?>
                           </select>
                         </div>
-                        <div class="mt-2">
-                          <span class="form-label d-block">কোন ফি <span class="text-secondary small">(কিছু না বাছলে এই ধরনের সব ফি)</span></span>
-                          <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
-                            <div data-acc-kind="<?= h($kind) ?>"<?= $kind === BillingPeriod::MONTHLY ? '' : ' hidden' ?>>
-                              <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
-                              <?php if ($kindHeads === []): ?><span class="small text-secondary">এই ধরনের কোনো সক্রিয় ফি নেই।</span><?php endif; ?>
-                              <?php foreach ($kindHeads as $head): ?>
-                                <div class="form-check form-check-inline">
-                                  <input class="form-check-input" type="checkbox" name="heads[]" value="<?= (int) $head['id'] ?>" id="inv-head-<?= (int) $head['id'] ?>">
-                                  <label class="form-check-label" for="inv-head-<?= (int) $head['id'] ?>"><?= h((string) $head['name_bn']) ?></label>
-                                </div>
-                              <?php endforeach; ?>
-                            </div>
-                          <?php endforeach; ?>
+                        <div class="col-md-6 col-lg-3" data-acc-kind="monthly other" hidden>
+                          <label class="form-label" for="inv-month">মাস</label>
+                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($today->format('Y') === $sessionYear ? $today->format('Y-m') : $sessionYear . '-01') ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
                         </div>
-                      </details>
+                        <div class="col-md-6 col-lg-3" data-acc-kind="exam" hidden>
+                          <label class="form-label" for="inv-exam">পরীক্ষা</label>
+                          <select class="form-select" name="exam_id" id="inv-exam" required>
+                            <option value="">নির্বাচন করুন</option>
+                            <?php foreach ($exams as $exam): ?><option value="<?= (int) $exam['id'] ?>"><?= h((string) $exam['exam_name_bangla']) ?></option><?php endforeach; ?>
+                          </select>
+                        </div>
+                        <div class="col-md-6 col-lg-3" data-acc-kind="monthly session exam other" hidden>
+                          <label class="form-label" for="inv-issue">বিলের তারিখ <span class="text-secondary small">(পরে বদলানো যাবে)</span></label>
+                          <input class="form-control" type="date" name="issue_date" id="inv-issue" data-acc-issue-date required value="<?= h($today->format('Y-m-d')) ?>">
+                        </div>
+                      </div>
+                      <div class="mt-3" data-acc-kind="monthly session exam other" hidden>
+                        <span class="form-label d-block">কোন ফি <span class="text-secondary small">(অন্তত একটিতে টিক দিন)</span></span>
+                        <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
+                          <div data-acc-kind="<?= h($kind) ?>" hidden>
+                            <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
+                            <?php if ($kindHeads === []): ?><span class="small text-secondary">এই ধরনের কোনো সক্রিয় ফি নেই।</span><?php endif; ?>
+                            <?php foreach ($kindHeads as $head): ?>
+                              <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="heads[]" value="<?= (int) $head['id'] ?>" id="inv-head-<?= (int) $head['id'] ?>">
+                                <label class="form-check-label" for="inv-head-<?= (int) $head['id'] ?>"><?= h((string) $head['name_bn']) ?></label>
+                              </div>
+                            <?php endforeach; ?>
+                          </div>
+                        <?php endforeach; ?>
+                        <p class="small text-danger mb-0 mt-2" data-acc-heads-error hidden>এই ধরনের অন্তত একটি ফিতে টিক দিন। টিক না দিলে বিল তৈরি হবে না।</p>
+                      </div>
                     </div>
                     <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt me-1"></i>বিল তৈরি করুন</button></div>
                   </form>
