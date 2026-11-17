@@ -39,6 +39,26 @@ $today = accToday();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $back = 'invoices.php?' . http_build_query($query);
     $action = (string) ($_POST['action'] ?? '');
+    $return = $query;
+    if ($action === 'cancel') {
+        $return['searched'] = '1';
+        $returnKey = (string) ($_POST['billing_key'] ?? '');
+        if ($returnKey !== '') {
+            $return['billing_key'] = $returnKey;
+        }
+        $returnQuery = trim((string) ($_POST['q'] ?? ''));
+        if (mb_strlen($returnQuery, 'UTF-8') > 40) {
+            $returnQuery = mb_substr($returnQuery, 0, 40, 'UTF-8');
+        }
+        if ($returnQuery !== '') {
+            $return['q'] = $returnQuery;
+        }
+        $returnStatus = (string) ($_POST['status'] ?? '');
+        if (isset(InvoiceService::STATUS_LABELS[$returnStatus])) {
+            $return['status'] = $returnStatus;
+        }
+    }
+    $searchBack = 'invoices.php?' . http_build_query($return);
     try {
         if ($action === 'generate') {
             if (!$ready) {
@@ -102,11 +122,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         if ($action === 'cancel') {
             $invoices->cancel($access, accAudit(), postedRecordId('acc_invoice'), (string) ($_POST['reason'] ?? ''));
-            redirectWithMessage($back, 'success', 'বিল বাতিল হয়েছে।');
+            redirectWithMessage($searchBack, 'success', 'বিল বাতিল হয়েছে।');
         }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
-        redirectWithMessage($back, 'danger', userFacingError($exception));
+        redirectWithMessage($action === 'cancel' ? $searchBack : $back, 'danger', userFacingError($exception));
     }
 }
 
@@ -118,21 +138,26 @@ $status = (string) ($_GET['status'] ?? '');
 if (!isset(InvoiceService::STATUS_LABELS[$status])) {
     $status = '';
 }
+$searched = (string) ($_GET['searched'] ?? '') === '1';
 $totals = ['net' => 0, 'paid' => 0, 'due' => 0];
 $search = '';
 if ($ready) {
     $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
     if (!isset($billingKeys[$billingKey])) {
-        $billingKey = $billingKeys !== [] ? (string) array_key_first($billingKeys) : '';
-    }
-    if ($billingKey !== '') {
-        $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
+        $billingKey = '';
     }
     $search = trim((string) ($_GET['q'] ?? ''));
     if (mb_strlen($search, 'UTF-8') > 40) {
         $search = mb_substr($search, 0, 40, 'UTF-8');
     }
-    if ($search !== '') {
+    if (!$searched) {
+        $search = '';
+        $status = '';
+        $billingKey = '';
+    } elseif ($billingKey !== '') {
+        $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
+    }
+    if ($searched && $search !== '') {
         $rows = array_values(array_filter(
             $rows,
             static function (array $row) use ($search): bool {
@@ -241,13 +266,18 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <div class="card-header">
                   <form method="get" class="row g-2 align-items-end">
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
+                    <input type="hidden" name="searched" value="1">
                     <div class="col-md-4">
                       <label class="form-label small mb-1" for="list-key">বিল</label>
-                      <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : '' ?>>
-                        <?php if ($billingKeys === []): ?><option>এখনো কোনো বিল নেই</option><?php endif; ?>
-                        <?php foreach ($billingKeys as $key => $label): ?>
-                          <option value="<?= h($key) ?>"<?= $key === $billingKey ? ' selected' : '' ?>><?= h($label) ?></option>
-                        <?php endforeach; ?>
+                      <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : ' required' ?>>
+                        <?php if ($billingKeys === []): ?>
+                          <option value="">এখনো কোনো বিল নেই</option>
+                        <?php else: ?>
+                          <option value="">বিল নির্বাচন করুন</option>
+                          <?php foreach ($billingKeys as $key => $label): ?>
+                            <option value="<?= h($key) ?>"<?= $key === $billingKey ? ' selected' : '' ?>><?= h($label) ?></option>
+                          <?php endforeach; ?>
+                        <?php endif; ?>
                       </select>
                     </div>
                     <div class="col-md-3">
@@ -274,7 +304,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 <?php endif; ?>
                 <div class="card-body p-0">
-                  <?php if ($rows === []): ?>
+                  <?php if (!$searched): ?>
+                    <p class="text-secondary p-3 mb-0">বিল বেছে দেখুন চাপুন। তালিকা তখনই আসবে।</p>
+                  <?php elseif ($billingKeys === []): ?>
+                    <p class="text-secondary p-3 mb-0">এখনো কোনো বিল নেই।</p>
+                  <?php elseif ($billingKey === ''): ?>
+                    <p class="text-secondary p-3 mb-0">বিল নির্বাচন করুন।</p>
+                  <?php elseif ($rows === []): ?>
                     <p class="text-secondary p-3 mb-0"><?= $search !== '' ? 'এই নাম, রোল বা বিল নম্বরে কিছু নেই।' : 'কোনো বিল পাওয়া যায়নি।' ?></p>
                   <?php else: ?>
                     <div class="table-responsive">
@@ -315,6 +351,10 @@ include __DIR__ . '/../../includes/layout-head.php';
                                   <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['invoice_no']) ?> বাতিল করবেন? বাতিল বিল মুছে যায় না, তবে প্রয়োজনে নতুন করে বিল করা যাবে।" data-acc-confirm-variant="danger">
                                     <?= csrfField() ?>
                                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
+                                    <input type="hidden" name="searched" value="1">
+                                    <input type="hidden" name="billing_key" value="<?= h($billingKey) ?>">
+                                    <input type="hidden" name="q" value="<?= h($search) ?>">
+                                    <input type="hidden" name="status" value="<?= h($status) ?>">
                                     <input type="hidden" name="action" value="cancel">
                                     <?= signedRecordField($invoiceId, 'acc_invoice') ?>
                                     <input class="form-control form-control-sm flex-grow-1" style="max-width:28rem" name="reason" minlength="3" maxlength="255" required placeholder="বাতিলের কারণ" aria-label="বাতিলের কারণ">
