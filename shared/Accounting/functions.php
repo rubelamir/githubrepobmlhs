@@ -474,7 +474,7 @@ function accCurrentPage(): string
 function accNavItems(AccessContext $access): array
 {
     $items = [
-        ['group' => 'প্রতিদিন', 'page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'আজকের কাজ', 'capability' => Capability::DASHBOARD_VIEW],
+        ['group' => 'প্রতিদিন', 'page' => 'dashboard', 'icon' => 'bi-cash-coin', 'label' => 'হিসাব ড্যাশবোর্ড', 'capability' => Capability::DASHBOARD_VIEW],
         ['group' => 'প্রতিদিন', 'page' => 'collect', 'icon' => 'bi-cash-stack', 'label' => 'ফি আদায়', 'capability' => Capability::FEES_COLLECT],
         ['group' => 'প্রতিদিন', 'page' => 'dues', 'icon' => 'bi-exclamation-diamond', 'label' => 'বকেয়া তালিকা', 'capability' => Capability::FEES_VIEW_CLASS],
         ['group' => 'প্রতিদিন', 'page' => 'payments', 'icon' => 'bi-receipt-cutoff', 'label' => 'রসিদ', 'capability' => [Capability::FEES_COLLECT, Capability::FEES_VIEW_ALL]],

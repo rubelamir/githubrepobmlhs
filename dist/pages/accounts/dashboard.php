@@ -14,7 +14,7 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 $access = accBootPage(Capability::DASHBOARD_VIEW);
 $db = getDatabaseConnection();
 $basePath = '../../';
-$pageTitle = 'আজকের কাজ | School Admin';
+$pageTitle = 'হিসাব ড্যাশবোর্ড | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 $chartData = null;
@@ -151,8 +151,8 @@ include __DIR__ . '/../../includes/layout-head.php';
           <div class="container-fluid">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
               <div>
-                <h3 class="mb-1">আজকের কাজ</h3>
-                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং হিসাব দেখে যাচাই করেন।' : 'নিচের কার্ড থেকে আজকের কাজ শুরু করুন।' ?></p>
+                <h3 class="mb-1">হিসাব ড্যাশবোর্ড</h3>
+                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং হিসাব দেখে যাচাই করেন।' : 'নিচের কার্ড থেকে শুরু করুন।' ?></p>
               </div>
               <div class="acc-role-badges d-flex flex-wrap gap-1">
                 <?php foreach ($access->roles() as $role): ?>
