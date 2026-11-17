@@ -1,5 +1,11 @@
 #php extention remove
 RewriteEngine On
+
+# The homepage is the directory. A direct index.php request is the same page.
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{THE_REQUEST} \s/+(.+/)?index\.php[\s?] [NC]
+RewriteRule ^index\.php$ /%1 [R=301,L]
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^([^\.]+)$ $1.php [NC,L]
 
