@@ -40,7 +40,7 @@ final class PaymentService
     public const KIND_REVERSAL = 'reversal';
     public const KIND_REFUND = 'refund';
 
-    public const STATUS_LABELS = [self::CONFIRMED => 'বৈধ', self::REVERSED => 'রিভার্সড'];
+    public const STATUS_LABELS = [self::CONFIRMED => 'বৈধ', self::REVERSED => 'বাতিল'];
     public const METHOD_LABELS = ['cash' => 'নগদ', 'bkash' => 'bKash', 'nagad' => 'Nagad', 'bank' => 'ব্যাংক'];
     public const CUSTODY_LABELS = [self::CUSTODY_TEACHER => 'শিক্ষকের কাছে', self::CUSTODY_OFFICE => 'অফিসে', 'bkash' => 'bKash হিসাবে', 'nagad' => 'Nagad হিসাবে'];
 
@@ -620,7 +620,7 @@ final class PaymentService
     }
 
     /**
-     * @param array{from: string, to: string, collector?: int, class_id?: int, section_id?: int, status?: string} $filter
+     * @param array{from: string, to: string, collector?: int, class_id?: int, section_id?: int, status?: string, q?: string} $filter
      * @return list<array<string, mixed>>
      */
     public function search(array $filter, int $limit = 1000): array
@@ -633,6 +633,21 @@ final class PaymentService
                 LEFT JOIN acc_handovers h ON h.id = p.handover_id
                 WHERE p.collected_at >= :from AND p.collected_at < :to';
         $params = ['from' => $filter['from'] . ' 00:00:00', 'to' => (new \DateTimeImmutable($filter['to']))->modify('+1 day')->format('Y-m-d') . ' 00:00:00'];
+        $q = mb_substr(trim((string) ($filter['q'] ?? '')), 0, 40);
+        if ($q !== '') {
+            $digits = ['০' => '0', '১' => '1', '২' => '2', '৩' => '3', '৪' => '4', '৫' => '5', '৬' => '6', '৭' => '7', '৮' => '8', '৯' => '9'];
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $sql .= ' AND (p.receipt_no LIKE :q_receipt OR p.name_snapshot LIKE :q_name';
+            $params['q_receipt'] = $like;
+            $params['q_name'] = $like;
+            $ascii = strtr($q, $digits);
+            if (preg_match('/^\d{1,6}$/', $ascii) === 1) {
+                $sql .= ' OR p.roll_snapshot = :q_roll OR p.roll_snapshot = :q_roll_bn';
+                $params['q_roll'] = $ascii;
+                $params['q_roll_bn'] = strtr($ascii, array_flip($digits));
+            }
+            $sql .= ')';
+        }
         if (($filter['collector'] ?? 0) > 0) {
             $sql .= ' AND p.collected_by = :collector';
             $params['collector'] = $filter['collector'];

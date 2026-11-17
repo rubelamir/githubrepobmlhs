@@ -21,6 +21,7 @@ $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
 $today = accToday()->format('Y-m-d');
+$monthStart = accToday()->modify('first day of this month')->format('Y-m-d');
 $dateOf = static function (string $value, string $fallback): string {
     try {
         return FeeStructureRepository::parseDate($value, 'তারিখ')->format('Y-m-d');
@@ -28,14 +29,15 @@ $dateOf = static function (string $value, string $fallback): string {
         return $fallback;
     }
 };
-$from = $dateOf((string) ($_GET['from'] ?? ''), $today);
+$from = $dateOf((string) ($_GET['from'] ?? ''), $monthStart);
 $to = $dateOf((string) ($_GET['to'] ?? ''), $today);
 if ($to < $from) {
     [$from, $to] = [$to, $from];
 }
 $collector = $schoolWide ? (int) ($_GET['collector'] ?? 0) : $access->teacherId();
 $status = (string) ($_GET['status'] ?? '');
-$query = ['from' => $from, 'to' => $to, 'collector' => $schoolWide ? $collector : 0, 'status' => $status];
+$q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 40);
+$query = ['from' => $from, 'to' => $to, 'collector' => $schoolWide ? $collector : 0, 'status' => $status, 'q' => $q];
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $back = 'payments.php?' . http_build_query(array_intersect_key($_POST, $query));
@@ -44,13 +46,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             throw new RuntimeException('অজানা অনুরোধ।');
         }
         $payments->reverse($access, accAudit(), postedRecordId('acc_payment'), (string) ($_POST['reason'] ?? ''));
-        redirectWithMessage($back, 'success', 'রসিদটি রিভার্স হয়েছে; সংশ্লিষ্ট বকেয়া আবার খোলা হয়েছে।');
+        redirectWithMessage($back, 'success', 'রসিদ বাতিল হয়েছে; বকেয়া আবার খোলা হয়েছে। রেকর্ড থেকে যায়।');
     } catch (Throwable $exception) {
         redirectWithMessage($back, 'danger', userFacingError($exception));
     }
 }
 
-$rows = $payments->search(['from' => $from, 'to' => $to, 'collector' => $collector, 'status' => $status]);
+$rows = $payments->search(['from' => $from, 'to' => $to, 'collector' => $collector, 'status' => $status, 'q' => $q]);
 $totals = ['confirmed' => 0, 'count' => 0, 'reversed' => 0, 'teacher' => 0, 'office' => 0];
 $collectors = [];
 foreach ($rows as $row) {
@@ -76,7 +78,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">রসিদ</h3>
-            <p class="text-secondary mb-0"><?= $schoolWide ? 'সব আদায়ের রসিদ।' : 'আপনার নেওয়া আদায়ের রসিদ।' ?> কোনো রসিদ মুছে ফেলা যায় না; ভুল হলে প্রধান শিক্ষক কারণসহ রিভার্স করবেন।</p>
+            <p class="text-secondary mb-0"><?= $schoolWide ? 'এই মাসের আদায়।' : 'আপনার নেওয়া আদায়।' ?> নাম, রোল বা রসিদ নম্বর লিখে খুঁজুন। কোনো রসিদ মুছে যায় না; ভুল হলে হিসাব রক্ষক কারণ লিখে বাতিল করেন।</p>
           </div>
         </div>
         <div class="app-content">
@@ -84,6 +86,10 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
             <div class="card mb-3">
               <form method="get" class="card-body row g-2 align-items-end">
+                <div class="col-lg-4">
+                  <label class="form-label" for="p-q">নাম, রোল বা রসিদ</label>
+                  <input class="form-control" id="p-q" name="q" value="<?= h($q) ?>" maxlength="40" placeholder="নাম, রোল বা রসিদ নম্বর" autocomplete="off">
+                </div>
                 <div class="col-6 col-lg-2"><label class="form-label" for="p-from">থেকে</label><input class="form-control" type="date" name="from" id="p-from" value="<?= h($from) ?>"></div>
                 <div class="col-6 col-lg-2"><label class="form-label" for="p-to">পর্যন্ত</label><input class="form-control" type="date" name="to" id="p-to" value="<?= h($to) ?>"></div>
                 <?php if ($schoolWide): ?>
@@ -110,7 +116,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">মোট আদায় (<?= h(bnDigits((string) $totals['count'])) ?>টি রসিদ)</div><div class="acc-stat-value text-success"><?= h(Money::format($totals['confirmed'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">অফিসের ক্যাশে</div><div class="acc-stat-value"><?= h(Money::format($totals['office'])) ?></div></div></div>
               <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">শিক্ষকের কাছে</div><div class="acc-stat-value text-warning-emphasis"><?= h(Money::format($totals['teacher'])) ?></div></div></div>
-              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">রিভার্সড</div><div class="acc-stat-value text-secondary"><?= h(Money::format($totals['reversed'])) ?></div></div></div>
+              <div class="col-6 col-lg-3"><div class="acc-stat"><div class="acc-stat-label">বাতিল</div><div class="acc-stat-value text-secondary"><?= h(Money::format($totals['reversed'])) ?></div></div></div>
             </div>
 
             <?php if ($custody !== []): ?>
@@ -130,7 +136,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="card">
               <div class="card-body p-0">
                 <?php if ($rows === []): ?>
-                  <p class="text-secondary p-3 mb-0">এই সময়ে কোনো আদায় নেই।</p>
+                  <p class="text-secondary p-3 mb-0"><?= $q !== '' ? 'এই নাম, রোল বা রসিদ এই তারিখে নেই। তারিখ বাড়িয়ে আবার দেখুন।' : 'এই সময়ে কোনো আদায় নেই।' ?></p>
                 <?php else: ?>
                   <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 acc-table-stack">
@@ -153,20 +159,20 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <td class="text-end text-nowrap" data-label="কার্যক্রম">
                               <a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('receipt.php', $rowId, 'acc_payment')) ?>"><i class="bi bi-printer"></i> রসিদ</a>
                               <?php if ($canReverse && $confirmed): ?>
-                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#rev-<?= $rowId ?>">রিভার্স</button>
+                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#rev-<?= $rowId ?>">বাতিল</button>
                               <?php endif; ?>
                             </td>
                           </tr>
                           <?php if ($canReverse && $confirmed): ?>
                             <tr class="collapse" id="rev-<?= $rowId ?>">
                               <td colspan="9">
-                                <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['receipt_no']) ?> রিভার্স করবেন? রসিদটি বাতিল হিসেবে থাকবে এবং বকেয়া আবার খুলবে।" data-acc-confirm-variant="danger">
+                                <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['receipt_no']) ?> বাতিল করবেন? রেকর্ড থেকে যাবে এবং বকেয়া আবার খুলবে।" data-acc-confirm-variant="danger">
                                   <?= csrfField() ?>
                                   <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                                   <input type="hidden" name="action" value="reverse">
                                   <?= signedRecordField($rowId, 'acc_payment') ?>
-                                  <input class="form-control form-control-sm flex-grow-1" style="max-width:28rem" name="reason" minlength="3" maxlength="255" required placeholder="রিভার্সের কারণ" aria-label="রিভার্সের কারণ">
-                                  <button class="btn btn-sm btn-danger" type="submit">রিভার্স নিশ্চিত</button>
+                                  <input class="form-control form-control-sm flex-grow-1" style="max-width:28rem" name="reason" minlength="3" maxlength="255" required placeholder="বাতিলের কারণ" aria-label="বাতিলের কারণ">
+                                  <button class="btn btn-sm btn-danger" type="submit">বাতিল নিশ্চিত</button>
                                 </form>
                               </td>
                             </tr>
