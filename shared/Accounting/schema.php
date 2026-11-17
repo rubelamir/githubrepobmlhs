@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 9;
+const ACC_SCHEMA_VERSION = 10;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -285,8 +285,8 @@ function accMigrationV2(PDO $db): void
     );
     foreach ([
         ['general', 'সাধারণ', 'বৃত্তি/উপবৃত্তি নেই এমন শিক্ষার্থী', 1, 0, 10],
-        ['stipend', 'উপবৃত্তিপ্রাপ্ত', 'সরকারি উপবৃত্তিপ্রাপ্ত শিক্ষার্থী', 0, 1, 20],
-        ['scholarship', 'বৃত্তিপ্রাপ্ত', 'বৃত্তিপ্রাপ্ত শিক্ষার্থী', 0, 1, 30],
+        ['stipend', 'উপবৃত্তিপ্রাপ্ত', 'সরকারি উপবৃত্তিপ্রাপ্ত শিক্ষার্থী', 0, 0, 20],
+        ['scholarship', 'বৃত্তিপ্রাপ্ত', 'বৃত্তিপ্রাপ্ত শিক্ষার্থী', 0, 0, 30],
     ] as [$code, $name, $description, $isDefault, $requiresReference, $sort]) {
         $category->execute([
             'code' => $code, 'name' => $name, 'description' => $description, 'is_default' => $isDefault,
@@ -980,4 +980,18 @@ function accMigrationV9(PDO $db): void
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
     $db->prepare("UPDATE acc_gateway_settings SET charge_bearer = 'payer', updated_at = :now WHERE charge_bearer <> 'payer'")
         ->execute(['now' => $now]);
+}
+
+/** Stipend and scholarship students can be assigned without an order number. */
+function accMigrationV10(PDO $db): void
+{
+    if (!tableExists($db, 'acc_fee_categories')) {
+        return;
+    }
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $db->prepare(
+        "UPDATE acc_fee_categories
+         SET requires_reference = 0, updated_at = :now
+         WHERE code IN ('stipend', 'scholarship') AND requires_reference <> 0"
+    )->execute(['now' => $now]);
 }

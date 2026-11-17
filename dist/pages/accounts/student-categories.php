@@ -56,6 +56,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $categories = $catalog->categories(true);
+$asksForOrder = false;
+foreach ($categories as $category) {
+    if ((int) $category['requires_reference'] === 1) {
+        $asksForOrder = true;
+        break;
+    }
+}
 $students = [];
 $current = [];
 $pending = [];
@@ -116,10 +123,12 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <label class="form-label" for="cat-from">কার্যকর তারিখ</label>
                         <input class="form-control" type="date" name="effective_from" id="cat-from" required value="<?= h($defaultEffective) ?>" min="<?= h($sessionYear) ?>-01-01" max="<?= h($sessionYear) ?>-12-31">
                       </div>
+                      <?php if ($asksForOrder): ?>
                       <div class="col-sm-6 col-lg-3">
                         <label class="form-label" for="cat-ref">আদেশ/রেফারেন্স নম্বর</label>
-                        <input class="form-control" name="reference_no" id="cat-ref" maxlength="100" placeholder="যেমন: উপবৃত্তি তালিকা স্মারক নং">
+                        <input class="form-control" name="reference_no" id="cat-ref" maxlength="100" placeholder="যে শ্রেণীতে লেখা আছে, শুধু সেখানে">
                       </div>
+                      <?php endif; ?>
                       <div class="col-sm-6 col-lg-2">
                         <label class="form-label" for="cat-note">মন্তব্য</label>
                         <input class="form-control" name="note" id="cat-note" maxlength="255">
