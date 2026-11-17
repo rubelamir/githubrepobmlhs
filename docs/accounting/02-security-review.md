@@ -12,7 +12,7 @@
 | `app_key`, `app_secret`, `username`, `password`, `base_url` শুধু ওয়েব রুটের বাইরের প্রাইভেট কনফিগ (`payment_gateways`) বা `BMLHS_BKASH_*` এনভ থেকে। কোডে হার্ডকোড নেই। অ্যাডমিন পাতা শুধু অনুপস্থিত চাবির নাম দেখায়। | `GatewayConfig` |
 | প্রতিটি গেটওয়ে কলে ৩০ সেকেন্ড টাইমআউট, SSL যাচাই, রিডাইরেক্ট বন্ধ। HTTP শুধু 127.0.0.1 বা localhost। | `GatewayHttpClient` |
 | প্রতিটি রিকোয়েস্ট ও রেসপন্স `acc_gateway_logs`-এ। ক্রেডেনশিয়াল, টোকেন, সিগনেচার ও `hash=` মাস্ক; ওয়ালেট `017*****575`। | `GatewayHttpClient::mask` |
-| চার্জ কে বহন করবে তা সেটিংস (`স্কুল` / `অভিভাবক`), সর্বোচ্চ ১০%। অভিভাবক বহন করলে ৫১৬০ আয় নয়, আলাদা আদায়। স্কুল বহন করলে সেটেলমেন্টে খরচ। | `OnlinePaymentService::saveSettings`, `PostingService` |
+| বিকাশ চার্জ সব সময় অভিভাবক দেন, সর্বোচ্চ ১০%। চার্জ ৫১৬০-এ আয় নয়, আলাদা আদায়। | `OnlinePaymentService::saveSettings`, `PostingService` |
 | অনুমোদিত রসিদ, ইনভয়েস বা ভাউচার মুছে ফেলা হয় না। ভুল নগদ রসিদ রিভার্সাল; অনলাইন রসিদ রিভার্স করা যায় না, রিফান্ড লাগে। | `PaymentService::reverse`, `VoucherService::reverse` |
 | কোয়েরি prepared statement। অ্যাডমিন POST-এ CSRF (`requireValidCsrf`); অভিভাবক পোর্টালে `verifyCsrfToken`। আউটপুট `h()` দিয়ে। | `dist/includes/auth.php`, পোর্টাল পাতা |
 | সংযুক্তি: ৫ MB, PDF/JPG/PNG/WebP, MIME ও ফাইলের শুরু মিলিয়ে, পাবলিক ফোল্ডারের বাইরে। | `AttachmentStore` |

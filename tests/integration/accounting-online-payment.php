@@ -127,6 +127,7 @@ try {
     $quote = $online->quote('bkash', 10000);
     $check($quote === ['fee' => 10000, 'charge' => 150, 'payable' => 10150, 'bearer' => 'payer'], 'payer bears 1.50% on top of the fee');
     $online->saveSettings($head, $headAudit, 'bkash', ['enabled' => '1', 'charge_bearer' => 'school', 'charge_rate' => '0']);
+    $check($online->settings('bkash')['charge_bearer'] === 'payer', 'a posted school bearer is stored as the guardian');
     $check($online->isAvailable('bkash'), 'bKash is available against the mock');
     $check(array_keys($online->gateways()) === ['bkash'], 'only bKash is registered');
 

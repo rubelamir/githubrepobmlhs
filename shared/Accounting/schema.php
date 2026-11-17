@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 8;
+const ACC_SCHEMA_VERSION = 9;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -968,5 +968,16 @@ function accMigrationV8(PDO $db): void
     }
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
     $db->prepare("UPDATE acc_accounts SET is_active = 0, updated_at = :now WHERE code = '1140' AND is_active = 1")
+        ->execute(['now' => $now]);
+}
+
+/** The guardian pays the bKash charge. Older rows that said the school pays are corrected. */
+function accMigrationV9(PDO $db): void
+{
+    if (!tableExists($db, 'acc_gateway_settings')) {
+        return;
+    }
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $db->prepare("UPDATE acc_gateway_settings SET charge_bearer = 'payer', updated_at = :now WHERE charge_bearer <> 'payer'")
         ->execute(['now' => $now]);
 }
