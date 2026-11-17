@@ -6,6 +6,7 @@ use School\Accounting\Audit\AuditTrail;
 use School\Accounting\Billing\BillingPeriod;
 use School\Accounting\Billing\FeeStructureRepository;
 use School\Accounting\Billing\InvoiceService;
+use School\Accounting\Billing\StudentDirectory;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -104,6 +105,7 @@ if (!isset(InvoiceService::STATUS_LABELS[$status])) {
     $status = '';
 }
 $totals = ['net' => 0, 'paid' => 0, 'due' => 0];
+$search = '';
 if ($ready) {
     $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
     if (!isset($billingKeys[$billingKey])) {
@@ -111,6 +113,25 @@ if ($ready) {
     }
     if ($billingKey !== '') {
         $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
+    }
+    $search = trim((string) ($_GET['q'] ?? ''));
+    if (mb_strlen($search, 'UTF-8') > 40) {
+        $search = mb_substr($search, 0, 40, 'UTF-8');
+    }
+    if ($search !== '') {
+        $rows = array_values(array_filter(
+            $rows,
+            static function (array $row) use ($search): bool {
+                if (mb_stripos((string) $row['invoice_no'], $search) !== false) {
+                    return true;
+                }
+
+                return StudentDirectory::matchesQuery([
+                    'name_ban' => (string) $row['name_snapshot'],
+                    'cls_roll' => (string) $row['roll_snapshot'],
+                ], $search);
+            }
+        ));
     }
     foreach ($rows as $row) {
         if ($row['status'] === InvoiceService::CANCELLED) {
@@ -127,7 +148,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">মাসের বিল</h3>
-            <p class="text-secondary mb-0">শ্রেণী বেছে এই মাসের বেতন বা অন্য ফি বিল করুন। বিল তৈরি না হলে বকেয়া তালিকায় কিছু দেখায় না। একই ফি দুবার বিল হয় না।</p>
+            <p class="text-secondary mb-0">শ্রেণী বেছে মাস দিন, তারপর বিল তৈরি করুন। না বাছলে এই ধরনের সব ফি উঠবে। একই ফি দুবার হয় না।</p>
           </div>
         </div>
         <div class="app-content">
@@ -153,7 +174,25 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="card-header"><h3 class="card-title mb-0">এই মাসের বিল তৈরি</h3></div>
                     <div class="card-body">
                       <div class="row g-2">
-                        <div class="col-sm-4">
+                        <div class="col-sm-6" data-acc-kind="monthly other">
+                          <label class="form-label" for="inv-month">মাস</label>
+                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($today->format('Y') === $sessionYear ? $today->format('Y-m') : $sessionYear . '-01') ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
+                        </div>
+                        <div class="col-sm-6" data-acc-kind="exam" hidden>
+                          <label class="form-label" for="inv-exam">পরীক্ষা</label>
+                          <select class="form-select" name="exam_id" id="inv-exam">
+                            <option value="">নির্বাচন করুন</option>
+                            <?php foreach ($exams as $exam): ?><option value="<?= (int) $exam['id'] ?>"><?= h((string) $exam['exam_name_bangla']) ?></option><?php endforeach; ?>
+                          </select>
+                        </div>
+                        <div class="col-sm-6">
+                          <label class="form-label" for="inv-issue">বিলের তারিখ</label>
+                          <input class="form-control" type="date" name="issue_date" id="inv-issue" required value="<?= h($today->format('Y-m-d')) ?>">
+                        </div>
+                      </div>
+                      <details class="mt-3">
+                        <summary class="fw-semibold">অন্য ধরনের বিল বা নির্দিষ্ট ফি</summary>
+                        <div class="mt-2">
                           <label class="form-label" for="inv-kind">বিলের ধরন</label>
                           <select class="form-select" name="billing_kind" id="inv-kind" required data-acc-kind-select>
                             <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
@@ -161,37 +200,22 @@ include __DIR__ . '/../../includes/layout-head.php';
                             <?php endforeach; ?>
                           </select>
                         </div>
-                        <div class="col-sm-4" data-acc-kind="monthly other">
-                          <label class="form-label" for="inv-month">মাস</label>
-                          <input class="form-control" type="month" name="month" id="inv-month" required value="<?= h($today->format('Y') === $sessionYear ? $today->format('Y-m') : $sessionYear . '-01') ?>" min="<?= h($sessionYear) ?>-01" max="<?= h($sessionYear) ?>-12">
+                        <div class="mt-2">
+                          <span class="form-label d-block">কোন ফি <span class="text-secondary small">(কিছু না বাছলে এই ধরনের সব ফি)</span></span>
+                          <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
+                            <div data-acc-kind="<?= h($kind) ?>"<?= $kind === BillingPeriod::MONTHLY ? '' : ' hidden' ?>>
+                              <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
+                              <?php if ($kindHeads === []): ?><span class="small text-secondary">এই ধরনের কোনো সক্রিয় ফি নেই।</span><?php endif; ?>
+                              <?php foreach ($kindHeads as $head): ?>
+                                <div class="form-check form-check-inline">
+                                  <input class="form-check-input" type="checkbox" name="heads[]" value="<?= (int) $head['id'] ?>" id="inv-head-<?= (int) $head['id'] ?>">
+                                  <label class="form-check-label" for="inv-head-<?= (int) $head['id'] ?>"><?= h((string) $head['name_bn']) ?></label>
+                                </div>
+                              <?php endforeach; ?>
+                            </div>
+                          <?php endforeach; ?>
                         </div>
-                        <div class="col-sm-4" data-acc-kind="exam" hidden>
-                          <label class="form-label" for="inv-exam">পরীক্ষা</label>
-                          <select class="form-select" name="exam_id" id="inv-exam" required>
-                            <option value="">নির্বাচন করুন</option>
-                            <?php foreach ($exams as $exam): ?><option value="<?= (int) $exam['id'] ?>"><?= h((string) $exam['exam_name_bangla']) ?></option><?php endforeach; ?>
-                          </select>
-                        </div>
-                        <div class="col-sm-4">
-                          <label class="form-label" for="inv-issue">বিলের তারিখ</label>
-                          <input class="form-control" type="date" name="issue_date" id="inv-issue" required value="<?= h($today->format('Y-m-d')) ?>">
-                        </div>
-                      </div>
-                      <div class="mt-3">
-                        <span class="form-label d-block">কোন ফি <span class="text-secondary small">(কিছু না বাছলে এই ধরনের সব ফি)</span></span>
-                        <?php foreach (BillingPeriod::KIND_LABELS as $kind => $label): ?>
-                          <div data-acc-kind="<?= h($kind) ?>"<?= $kind === BillingPeriod::MONTHLY ? '' : ' hidden' ?>>
-                            <?php $kindHeads = array_filter($heads, static fn (array $head): bool => $head['billing_kind'] === $kind); ?>
-                            <?php if ($kindHeads === []): ?><span class="small text-secondary">এই ধরনের কোনো সক্রিয় ফি হেড নেই।</span><?php endif; ?>
-                            <?php foreach ($kindHeads as $head): ?>
-                              <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" name="heads[]" value="<?= (int) $head['id'] ?>" id="inv-head-<?= (int) $head['id'] ?>">
-                                <label class="form-check-label" for="inv-head-<?= (int) $head['id'] ?>"><?= h((string) $head['name_bn']) ?></label>
-                              </div>
-                            <?php endforeach; ?>
-                          </div>
-                        <?php endforeach; ?>
-                      </div>
+                      </details>
                     </div>
                     <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt me-1"></i>বিল তৈরি করুন</button></div>
                   </form>
@@ -204,7 +228,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <div class="card-header">
                   <form method="get" class="row g-2 align-items-end">
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
-                    <div class="col-sm-5">
+                    <div class="col-md-4">
                       <label class="form-label small mb-1" for="list-key">বিল</label>
                       <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : '' ?>>
                         <?php if ($billingKeys === []): ?><option>এখনো কোনো বিল নেই</option><?php endif; ?>
@@ -213,7 +237,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <?php endforeach; ?>
                       </select>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-md-3">
+                      <label class="form-label small mb-1" for="list-q">নাম, রোল বা বিল নং</label>
+                      <input class="form-control form-control-sm" id="list-q" name="q" value="<?= h($search) ?>" maxlength="40">
+                    </div>
+                    <div class="col-md-3">
                       <label class="form-label small mb-1" for="list-status">অবস্থা</label>
                       <select class="form-select form-select-sm" name="status" id="list-status">
                         <option value="">সব</option>
@@ -222,7 +250,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <?php endforeach; ?>
                       </select>
                     </div>
-                    <div class="col-sm-3"><button class="btn btn-sm btn-outline-primary w-100" type="submit">দেখুন</button></div>
+                    <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100" type="submit">দেখুন</button></div>
                   </form>
                 </div>
                 <?php if ($rows !== []): ?>
@@ -234,28 +262,33 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <?php endif; ?>
                 <div class="card-body p-0">
                   <?php if ($rows === []): ?>
-                    <p class="text-secondary p-3 mb-0">কোনো বিল পাওয়া যায়নি।</p>
+                    <p class="text-secondary p-3 mb-0"><?= $search !== '' ? 'এই নাম, রোল বা বিল নম্বরে কিছু নেই।' : 'কোনো বিল পাওয়া যায়নি।' ?></p>
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>বিল নং</th><th>রোল</th><th>নাম</th><th class="text-end">মোট</th><th class="text-end">ছাড়/মওকুফ</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
+                        <thead><tr><th>রোল</th><th>নাম</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বাকি</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
                         <tbody>
                           <?php foreach ($rows as $row): ?>
                             <?php
                             $invoiceId = (int) $row['id'];
+                            $net = Money::fromDb($row['net']);
+                            $paid = Money::fromDb($row['paid']);
                             $relief = Money::fromDb($row['category_concession']) + Money::fromDb($row['discount']) + Money::fromDb($row['waived']);
                             $cancelled = $row['status'] === InvoiceService::CANCELLED;
                             ?>
                             <tr class="<?= $cancelled ? 'text-secondary text-decoration-line-through' : '' ?>">
-                              <td data-label="বিল নং"><code><?= h((string) $row['invoice_no']) ?></code></td>
                               <td data-label="রোল"><?= h(bnDigits((string) $row['roll_snapshot'])) ?></td>
-                              <td data-label="নাম"><?= h((string) $row['name_snapshot']) ?></td>
-                              <td class="text-end" data-label="মোট"><?= h(Money::format(Money::fromDb($row['standard_total']) + Money::fromDb($row['fine']))) ?></td>
-                              <td class="text-end" data-label="ছাড়/মওকুফ"><?= $relief !== 0 ? h(Money::format($relief)) : '—' ?></td>
-                              <td class="text-end" data-label="প্রাপ্য"><strong><?= h(Money::format(Money::fromDb($row['net']))) ?></strong></td>
-                              <td class="text-end" data-label="আদায়"><?= h(Money::format(Money::fromDb($row['paid']))) ?></td>
-                              <td data-label="শেষ তারিখ"><?= h(bnDigits((string) $row['due_date'])) ?></td>
-                              <td data-label="অবস্থা"><span class="badge <?= h(InvoiceService::STATUS_BADGES[$row['status']] ?? 'text-bg-light') ?>"><?= h(InvoiceService::STATUS_LABELS[$row['status']] ?? (string) $row['status']) ?></span></td>
+                              <td data-label="নাম">
+                                <?= h((string) $row['name_snapshot']) ?>
+                                <div class="small text-secondary"><code><?= h((string) $row['invoice_no']) ?></code><?= $relief !== 0 ? ' · ছাড় ' . h(Money::format($relief)) : '' ?></div>
+                              </td>
+                              <td class="text-end" data-label="প্রাপ্য"><strong><?= h(Money::format($net)) ?></strong></td>
+                              <td class="text-end" data-label="আদায়"><?= h(Money::format($paid)) ?></td>
+                              <td class="text-end" data-label="বাকি"><?= h(Money::format($cancelled ? 0 : max(0, $net - $paid))) ?></td>
+                              <td data-label="অবস্থা">
+                                <span class="badge <?= h(InvoiceService::STATUS_BADGES[$row['status']] ?? 'text-bg-light') ?>"><?= h(InvoiceService::STATUS_LABELS[$row['status']] ?? (string) $row['status']) ?></span>
+                                <div class="small text-secondary"><?= h(bnDigits((string) $row['due_date'])) ?></div>
+                              </td>
                               <td class="text-end text-nowrap" data-label="কার্যক্রম">
                                 <a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php#inv-' . $invoiceId, (int) $row['student_id'], 'acc_student')) ?>">বিস্তারিত</a>
                                 <?php if ($canCancel && !$cancelled && Money::fromDb($row['paid']) === 0): ?>
@@ -265,7 +298,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             </tr>
                             <?php if ($canCancel && !$cancelled && Money::fromDb($row['paid']) === 0): ?>
                               <tr class="collapse" id="cancel-<?= $invoiceId ?>">
-                                <td colspan="10">
+                                <td colspan="7">
                                   <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['invoice_no']) ?> বাতিল করবেন? বাতিল বিল মুছে যায় না, তবে প্রয়োজনে নতুন করে বিল করা যাবে।" data-acc-confirm-variant="danger">
                                     <?= csrfField() ?>
                                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
