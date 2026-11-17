@@ -36,12 +36,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             );
             $handover = $handovers->handover($result['handover_id']);
             redirectWithMessage('handovers.php', $result['duplicate'] ? 'info' : 'success', $result['duplicate']
-                ? 'এই হস্তান্তর আগেই জমা হয়েছে (' . $handover['handover_no'] . ')।'
-                : 'হস্তান্তর ' . $handover['handover_no'] . ' জমা হয়েছে — ' . Money::format(Money::fromDb($handover['total'])) . '। হিসাব রক্ষক টাকা গুনে গ্রহণ করবেন।');
+                ? 'এই জমা আগেই হয়েছে (' . $handover['handover_no'] . ')।'
+                : 'জমা ' . $handover['handover_no'] . ' হয়েছে — ' . Money::format(Money::fromDb($handover['total'])) . '। হিসাব রক্ষক টাকা গুনে নেবেন।');
         }
         if ($action === 'receive' || $action === 'reject') {
             $handovers->decide($access, accAudit(), postedRecordId('acc_handover'), $action === 'receive', (string) ($_POST['counted'] ?? ''), (string) ($_POST['remark'] ?? ''));
-            redirectWithMessage('handovers.php', 'success', $action === 'receive' ? 'হস্তান্তর গ্রহণ করা হয়েছে; টাকা এখন অফিসের ক্যাশে।' : 'হস্তান্তর ফেরত দেওয়া হয়েছে; রসিদগুলো আবার শিক্ষকের কাছে দেখাবে।');
+            redirectWithMessage('handovers.php', 'success', $action === 'receive' ? 'জমা নেওয়া হয়েছে; টাকা এখন অফিসের ক্যাশে।' : 'জমা ফেরত দেওয়া হয়েছে; রসিদগুলো আবার শিক্ষকের কাছে দেখাবে।');
         }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
@@ -58,7 +58,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">টাকা জমা</h3>
-            <p class="text-secondary mb-0">শ্রেণি শিক্ষকের আদায় করা নগদ টাকা হিসাব রক্ষকের কাছে জমা দেওয়ার হিসাব। হিসাব রক্ষক টাকা গুনে মিললে গ্রহণ করবেন, না মিললে কারণসহ ফেরত দেবেন।</p>
+            <p class="text-secondary mb-0">শ্রেণিশিক্ষক নেওয়া নগদ অফিসে জমা দেন। হিসাব রক্ষক টাকা গুনে মিললে নেন, না মিললে কারণ লিখে ফেরত দেন।</p>
           </div>
         </div>
         <div class="app-content">
@@ -66,7 +66,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
 
             <?php if ($canSubmit): ?>
-              <form method="post" class="card mb-3" data-acc-confirm="নির্বাচিত রসিদের টাকা অফিসে হস্তান্তরের জন্য জমা দেবেন?">
+              <form method="post" class="card mb-3" data-acc-confirm="নির্বাচিত রসিদের টাকা অফিসে জমা দেবেন?">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="submit">
                 <input type="hidden" name="idempotency_key" value="<?= h(PaymentService::newIdempotencyKey()) ?>">
@@ -76,7 +76,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
                 <div class="card-body p-0">
                   <?php if ($pending === []): ?>
-                    <p class="text-secondary p-3 mb-0">হস্তান্তরের মতো কোনো আদায় আপনার কাছে নেই।</p>
+                    <p class="text-secondary p-3 mb-0">জমা দেওয়ার মতো কোনো আদায় আপনার কাছে নেই।</p>
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-sm align-middle mb-0 acc-table-stack">
@@ -99,7 +99,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <?php if ($pending !== []): ?>
                   <div class="card-footer d-flex flex-wrap gap-2">
                     <input class="form-control form-control-sm flex-grow-1" style="max-width:28rem" name="note" maxlength="255" placeholder="মন্তব্য (ঐচ্ছিক)" aria-label="মন্তব্য">
-                    <button class="btn btn-primary" type="submit"><i class="bi bi-box-arrow-up-right me-1"></i>হস্তান্তর জমা দিন</button>
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-box-arrow-up-right me-1"></i>অফিসে জমা দিন</button>
                   </div>
                 <?php endif; ?>
               </form>
@@ -107,7 +107,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 
             <div class="card">
               <div class="card-header d-flex flex-wrap gap-2 align-items-center">
-                <h3 class="card-title mb-0 me-auto"><?= $canReceive ? 'হস্তান্তর' : 'আমার হস্তান্তর' ?></h3>
+                <h3 class="card-title mb-0 me-auto"><?= $canReceive ? 'জমার তালিকা' : 'আমার জমা' ?></h3>
                 <form method="get" class="d-flex gap-1">
                   <select class="form-select form-select-sm" name="status" aria-label="অবস্থা">
                     <option value="">সব</option>
@@ -117,7 +117,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </form>
               </div>
               <div class="card-body">
-                <?php if ($list === []): ?><p class="text-secondary mb-0">কোনো হস্তান্তর নেই।</p><?php endif; ?>
+                <?php if ($list === []): ?><p class="text-secondary mb-0">কোনো জমা নেই।</p><?php endif; ?>
                 <?php foreach ($list as $handover): ?>
                   <?php $handoverId = (int) $handover['id']; $items = $handovers->items($handoverId); $open = $handover['status'] === HandoverService::SUBMITTED; ?>
                   <div class="border rounded mb-3">
@@ -155,12 +155,12 @@ include __DIR__ . '/../../includes/layout-head.php';
                     </div>
                     <?php if ($canReceive && $open && (int) $handover['teacher_id'] !== $access->teacherId()): ?>
                       <div class="d-flex flex-wrap gap-2 p-2 border-top">
-                        <form method="post" class="d-flex flex-wrap gap-1" data-acc-confirm="গণনাকৃত টাকা মিলেছে? হস্তান্তর গ্রহণ করবেন?" data-acc-confirm-variant="success">
+                        <form method="post" class="d-flex flex-wrap gap-1" data-acc-confirm="গণনাকৃত টাকা মিলেছে? জমা নেবেন?" data-acc-confirm-variant="success">
                           <?= csrfField() ?><input type="hidden" name="action" value="receive"><?= signedRecordField($handoverId, 'acc_handover') ?>
                           <input class="form-control form-control-sm" style="max-width:10rem" name="counted" inputmode="decimal" required placeholder="গণনাকৃত টাকা" aria-label="গণনাকৃত টাকা">
                           <button class="btn btn-sm btn-success" type="submit"><i class="bi bi-check-lg"></i> গ্রহণ</button>
                         </form>
-                        <form method="post" class="d-flex flex-wrap gap-1 ms-sm-auto" data-acc-confirm="হস্তান্তরটি ফেরত দেবেন?" data-acc-confirm-variant="danger">
+                        <form method="post" class="d-flex flex-wrap gap-1 ms-sm-auto" data-acc-confirm="জমাটি ফেরত দেবেন?" data-acc-confirm-variant="danger">
                           <?= csrfField() ?><input type="hidden" name="action" value="reject"><?= signedRecordField($handoverId, 'acc_handover') ?>
                           <input class="form-control form-control-sm" style="max-width:18rem" name="remark" minlength="3" maxlength="255" required placeholder="ফেরতের কারণ (যেমন: ৳৫০ কম)" aria-label="ফেরতের কারণ">
                           <button class="btn btn-sm btn-outline-danger" type="submit">ফেরত</button>

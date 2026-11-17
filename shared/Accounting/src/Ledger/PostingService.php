@@ -119,7 +119,7 @@ final class PostingService
         $voucherId = $this->vouchers->postSystem(
             VoucherService::CONTRA,
             substr((string) $handover['decided_at'], 0, 10),
-            'শিক্ষকের হস্তান্তর গ্রহণ — ' . $handover['handover_no'],
+            'শিক্ষকের জমা গ্রহণ — ' . $handover['handover_no'],
             [
                 ['account_id' => $this->chart->idOf(ChartOfAccounts::CASH), 'debit' => $total, 'credit' => 0, 'memo' => (string) $handover['handover_no']],
                 ['account_id' => $this->chart->idOf(ChartOfAccounts::TEACHER_CUSTODY), 'debit' => 0, 'credit' => $total, 'party_type' => 'teacher', 'party_id' => $teacherId, 'memo' => (string) $handover['handover_no']],

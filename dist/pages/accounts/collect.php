@@ -301,7 +301,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <label class="form-check-label" for="pay-sms">অভিভাবকের মোবাইলে রসিদের SMS পাঠান</label>
                         </div>
                       <?php endif; ?>
-                      <div class="small text-secondary mt-2">টাকা থাকবে: <strong><?= $officeCustody ? 'অফিসের ক্যাশে' : 'আপনার কাছে (হস্তান্তর না করা পর্যন্ত)' ?></strong></div>
+                      <div class="small text-secondary mt-2">টাকা থাকবে: <strong><?= $officeCustody ? 'অফিসের ক্যাশে' : 'আপনার কাছে (অফিসে জমা না দেওয়া পর্যন্ত)' ?></strong></div>
                     </div>
                     <div class="card-footer"><button class="btn btn-success w-100" type="submit"><i class="bi bi-check2-circle me-1"></i>আদায় সংরক্ষণ ও রসিদ</button></div>
                   </div>

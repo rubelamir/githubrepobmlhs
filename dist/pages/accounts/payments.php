@@ -121,7 +121,7 @@ include __DIR__ . '/../../includes/layout-head.php';
 
             <?php if ($custody !== []): ?>
               <div class="card mb-3">
-                <div class="card-header"><h3 class="card-title mb-0">শিক্ষকদের কাছে থাকা আদায় (এখনো হস্তান্তর হয়নি)</h3></div>
+                <div class="card-header"><h3 class="card-title mb-0">শিক্ষকদের কাছে থাকা আদায় (এখনো অফিসে জমা হয়নি)</h3></div>
                 <ul class="list-group list-group-flush">
                   <?php foreach ($custody as $holder): ?>
                     <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">

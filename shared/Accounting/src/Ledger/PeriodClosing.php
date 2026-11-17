@@ -97,7 +97,7 @@ final class PeriodClosing
         }
         $handovers = (int) \fetchRows($this->db, "SELECT COUNT(*) AS n FROM acc_handovers WHERE status = 'submitted' AND submitted_at <= :end", ['end' => $end . ' 23:59:59'])[0]['n'];
         if ($handovers > 0) {
-            $blockers[] = bnDigits((string) $handovers) . 'টি শিক্ষক-হস্তান্তর গ্রহণের অপেক্ষায় আছে।';
+            $blockers[] = bnDigits((string) $handovers) . 'টি শিক্ষকের জমা গ্রহণের অপেক্ষায় আছে।';
         }
         if (tableExists($this->db, 'acc_settlements')) {
             $settlements = (int) \fetchRows($this->db, "SELECT COUNT(*) AS n FROM acc_settlements WHERE status = 'submitted' AND settlement_date BETWEEN :start AND :end", ['start' => $start, 'end' => $end])[0]['n'];

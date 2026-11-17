@@ -344,7 +344,7 @@ final class PaymentService
             if ($payment['handover_id'] !== null) {
                 $handover = \fetchRows($this->db, 'SELECT status FROM acc_handovers WHERE id = :id', ['id' => (int) $payment['handover_id']]);
                 if (($handover[0]['status'] ?? '') === HandoverService::SUBMITTED) {
-                    throw new RuntimeException('রসিদটি একটি অনিষ্পন্ন হস্তান্তরে আছে; আগে হস্তান্তরটি গ্রহণ বা ফেরত দিন।');
+                    throw new RuntimeException('রসিদটি একটি অনিষ্পন্ন জমায় আছে; আগে জমাটি নিন বা ফেরত দিন।');
                 }
             }
             $studentId = (int) $payment['student_id'];
