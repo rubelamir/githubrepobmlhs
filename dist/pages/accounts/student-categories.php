@@ -128,7 +128,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <button class="btn btn-success w-100" type="submit"><i class="bi bi-check2-circle me-1"></i><?= $autoApprove ? 'নির্ধারণ করুন' : 'আবেদন পাঠান' ?></button>
                       </div>
                     </div>
-                    <div class="small text-secondary mt-2">সাধারণ শ্রেণীতে ফেরাতে "সাধারণ" নির্বাচন করুন। কার্যকর তারিখের আগের ইনভয়েস অপরিবর্তিত থাকবে।</div>
+                    <div class="small text-secondary mt-2">সাধারণ শ্রেণীতে ফেরাতে "সাধারণ" নির্বাচন করুন। কার্যকর তারিখের আগের বিল অপরিবর্তিত থাকবে।</div>
                   </div>
                 </div>
                 <?php endif; ?>

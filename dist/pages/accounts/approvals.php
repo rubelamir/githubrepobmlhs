@@ -156,13 +156,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <?php else: ?>
                   <div class="table-responsive">
                     <table class="table align-middle mb-0 acc-table-stack">
-                      <thead><tr><th>শিক্ষার্থী</th><th>শ্রেণী</th><th>ইনভয়েস / খাত</th><th class="text-end">পরিমাণ</th><th>কারণ</th><th>আবেদনকারী</th><th class="text-end">সিদ্ধান্ত</th></tr></thead>
+                      <thead><tr><th>শিক্ষার্থী</th><th>শ্রেণী</th><th>বিল / খাত</th><th class="text-end">পরিমাণ</th><th>কারণ</th><th>আবেদনকারী</th><th class="text-end">সিদ্ধান্ত</th></tr></thead>
                       <tbody>
                         <?php foreach ($pendingWaivers as $row): ?>
                           <tr>
                             <td data-label="শিক্ষার্থী"><?= h($studentText($row)) ?></td>
                             <td data-label="শ্রেণী"><?= h($classText($row)) ?></td>
-                            <td data-label="ইনভয়েস / খাত"><code><?= h((string) $row['invoice_no']) ?></code><div class="small"><?= h((string) $row['description']) ?></div></td>
+                            <td data-label="বিল / খাত"><code><?= h((string) $row['invoice_no']) ?></code><div class="small"><?= h((string) $row['description']) ?></div></td>
                             <td class="text-end" data-label="পরিমাণ"><strong><?= h(Money::format(Money::fromDb($row['amount']))) ?></strong></td>
                             <td data-label="কারণ"><?= h((string) $row['reason']) ?></td>
                             <td data-label="আবেদনকারী"><?= h((string) $row['requested_by_name']) ?><div class="small text-secondary"><?= h(accFormatDateTime((string) $row['requested_at'])) ?></div></td>

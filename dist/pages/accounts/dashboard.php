@@ -270,7 +270,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($onlinePending !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="online-payments.php?status=pending">
-                  <div class="acc-stat-label">পেন্ডিং অনলাইন পেমেন্ট</div>
+                  <div class="acc-stat-label">অপেক্ষমাণ অনলাইন আদায়</div>
                   <div class="acc-stat-value<?= $onlinePending > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $onlinePending)) ?>টি</div>
                 </a>
               </div>
@@ -284,7 +284,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($refundsWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="refunds.php">
-                  <div class="acc-stat-label">রিফান্ডের সিদ্ধান্ত বাকি</div>
+                  <div class="acc-stat-label">টাকা ফেরতের সিদ্ধান্ত বাকি</div>
                   <div class="acc-stat-value<?= $refundsWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $refundsWaiting)) ?>টি</div>
                 </a>
               </div>
@@ -292,7 +292,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($settlementsWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="settlements.php">
-                  <div class="acc-stat-label">সেটেলমেন্ট যাচাই বাকি</div>
+                  <div class="acc-stat-label">বিকাশ/নগদ জমা যাচাই বাকি</div>
                   <div class="acc-stat-value<?= $settlementsWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $settlementsWaiting)) ?>টি</div>
                 </a>
               </div>
@@ -300,7 +300,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <?php if ($vouchersWaiting !== null): ?>
               <div class="col-6 col-lg-3">
                 <a class="acc-stat d-block text-decoration-none text-body" href="vouchers.php?status=submitted">
-                  <div class="acc-stat-label">অনুমোদনের অপেক্ষায় ভাউচার ও ব্যাংক জমা</div>
+                  <div class="acc-stat-label">যাচাইয়ের অপেক্ষায় খরচ ও ব্যাংক জমা</div>
                   <div class="acc-stat-value<?= $vouchersWaiting > 0 ? ' text-warning-emphasis' : '' ?>"><?= h(bnDigits((string) $vouchersWaiting)) ?>টি</div>
                 </a>
               </div>

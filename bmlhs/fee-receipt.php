@@ -61,7 +61,7 @@ $receiptRefunded = $receiptTxn !== null ? Money::fromDb($receiptTxn['refunded_am
         <?php endif; ?>
       </dl>
       <table class="receipt-lines">
-        <thead><tr><th>বিবরণ</th><th>ইনভয়েস</th><th class="num">টাকা</th></tr></thead>
+        <thead><tr><th>বিবরণ</th><th>বিল</th><th class="num">টাকা</th></tr></thead>
         <tbody>
           <?php foreach ($receiptLines['lines'] as $line): ?>
           <tr>

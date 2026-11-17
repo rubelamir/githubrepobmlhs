@@ -74,7 +74,7 @@ $back = signedRecordUrl('collect.php', (int) $payment['student_id'], 'acc_studen
           <div><dt>সেশন</dt><dd><?= h(bnDigits((string) $payment['session_year'])) ?></dd></div>
         </dl>
         <table class="receipt-lines">
-          <thead><tr><th>বিবরণ</th><th>ইনভয়েস</th><th class="num">টাকা</th></tr></thead>
+          <thead><tr><th>বিবরণ</th><th>বিল</th><th class="num">টাকা</th></tr></thead>
           <tbody>
             <?php foreach ($receipt['lines'] as $line): ?>
               <tr>

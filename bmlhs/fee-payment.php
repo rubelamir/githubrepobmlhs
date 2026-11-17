@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dues = $portalDues($portalStudentId);
             $selected = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['invoices'] ?? [])), static fn (int $id): bool => isset($dues[$id]))));
             if ($selected === []) {
-                throw new RuntimeException('কোন ইনভয়েস পরিশোধ করবেন তা নির্বাচন করুন।');
+                throw new RuntimeException('কোন বিল পরিশোধ করবেন তা নির্বাচন করুন।');
             }
             if ($action === 'pay') {
                 $started = $portalOnline->start($gateway, $portalStudentId, $selected, (string) ($_POST['idempotency_key'] ?? ''), loginClientIp(), feePortalAbsoluteUrl('fee-payment-callback.php'));
@@ -241,7 +241,7 @@ schoolPageHero('অনলাইনে ফি পরিশোধ', 'শিক্�
     <section class="fee-portal-card">
         <h2 class="h5">পরিশোধের আগে মিলিয়ে নিন</h2>
         <table class="table table-sm align-middle mb-3">
-            <thead><tr><th>ইনভয়েস</th><th>বিবরণ</th><th class="text-end">বকেয়া</th></tr></thead>
+            <thead><tr><th>বিল</th><th>বিবরণ</th><th class="text-end">বকেয়া</th></tr></thead>
             <tbody>
                 <?php foreach ($portalReview['invoices'] as $due): ?>
                 <tr><td><?= h($due['invoice_no']) ?></td><td><?= h($due['label']) ?></td><td class="text-end text-nowrap"><?= h(Money::format($due['outstanding'])) ?></td></tr>
@@ -276,11 +276,11 @@ schoolPageHero('অনলাইনে ফি পরিশোধ', 'শিক্�
     <?php else: ?>
     <section class="fee-portal-card">
         <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
-            <h2 class="h5 mb-0">বকেয়া ইনভয়েস</h2>
+            <h2 class="h5 mb-0">বকেয়া বিল</h2>
             <span class="fw-semibold">মোট বকেয়া: <span class="text-danger text-nowrap"><?= h(Money::format($portalTotalDue)) ?></span></span>
         </div>
         <?php if ($portalAdvance > 0): ?>
-        <div class="alert alert-info py-2 small">অগ্রিম জমা আছে <?= h(Money::format($portalAdvance)) ?> — পরবর্তী ইনভয়েসে অফিস থেকে সমন্বয় করা হবে।</div>
+        <div class="alert alert-info py-2 small">অগ্রিম জমা আছে <?= h(Money::format($portalAdvance)) ?> — পরবর্তী বিলে অফিস থেকে সমন্বয় করা হবে।</div>
         <?php endif; ?>
         <?php if ($portalStudentDues === []): ?>
         <p class="text-success mb-0">কোনো বকেয়া নেই। ধন্যবাদ!</p>
@@ -290,7 +290,7 @@ schoolPageHero('অনলাইনে ফি পরিশোধ', 'শিক্�
             <input type="hidden" name="action" value="review">
             <div class="table-responsive">
                 <table class="table table-sm align-middle">
-                    <thead><tr><th class="text-center" style="width:3rem">বাছাই</th><th>ইনভয়েস</th><th>বিবরণ</th><th>শেষ তারিখ</th><th class="text-end">বকেয়া</th></tr></thead>
+                    <thead><tr><th class="text-center" style="width:3rem">বাছাই</th><th>বিল</th><th>বিবরণ</th><th>শেষ তারিখ</th><th class="text-end">বকেয়া</th></tr></thead>
                     <tbody>
                         <?php foreach ($portalStudentDues as $due): ?>
                         <tr>

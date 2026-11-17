@@ -20,6 +20,9 @@ $sessionYear = (string) ($_GET['session_year'] ?? AuditTrail::now()->format('Y')
 if (!in_array($sessionYear, accSessionYears(), true)) {
     $sessionYear = AuditTrail::now()->format('Y');
 }
+$q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 40);
+$searchHits = $q !== '' ? accStudents()->search($access, Capability::FEES_VIEW_CLASS, $sessionYear, $q) : [];
+$searchDues = $searchHits === [] ? [] : accInvoices()->duesByStudent(array_map(static fn (array $hit): int => (int) $hit['id'], $searchHits), $sessionYear);
 $selection = accClassSelection($access, (int) ($_GET['cls'] ?? 0), (int) ($_GET['sections'] ?? 0));
 $classId = $selection['class_id'];
 $sectionId = $selection['section_id'];
@@ -56,12 +59,67 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">বকেয়া তালিকা</h3>
-            <p class="text-secondary mb-0">কার কত বাকি। বিল তৈরি না থাকলে তালিকা খালি থাকে।<?= $access->hasSchoolWideScope() ? '' : ' আপনি শুধু নিজের শ্রেণী/শাখা দেখতে পাবেন।' ?></p>
+            <p class="text-secondary mb-0">নাম বা রোল লিখুন, অথবা শ্রেণী খুলুন। বিল তৈরি না থাকলে বকেয়া শূন্য থাকে।</p>
           </div>
         </div>
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
+            <form method="get" class="card mb-3">
+              <div class="card-body">
+                <div class="row g-2 align-items-end">
+                  <div class="col-sm-4 col-lg-2">
+                    <label class="form-label" for="due-session">সেশন</label>
+                    <select class="form-select" id="due-session" name="session_year">
+                      <?php foreach (accSessionYears() as $year): ?><option value="<?= h($year) ?>"<?= $year === $sessionYear ? ' selected' : '' ?>><?= h(bnDigits($year)) ?></option><?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="col-sm-8 col-lg-10">
+                    <label class="form-label" for="due-q">নাম বা রোল</label>
+                    <div class="input-group">
+                      <input class="form-control" id="due-q" name="q" value="<?= h($q) ?>" maxlength="40" placeholder="নাম বা রোল লিখুন" autocomplete="off">
+                      <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>খুঁজুন</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+            <?php if ($q !== ''): ?>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title mb-0">খোঁজার ফল</h3></div>
+                <div class="card-body p-0">
+                  <?php if ($searchHits === []): ?>
+                    <p class="text-secondary p-3 mb-0">এই নাম বা রোলে কেউ নেই। শ্রেণী দিয়েও দেখতে পারেন।</p>
+                  <?php else: ?>
+                    <div class="table-responsive">
+                      <table class="table table-hover align-middle mb-0 acc-table-stack">
+                        <thead><tr><th>রোল</th><th>নাম</th><th>শ্রেণী</th><th class="text-end">বকেয়া</th><th class="text-end"></th></tr></thead>
+                        <tbody>
+                          <?php foreach ($searchHits as $hit): ?>
+                            <?php
+                            $hitId = (int) $hit['id'];
+                            $hitDue = $searchDues[$hitId]['due'] ?? 0;
+                            $hitSection = StudentDirectory::sectionIdOf($hit);
+                            $hitCollect = $access->canForClass(Capability::FEES_COLLECT, (int) $hit['cls'], $hitSection);
+                            ?>
+                            <tr>
+                              <td data-label="রোল"><?= h(bnDigits((string) $hit['cls_roll'])) ?></td>
+                              <td data-label="নাম"><?= h(StudentDirectory::displayName($hit)) ?></td>
+                              <td data-label="শ্রেণী"><?= h((string) $hit['class_name_ban']) ?><?= trim((string) $hit['section_name_ban']) !== '' ? ' — ' . h((string) $hit['section_name_ban']) : '' ?></td>
+                              <td class="text-end" data-label="বকেয়া"><strong class="<?= $hitDue > 0 ? 'text-danger' : 'text-secondary' ?>"><?= h(Money::format($hitDue)) ?></strong></td>
+                              <td class="text-end" data-label="বিস্তারিত">
+                                <a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php', $hitId, 'acc_student')) ?>">বিবরণ</a>
+                                <?php if ($hitCollect && $hitDue > 0): ?><a class="btn btn-sm btn-primary" href="<?= h(signedRecordUrl('collect.php', $hitId, 'acc_student')) ?>">আদায়</a><?php endif; ?>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
+                  <?php endif; ?>
+                </div>
+              </div>
+            <?php endif; ?>
             <div class="card mb-3">
               <form method="get" class="card-body" data-student-filter>
                 <div class="row g-2 align-items-end">
@@ -102,7 +160,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>রোল</th><th>নাম</th><th>ফি-শ্রেণী</th><th class="text-end">ইনভয়েস</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বকেয়া</th><th class="text-end">বিস্তারিত</th></tr></thead>
+                        <thead><tr><th>রোল</th><th>নাম</th><th>ফি-শ্রেণী</th><th class="text-end">বিল</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বকেয়া</th><th class="text-end">বিস্তারিত</th></tr></thead>
                         <tbody>
                           <?php foreach ($students as $student): ?>
                             <?php $studentId = (int) $student['id']; $due = $dues[$studentId] ?? ['invoices' => 0, 'net' => 0, 'paid' => 0, 'due' => 0]; ?>
@@ -110,7 +168,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td data-label="রোল"><?= h(bnDigits((string) $student['cls_roll'])) ?></td>
                               <td data-label="নাম"><?= h(StudentDirectory::displayName($student)) ?></td>
                               <td data-label="ফি-শ্রেণী"><?= h((string) ($categories[$studentId]['category_name'] ?? 'সাধারণ')) ?></td>
-                              <td class="text-end" data-label="ইনভয়েস"><?= h(bnDigits((string) $due['invoices'])) ?></td>
+                              <td class="text-end" data-label="বিল"><?= h(bnDigits((string) $due['invoices'])) ?></td>
                               <td class="text-end" data-label="প্রাপ্য"><?= h(Money::format($due['net'])) ?></td>
                               <td class="text-end" data-label="আদায়"><?= h(Money::format($due['paid'])) ?></td>
                               <td class="text-end" data-label="বকেয়া"><strong class="<?= $due['due'] > 0 ? 'text-danger' : '' ?>"><?= h(Money::format($due['due'])) ?></strong></td>

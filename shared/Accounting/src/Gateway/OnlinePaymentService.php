@@ -179,7 +179,7 @@ final class OnlinePaymentService
         }
         $invoiceIds = array_values(array_unique(array_filter(array_map('intval', $invoiceIds), static fn (int $id): bool => $id > 0)));
         if ($invoiceIds === []) {
-            throw new RuntimeException('কোন ইনভয়েস পরিশোধ করবেন তা নির্বাচন করুন।');
+            throw new RuntimeException('কোন বিল পরিশোধ করবেন তা নির্বাচন করুন।');
         }
         $fee = 0;
         $covered = [];
@@ -190,11 +190,11 @@ final class OnlinePaymentService
             }
         }
         if ($fee < 100 || count($covered) !== count($invoiceIds)) {
-            throw new RuntimeException('নির্বাচিত ইনভয়েসে পরিশোধযোগ্য বকেয়া নেই; পাতাটি আবার খুলুন।');
+            throw new RuntimeException('নির্বাচিত বিলে পরিশোধযোগ্য বকেয়া নেই; পাতাটি আবার খুলুন।');
         }
         $quote = $this->quote($code, $fee);
         if ($quote['payable'] > self::MAX_PAYABLE) {
-            throw new RuntimeException('একবারে এত টাকা অনলাইনে পরিশোধ করা যাবে না; ইনভয়েস কম নির্বাচন করুন।');
+            throw new RuntimeException('একবারে এত টাকা অনলাইনে পরিশোধ করা যাবে না; বিল কম নির্বাচন করুন।');
         }
         $ip = mb_substr($clientIp, 0, 45);
 
@@ -520,7 +520,7 @@ final class OnlinePaymentService
                 $problems[] = 'পরিমাণ মেলেনি (' . Money::format((int) $result->amount) . ' ≠ ' . Money::format($payable) . ')';
             }
             if ($result->invoiceNo !== '' && $result->invoiceNo !== $txn['merchant_invoice_no']) {
-                $problems[] = 'ইনভয়েস নম্বর মেলেনি';
+                $problems[] = 'পেমেন্ট নম্বর মেলেনি';
             }
             if ($result->paymentRef !== '' && $result->paymentRef !== $txn['gateway_payment_id']) {
                 $problems[] = 'পেমেন্ট আইডি মেলেনি';
