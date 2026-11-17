@@ -3018,7 +3018,7 @@ html.school-loading body {
 .school-prayer-cols,
 .school-prayer-item {
   display: grid;
-  grid-template-columns: minmax(3.4rem, 0.9fr) 1fr 1fr;
+  grid-template-columns: minmax(5.4rem, 1.15fr) 1fr 1fr;
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.45rem;
