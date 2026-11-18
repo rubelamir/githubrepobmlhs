@@ -180,8 +180,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 </div>
               <?php endif; ?>
-              <details class="card mb-3 acc-fold"<?= $listReady ? ' open' : '' ?>>
-                <summary class="card-header">শ্রেণী দিয়ে তালিকা</summary>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title mb-0">শ্রেণী দিয়ে তালিকা</h3></div>
                 <form method="get" class="card-body" data-student-filter>
                   <div class="row g-2 align-items-end">
                     <?= accClassFilterFields($selection, $sessionYear, 'col-sm-6 col-lg-3') ?>
@@ -214,7 +214,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <?php endif; ?>
                   </div>
               <?php endif; ?>
-              </details>
+              </div>
             <?php else: ?>
               <div class="card mb-3">
                 <div class="card-body d-flex flex-wrap gap-3 align-items-center">

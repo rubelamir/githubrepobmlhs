@@ -64,15 +64,6 @@
   font-size: 0.8rem;
 }
 
-.acc-fold > summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.acc-fold > summary::-webkit-details-marker {
-  display: none;
-}
-
 .acc-stat .acc-stat-label {
   color: var(--bs-secondary-color);
   font-size: 0.85rem;
