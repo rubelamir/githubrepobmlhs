@@ -160,6 +160,9 @@ final class VoucherService
             $service->assertEditable($actor, $voucher);
             $service->periods->assertOpen((string) $voucher['voucher_date']);
         }, self::SUBMITTED, 'voucher.submit', 'ভাউচার অনুমোদনের জন্য জমা #');
+        if ($actor->can(Capability::VOUCHER_APPROVE)) {
+            $this->approve($actor, $audit, $id);
+        }
     }
 
     public function cancel(AccessContext $actor, AuditTrail $audit, int $id): void

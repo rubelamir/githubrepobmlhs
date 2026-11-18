@@ -99,15 +99,22 @@ final class BankService
             $audit->record('bank_deposit.submit', 'bank_deposit', $id, null, ['deposit_no' => $number, 'bank' => $bank['code'], 'date' => $date, 'amount' => Money::toDb($amount), 'slip_no' => $slip], 'ব্যাংক জমা ' . $number . ': ' . Money::format($amount));
             $this->db->commit();
         } catch (PDOException $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             $raced = $exception->getCode() === '23000' ? \fetchRows($this->db, 'SELECT id FROM acc_bank_deposits WHERE idempotency_key = :key', ['key' => $idempotencyKey]) : [];
             if ($raced !== []) {
                 return ['deposit_id' => (int) $raced[0]['id'], 'duplicate' => true];
             }
             throw $exception;
         } catch (\Throwable $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $exception;
+        }
+        if ($actor->can(Capability::VOUCHER_APPROVE)) {
+            $this->decideDeposit($actor, $audit, $id, true, '');
         }
 
         return ['deposit_id' => $id, 'duplicate' => false];

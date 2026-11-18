@@ -43,7 +43,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = accRefunds()->request($access, accAudit(), $txnId, (string) ($_POST['amount'] ?? ''), (string) ($_POST['reason'] ?? ''), (string) ($_POST['idempotency_key'] ?? ''));
             redirectWithMessage('refunds.php', $result['duplicate'] ? 'info' : 'success', $result['duplicate']
                 ? 'এই রিফান্ড অনুরোধ আগেই জমা হয়েছে।'
-                : 'রিফান্ড অনুরোধ জমা হয়েছে। প্রধান শিক্ষক অনুমোদন করলে গেটওয়েতে পাঠানো হবে।');
+                : ($access->can(Capability::REFUND_APPROVE) ? 'রিফান্ড গেটওয়েতে পাঠানো হয়েছে।' : 'রিফান্ড অনুরোধ জমা হয়েছে। প্রধান শিক্ষক অনুমোদন করলে গেটওয়েতে পাঠানো হবে।'));
         }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
@@ -178,7 +178,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
 
               <?php if ($canRefund && $txn['status'] === OnlinePaymentService::SUCCESS): ?>
-                <form method="post" class="card mb-3" data-acc-confirm="রিফান্ড অনুরোধ জমা দেবেন? প্রধান শিক্ষকের অনুমোদনের পর গেটওয়েতে পাঠানো হবে।">
+                <form method="post" class="card mb-3" data-acc-confirm="<?= $canVerify ? 'রিফান্ড এখনই গেটওয়েতে পাঠাবেন?' : 'রিফান্ড অনুরোধ জমা দেবেন? প্রধান শিক্ষকের অনুমোদনের পর গেটওয়েতে পাঠানো হবে।' ?>">
                   <?= csrfField() ?>
                   <input type="hidden" name="action" value="refund">
                   <input type="hidden" name="idempotency_key" value="<?= h(PaymentService::newIdempotencyKey()) ?>">

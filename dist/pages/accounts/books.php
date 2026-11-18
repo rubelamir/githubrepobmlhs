@@ -41,7 +41,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             redirectWithMessage(
                 signedRecordUrl('voucher.php', $result['voucher_id'], 'acc_voucher'),
                 'success',
-                $result['duplicate'] ? 'এই স্থানান্তর আগেই জমা হয়েছে।' : 'স্থানান্তর জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় উঠবে।'
+                $result['duplicate'] ? 'এই স্থানান্তর আগেই জমা হয়েছে।' : ($access->can(Capability::VOUCHER_APPROVE) ? 'স্থানান্তর খাতায় উঠে গেছে।' : 'স্থানান্তর জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় উঠবে।')
             );
         }
         if ($action === 'opening') {
@@ -158,7 +158,7 @@ $options = static function (array $rows, int $skip = 0): string {
             <?php if ($canWrite): ?>
             <div class="row g-3">
               <div class="col-lg-6">
-                <form method="post" class="card" data-acc-confirm="টাকা এক জায়গা থেকে অন্য জায়গায় সরাবেন? যাচাইয়ের পর খাতায় উঠবে।">
+                <form method="post" class="card" data-acc-confirm="<?= $access->can(Capability::VOUCHER_APPROVE) ? 'টাকা এক জায়গা থেকে অন্য জায়গায় সরাবেন? সাথে সাথে খাতায় উঠবে।' : 'টাকা এক জায়গা থেকে অন্য জায়গায় সরাবেন? যাচাইয়ের পর খাতায় উঠবে।' ?>">
                   <div class="card-header"><h3 class="card-title mb-0">টাকা সরান</h3></div>
                   <div class="card-body">
                     <?= csrfField() ?><input type="hidden" name="action" value="transfer">

@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $result = $settlements->submit($access, accAudit(), (string) ($_POST['idempotency_key'] ?? ''), $_POST);
             redirectWithMessage('settlements.php', $result['duplicate'] ? 'info' : 'success', $result['duplicate']
                 ? 'এই সেটেলমেন্ট আগেই জমা হয়েছে।'
-                : 'সেটেলমেন্ট জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় এন্ট্রি হবে।');
+                : ($canVerify ? 'সেটেলমেন্ট খাতায় উঠে গেছে।' : 'সেটেলমেন্ট জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় এন্ট্রি হবে।'));
         }
         if ($action === 'verify' || $action === 'reject') {
             $settlements->decide($access, accAudit(), postedRecordId('acc_settlement'), $action === 'verify', (string) ($_POST['remark'] ?? ''));
@@ -51,7 +51,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">bKash থেকে ব্যাংক</h3>
-            <p class="text-secondary mb-0">বিকাশ মার্চেন্ট হিসাব থেকে স্কুলের ব্যাংকে টাকা এলে স্টেটমেন্ট অনুযায়ী লিপিবদ্ধ করুন। মোট থেকে চার্জ বাদ দিয়ে নেট ব্যাংকে যায়; চার্জ আলাদা খরচ (৫১৬০)। প্রধান শিক্ষকের যাচাইয়ের আগে কোনো এন্ট্রি হয় না।</p>
+            <p class="text-secondary mb-0">বিকাশ মার্চেন্ট হিসাব থেকে স্কুলের ব্যাংকে টাকা এলে স্টেটমেন্ট অনুযায়ী লিপিবদ্ধ করুন। মোট থেকে চার্জ বাদ দিয়ে নেট ব্যাংকে যায়; চার্জ আলাদা খরচ (৫১৬০)। <?= $canVerify ? 'আপনার এন্ট্রি সাথে সাথে খাতায় ওঠে।' : 'প্রধান শিক্ষকের যাচাইয়ের আগে কোনো এন্ট্রি হয় না।' ?></p>
           </div>
         </div>
         <div class="app-content">

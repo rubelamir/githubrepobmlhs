@@ -36,7 +36,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between">
               <div>
                 <h3 class="mb-1">আয়-খরচ তালিকা</h3>
-                <p class="text-secondary mb-0">প্রতিদিনের খরচ, অন্য আয় ও টাকা সরানো «আয় ও খরচ» থেকে হয়। প্রধান শিক্ষক যাচাই করলে তবেই খাতায় ওঠে। ফি আদায় নিজে থেকেই যোগ হয়।</p>
+                <p class="text-secondary mb-0">প্রতিদিনের খরচ, অন্য আয় ও টাকা সরানো «আয় ও খরচ» থেকে হয়। <?= $canApprove ? 'আপনার এন্ট্রি সাথে সাথে খাতায় ওঠে। হিসাব রক্ষকের জমা আপনি যাচাই করেন।' : 'প্রধান শিক্ষক যাচাই করলে তবেই খাতায় ওঠে।' ?> ফি আদায় নিজে থেকেই যোগ হয়।</p>
               </div>
               <?php if ($canCreate): ?>
                 <div class="d-flex flex-wrap gap-2">

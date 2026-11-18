@@ -37,7 +37,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             accAttachments()->assertValid($_FILES['slip'] ?? []);
             $result = $bank->submitDeposit($access, accAudit(), (string) ($_POST['idempotency_key'] ?? ''), $_POST);
             $deposit = $bank->deposit($result['deposit_id']);
-            $message = $result['duplicate'] ? 'এই জমা আগেই রেকর্ড হয়েছে (' . $deposit['deposit_no'] . ')।' : 'ব্যাংক জমা ' . $deposit['deposit_no'] . ' রেকর্ড হয়েছে; প্রধান শিক্ষক স্লিপ দেখে যাচাই করবেন।';
+            $message = $result['duplicate'] ? 'এই জমা আগেই রেকর্ড হয়েছে (' . $deposit['deposit_no'] . ')।' : ($canVerify ? 'ব্যাংক জমা ' . $deposit['deposit_no'] . ' খাতায় উঠে গেছে।' : 'ব্যাংক জমা ' . $deposit['deposit_no'] . ' রেকর্ড হয়েছে; প্রধান শিক্ষক স্লিপ দেখে যাচাই করবেন।');
             if (!$result['duplicate'] && isset($_FILES['slip'])) {
                 try {
                     accAttachments()->storeUploads($access, accAudit(), 'deposit', $result['deposit_id'], $_FILES['slip']);
@@ -85,7 +85,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ব্যাংক জমা</h3>
-            <p class="text-secondary mb-0">অফিসের নগদ টাকা ব্যাংকে জমা দিয়ে স্লিপসহ রেকর্ড করুন; প্রধান শিক্ষক যাচাই করলে হিসাবে নগদ কমে ব্যাংক বাড়বে। ব্যাংক স্টেটমেন্টের সাথে প্রতিটি লেনদেন মিলিয়ে টিক দিন।</p>
+            <p class="text-secondary mb-0">অফিসের নগদ টাকা ব্যাংকে জমা দিয়ে স্লিপসহ রেকর্ড করুন। <?= $canVerify ? 'আপনার জমা সাথে সাথে খাতায় ওঠে।' : 'প্রধান শিক্ষক যাচাই করলে হিসাবে নগদ কমে ব্যাংক বাড়বে।' ?> ব্যাংক স্টেটমেন্টের সাথে প্রতিটি লেনদেন মিলিয়ে টিক দিন।</p>
           </div>
         </div>
         <div class="app-content">

@@ -31,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $url = signedRecordUrl('voucher.php', $result['voucher_id'], 'acc_voucher');
         $message = $result['duplicate']
             ? 'এই এন্ট্রি আগেই জমা হয়েছে।'
-            : 'জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় উঠবে।';
+            : ($access->can(Capability::VOUCHER_APPROVE) ? 'খাতায় উঠে গেছে।' : 'জমা হয়েছে। প্রধান শিক্ষক যাচাই করলে খাতায় উঠবে।');
         if (!$result['duplicate'] && isset($_FILES['attachments'])) {
             try {
                 accAttachments()->storeUploads($access, accAudit(), 'voucher', $result['voucher_id'], $_FILES['attachments']);
@@ -82,7 +82,7 @@ $namedOptions = static function (array $rows): string {
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">আয় ও খরচ</h3>
-            <p class="text-secondary mb-0">ফি আদায় আলাদা পাতায়। এখানে অফিসের খরচ, দান বা অনুদান, আর কর্মচারী অগ্রিম। জমা দিলে প্রধান শিক্ষক যাচাই করেন। ভুল এন্ট্রি মুছে ফেলা হয় না; কারণ লিখে বাতিল হয়।</p>
+            <p class="text-secondary mb-0">ফি আদায় আলাদা পাতায়। এখানে অফিসের খরচ, দান বা অনুদান, আর কর্মচারী অগ্রিম। <?= $access->can(Capability::VOUCHER_APPROVE) ? 'আপনার এন্ট্রি সাথে সাথে খাতায় ওঠে।' : 'জমা দিলে প্রধান শিক্ষক যাচাই করেন।' ?> ভুল এন্ট্রি মুছে ফেলা হয় না; কারণ লিখে বাতিল হয়।</p>
           </div>
         </div>
         <div class="app-content">

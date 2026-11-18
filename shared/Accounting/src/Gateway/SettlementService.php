@@ -117,15 +117,22 @@ final class SettlementService
             ], 'গেটওয়ে সেটেলমেন্ট ' . $number);
             $this->db->commit();
         } catch (PDOException $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             $raced = $exception->getCode() === '23000' ? \fetchRows($this->db, 'SELECT id FROM acc_settlements WHERE idempotency_key = :k', ['k' => $idempotencyKey]) : [];
             if ($raced !== []) {
                 return ['settlement_id' => (int) $raced[0]['id'], 'duplicate' => true];
             }
             throw $exception;
         } catch (\Throwable $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $exception;
+        }
+        if ($actor->can(Capability::VOUCHER_APPROVE)) {
+            $this->decide($actor, $audit, $id, true, '');
         }
 
         return ['settlement_id' => $id, 'duplicate' => false];

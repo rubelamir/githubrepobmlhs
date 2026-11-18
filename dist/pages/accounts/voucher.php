@@ -27,7 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         switch ($action) {
             case 'submit':
                 $vouchers->submit($access, accAudit(), $voucherId);
-                redirectWithMessage($self, 'success', 'ভাউচার অনুমোদনের জন্য জমা হয়েছে।');
+                redirectWithMessage($self, 'success', $canApprove ? 'ভাউচার খাতায় উঠে গেছে।' : 'ভাউচার অনুমোদনের জন্য জমা হয়েছে।');
             case 'approve':
                 $number = $vouchers->approve($access, accAudit(), $voucherId);
                 redirectWithMessage($self, 'success', 'ভাউচার অনুমোদিত হয়েছে — নং ' . $number . '।');
@@ -202,7 +202,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <?php if ($editable): ?>
                       <div class="d-flex flex-wrap gap-2">
                         <a class="btn btn-outline-primary" href="<?= h(signedRecordUrl('voucher-form.php', $voucherId, 'acc_voucher')) ?>"><i class="bi bi-pencil"></i> সংশোধন</a>
-                        <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="submit"><button class="btn btn-primary" type="submit"><i class="bi bi-send"></i> অনুমোদনের জন্য জমা</button></form>
+                        <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="submit"><button class="btn btn-primary" type="submit"><i class="bi bi-send"></i> <?= $canApprove ? 'খাতায় তুলুন' : 'অনুমোদনের জন্য জমা' ?></button></form>
                         <form method="post" data-acc-confirm="ভাউচারটি বাতিল করবেন? রেকর্ড থেকে যাবে, কিন্তু হিসাবে যোগ হবে না।" data-acc-confirm-variant="danger"><?= csrfField() ?><input type="hidden" name="action" value="cancel"><button class="btn btn-outline-danger" type="submit">বাতিল</button></form>
                       </div>
                     <?php endif; ?>

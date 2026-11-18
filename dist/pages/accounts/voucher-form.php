@@ -68,7 +68,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (!$result['duplicate'] && ($_POST['after'] ?? '') === 'submit') {
             $vouchers->submit($access, accAudit(), $savedId);
         }
-        $message = $result['duplicate'] ? 'এই ভাউচার আগেই সংরক্ষিত হয়েছে।' : (($_POST['after'] ?? '') === 'submit' ? 'ভাউচার অনুমোদনের জন্য জমা হয়েছে।' : 'খসড়া সংরক্ষিত হয়েছে।');
+        $submitted = ($_POST['after'] ?? '') === 'submit';
+        $message = $result['duplicate'] ? 'এই ভাউচার আগেই সংরক্ষিত হয়েছে।' : ($submitted ? ($access->can(Capability::VOUCHER_APPROVE) ? 'ভাউচার খাতায় উঠে গেছে।' : 'ভাউচার অনুমোদনের জন্য জমা হয়েছে।') : 'খসড়া সংরক্ষিত হয়েছে।');
         if ($uploaded > 0) {
             $message .= ' সংযুক্তি: ' . bnDigits((string) $uploaded) . 'টি।';
         }
@@ -180,7 +181,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <div class="card-footer d-flex flex-wrap gap-2">
                 <button class="btn btn-outline-primary" type="submit" name="after" value="draft"><i class="bi bi-save me-1"></i>খসড়া সংরক্ষণ</button>
-                <button class="btn btn-primary" type="submit" name="after" value="submit"><i class="bi bi-send me-1"></i>সংরক্ষণ ও অনুমোদনের জন্য জমা</button>
+                <button class="btn btn-primary" type="submit" name="after" value="submit"><i class="bi bi-send me-1"></i><?= $access->can(Capability::VOUCHER_APPROVE) ? 'সংরক্ষণ ও খাতায় তুলুন' : 'সংরক্ষণ ও অনুমোদনের জন্য জমা' ?></button>
                 <a class="btn btn-link ms-auto" href="<?= $voucher === null ? 'vouchers.php' : h(signedRecordUrl('voucher.php', $voucherId, 'acc_voucher')) ?>">বাতিল</a>
               </div>
             </form>

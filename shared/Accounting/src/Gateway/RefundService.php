@@ -123,15 +123,22 @@ final class RefundService
             $audit->record('refund.request', 'refund', $id, null, ['refund_no' => $number, 'gateway_txn_id' => $txnId, 'amount' => Money::toDb($amount), 'reason' => $reason], 'রিফান্ড অনুরোধ ' . $number);
             $this->db->commit();
         } catch (PDOException $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             $raced = $exception->getCode() === '23000' ? \fetchRows($this->db, 'SELECT id FROM acc_refunds WHERE idempotency_key = :k', ['k' => $idempotencyKey]) : [];
             if ($raced !== []) {
                 return ['refund_id' => (int) $raced[0]['id'], 'duplicate' => true];
             }
             throw $exception;
         } catch (\Throwable $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $exception;
+        }
+        if ($actor->can(Capability::REFUND_APPROVE)) {
+            $this->decide($actor, $audit, $id, true, '');
         }
 
         return ['refund_id' => $id, 'duplicate' => false];
