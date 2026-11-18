@@ -53,19 +53,12 @@ try {
 }
 $check($threw, 'negative amount rejected');
 
-$kept = PaymentService::resolveInvoiceSelection([4, 0, 4], false, false);
+$kept = PaymentService::resolveInvoiceSelection([4, 0, 4], false);
 $check($kept['ids'] === [4] && $kept['settle_none'] === false, 'callers without a bill list still settle the given invoices');
-$all = PaymentService::resolveInvoiceSelection([], false, false);
+$all = PaymentService::resolveInvoiceSelection([], false);
 $check($all['ids'] === [] && $all['settle_none'] === false, 'an empty list without a bill list still means every outstanding bill');
-$advanceOnly = PaymentService::resolveInvoiceSelection([], true, true);
-$check($advanceOnly['ids'] === [] && $advanceOnly['settle_none'] === true, 'unticked bills with advance stay off the bills');
-$threw = false;
-try {
-    PaymentService::resolveInvoiceSelection([], true, false);
-} catch (RuntimeException) {
-    $threw = true;
-}
-$check($threw, 'unticked bills without advance are rejected');
+$unticked = PaymentService::resolveInvoiceSelection([], true);
+$check($unticked['ids'] === [] && $unticked['settle_none'] === true, 'unticked bills are not applied until a bill is chosen');
 
 $check(AmountInWords::taka(0) === 'শূন্য টাকা মাত্র', 'zero');
 $check(AmountInWords::taka(200000) === 'দুই হাজার টাকা মাত্র', 'two thousand');

@@ -48,7 +48,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $student) {
                 (string) ($_POST['amount'] ?? ''),
                 (string) ($_POST['idempotency_key'] ?? ''),
                 array_map('intval', is_array($_POST['invoices'] ?? null) ? $_POST['invoices'] : []),
-                (string) ($_POST['allow_advance'] ?? '') === '1',
                 (string) ($_POST['payer_name'] ?? ''),
                 (string) ($_POST['note'] ?? ''),
                 true
@@ -281,11 +280,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="card-body">
                       <label class="form-label" for="pay-amount">গৃহীত টাকা (৳)</label>
                       <input class="form-control form-control-lg text-end" id="pay-amount" name="amount" inputmode="decimal" required maxlength="16" value="<?= $totalDue > 0 ? h(Money::toInput($totalDue)) : '' ?>" data-acc-amount autocomplete="off">
-                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে।</div>
-                      <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" name="allow_advance" value="1" id="pay-advance"<?= $invoiceGroups === [] ? ' checked' : '' ?>>
-                        <label class="form-check-label" for="pay-advance">অতিরিক্ত টাকা আগে বাকি বকেয়া থেকে কাটুন; বকেয়া শেষ হলে অগ্রিম রাখুন</label>
-                      </div>
+                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে। বেশি দিলে বাকি বকেয়া আগে কাটে; বকেয়া শেষ হলে অগ্রিম থাকে।</div>
                       <div class="row g-2 mt-1">
                         <div class="col-sm-6">
                           <label class="form-label small mb-1" for="pay-payer">প্রদানকারী <span class="text-secondary">(ঐচ্ছিক)</span></label>

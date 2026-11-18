@@ -124,18 +124,17 @@ final class PaymentService
      * The collection form posts no invoice ids when every box is unchecked.
      * That must not settle every bill. An empty list still means "all outstanding"
      * for callers that did not show a bill list ($onlySelected = false).
+     * Extra money is never refused: it pays any due that is still open, and stays
+     * as advance only when nothing remains.
      *
      * @param list<int|string> $postedIds
      * @return array{ids: list<int>, settle_none: bool}
      */
-    public static function resolveInvoiceSelection(array $postedIds, bool $onlySelected, bool $allowAdvance): array
+    public static function resolveInvoiceSelection(array $postedIds, bool $onlySelected): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $postedIds), static fn (int $id): bool => $id > 0)));
         if ($ids !== [] || !$onlySelected) {
             return ['ids' => $ids, 'settle_none' => false];
-        }
-        if (!$allowAdvance) {
-            throw new RuntimeException('কোনো বিল টিক দেওয়া হয়নি। যে বিল পরিশোধ হবে তা টিক দিন।');
         }
 
         return ['ids' => [], 'settle_none' => true];
@@ -152,7 +151,6 @@ final class PaymentService
         string $amountInput,
         string $idempotencyKey,
         array $invoiceIds,
-        bool $allowAdvance,
         string $payerName,
         string $note,
         bool $onlySelected = false
@@ -167,7 +165,7 @@ final class PaymentService
         }
         $payerName = FeeCatalog::text($payerName, 120);
         $note = FeeCatalog::text($note, 255);
-        $selection = self::resolveInvoiceSelection($invoiceIds, $onlySelected, $allowAdvance);
+        $selection = self::resolveInvoiceSelection($invoiceIds, $onlySelected);
         $invoiceIds = $selection['ids'];
 
         $existing = $this->byIdempotencyKey($idempotencyKey);
@@ -177,8 +175,13 @@ final class PaymentService
 
         $this->db->beginTransaction();
         try {
-            $lines = $selection['settle_none'] ? [] : $this->outstandingLines($studentId, true);
-            if (!$selection['settle_none'] && $invoiceIds !== []) {
+            $lines = $this->outstandingLines($studentId, true);
+            if ($selection['settle_none'] && $lines !== []) {
+                throw new RuntimeException('কোনো বিল টিক দেওয়া হয়নি। যে বিল পরিশোধ হবে তা টিক দিন।');
+            }
+            if ($selection['settle_none']) {
+                $lines = [];
+            } elseif ($invoiceIds !== []) {
                 $lines = array_values(array_filter($lines, static fn (array $line): bool => in_array((int) $line['invoice_id'], $invoiceIds, true)));
             }
             $split = Allocator::allocate(
@@ -188,10 +191,6 @@ final class PaymentService
                 ], $lines),
                 $amount
             );
-            if ($split['remainder'] > 0 && !$allowAdvance) {
-                $due = $amount - $split['remainder'];
-                throw new RuntimeException('পরিমাণটি নির্বাচিত বকেয়ার (' . Money::format($due) . ') চেয়ে বেশি। অতিরিক্ত টাকা আগে বাকি বকেয়া থেকে কাটবে, বকেয়া না থাকলে অগ্রিম থাকবে — সেজন্য "অগ্রিম" টিক দিন।');
-            }
 
             $now = AuditTrail::now();
             $receiptNo = Sequence::format('RCT', $now->format('Y'), Sequence::next($this->db, 'RCT', $now->format('Y')));
