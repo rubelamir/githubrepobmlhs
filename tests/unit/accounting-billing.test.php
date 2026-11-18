@@ -116,6 +116,14 @@ $check(FeeStructureRepository::resolve($inactive, 1, 13, $general, $general, '20
 $check(ConcessionService::discountFor(['kind' => ConcessionService::PERCENT, 'value' => '25.00'], 90000) === 22500, '25% concession');
 $check(ConcessionService::discountFor(['kind' => ConcessionService::FIXED, 'value' => '1000.00'], 40000) === 40000, 'fixed concession capped at amount');
 $check(ConcessionService::describe(['kind' => ConcessionService::PERCENT, 'value' => '12.50']) === '১২.৫%', 'describe percent');
+$check(BillingPeriod::coversMonthlyRate('M:2026-03', '2026-03-15'), '15 March sets the March collection rate');
+$check(!BillingPeriod::coversMonthlyRate('M:2026-02', '2026-03-15'), 'February stays before a March effective date');
+$check(BillingPeriod::coversMonthlyRate('M:2026-04', '2026-03-15'), 'April follows a March effective date');
+$check(BillingPeriod::coversMonthlyRate('M:2026-03', '2026-01-01', '2026-03-20'), 'a rate ending mid-March still covers March');
+$check(!BillingPeriod::coversMonthlyRate('M:2026-04', '2026-01-01', '2026-03-20'), 'a rate ending in March does not cover April');
+$check(!BillingPeriod::coversMonthlyRate('S:2026', '2026-03-15'), 'session bills are outside the monthly rate');
+$check(BillingPeriod::monthly('2026-03')->collectionDate()->format('Y-m-d') === '2026-03-31', 'March rate is chosen through the end of March');
+$check(BillingPeriod::monthly('2026-02')->collectionDate()->format('Y-m-d') === '2026-02-28', 'February rate is chosen through the end of February');
 $check(BillingPeriod::referenceDateForKey('M:2026-01', '2026-01-31') === '2026-01-01', 'January bill is covered from the 1st');
 $check(BillingPeriod::referenceDateForKey('S:2026', '2026-03-01') === '2026-01-01', 'session bill is covered from 1 January');
 $check(BillingPeriod::referenceDateForKey('A:2026', '2026-02-01') === '2026-01-01', 'admission bill is covered from 1 January');

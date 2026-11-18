@@ -105,6 +105,34 @@ final class BillingPeriod
     }
 
     /**
+     * A stipend or scholarship monthly rate covers this bill when its effective
+     * date falls in the billed month or earlier. 15 March covers March.
+     */
+    public static function coversMonthlyRate(string $billingKey, string $effectiveFrom, ?string $effectiveTo = null): bool
+    {
+        if (preg_match('/^M:(\d{4})-(\d{2})$/', $billingKey, $bill) !== 1 || (int) $bill[2] < 1 || (int) $bill[2] > 12) {
+            return false;
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $effectiveFrom, $from) !== 1 || (int) $from[2] < 1 || (int) $from[2] > 12) {
+            return false;
+        }
+        $billMonth = $bill[1] . '-' . $bill[2];
+        if ($billMonth < $from[1] . '-' . $from[2]) {
+            return false;
+        }
+        if ($effectiveTo !== null && $effectiveTo !== '') {
+            if (preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $effectiveTo, $to) !== 1 || (int) $to[2] < 1 || (int) $to[2] > 12) {
+                return false;
+            }
+            if ($billMonth > $to[1] . '-' . $to[2]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Date used to decide whether a concession covers an existing bill.
      * Monthly and other bills use the 1st of that month. Session and admission use 1 January.
      * An exam bill uses its issue date.
@@ -210,6 +238,19 @@ final class BillingPeriod
     /** Date used to pick the applicable rate, fee category and concession. */
     public function referenceDate(): DateTimeImmutable
     {
+        return $this->referenceDate;
+    }
+
+    /**
+     * Date used to pick a stipend or scholarship monthly rate.
+     * Any effective date in the billed month counts for that whole month.
+     */
+    public function collectionDate(): DateTimeImmutable
+    {
+        if ($this->kind === self::MONTHLY) {
+            return $this->referenceDate->modify('last day of this month');
+        }
+
         return $this->referenceDate;
     }
 

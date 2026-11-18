@@ -100,8 +100,9 @@ final class InvoiceService
 
         $studentIds = array_map(static fn (array $student): int => (int) $student['id'], $students);
         $referenceDate = $period->referenceDate()->format('Y-m-d');
+        $collectionDate = $period->collectionDate()->format('Y-m-d');
         $rates = $this->structures->rowsForClass($sessionYear, $classId, $sectionId);
-        $categoryMap = $this->categories->currentMap($studentIds, $sessionYear, $referenceDate);
+        $categoryMap = $this->categories->currentMap($studentIds, $sessionYear, $collectionDate);
         $concessionMap = $this->concessions->activeMap($studentIds, $sessionYear, $referenceDate);
         $generalId = $this->catalog->defaultCategoryId();
         $existing = $this->existingKeys($studentIds, $period->key());
@@ -116,7 +117,7 @@ final class InvoiceService
             $hadRate = false;
             foreach ($heads as $head) {
                 $headId = (int) $head['id'];
-                $rate = FeeStructureRepository::resolve($rates, $headId, $studentSection, $categoryId, $generalId, $referenceDate);
+                $rate = FeeStructureRepository::resolve($rates, $headId, $studentSection, $categoryId, $generalId, $collectionDate);
                 if ($rate === null) {
                     continue;
                 }
@@ -471,8 +472,8 @@ final class InvoiceService
     }
 
     /**
-     * Writes an approved stipend or scholarship onto monthly bills from its effective date.
-     * Earlier months, and session, admission and exam bills, stay as they were.
+     * Writes an approved stipend or scholarship onto monthly bills from the month of its effective date.
+     * A date in the middle of a month covers that month. Earlier months, and session, admission and exam bills, stay as they were.
      * Caller holds the transaction. Collected money and the ledger are left as they are.
      *
      * @param array<string, mixed> $assignment
@@ -537,10 +538,11 @@ final class InvoiceService
         );
         $touched = [];
         foreach ($lines as $line) {
-            $reference = BillingPeriod::referenceDateForKey((string) $line['billing_key'], '');
-            if ($reference === null || $reference < $from || ($to !== null && $reference > $to)) {
+            if (!BillingPeriod::coversMonthlyRate((string) $line['billing_key'], $from, $to)) {
                 continue;
             }
+            $rateDate = BillingPeriod::monthly(substr((string) $line['billing_key'], 2))->collectionDate()->format('Y-m-d');
+            $concessionDate = BillingPeriod::referenceDateForKey((string) $line['billing_key'], '') ?? $rateDate;
             if (isset($pending[(int) $line['id']])) {
                 $result['skipped_waiver']++;
                 continue;
@@ -549,7 +551,7 @@ final class InvoiceService
             $sectionId = (int) $line['section_id'];
             $rateKey = $classId . ':' . $sectionId;
             $ratesByClass[$rateKey] ??= $this->structures->rowsForClass($session, $classId, $sectionId);
-            $rate = FeeStructureRepository::resolve($ratesByClass[$rateKey], (int) $line['fee_head_id'], $sectionId, $categoryId, $generalId, $reference);
+            $rate = FeeStructureRepository::resolve($ratesByClass[$rateKey], (int) $line['fee_head_id'], $sectionId, $categoryId, $generalId, $rateDate);
             if ($rate === null) {
                 continue;
             }
@@ -557,7 +559,7 @@ final class InvoiceService
                 $rate['amount'],
                 $rate['standard'],
                 $rate['category_id'],
-                self::concessionOnDate($concessions, (int) $line['fee_head_id'], $reference),
+                self::concessionOnDate($concessions, (int) $line['fee_head_id'], $concessionDate),
                 Money::fromDb($line['amount']),
                 Money::fromDb($line['standard_amount']),
                 (int) ($line['fee_category_id'] ?? 0),

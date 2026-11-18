@@ -132,7 +132,7 @@ final class StudentCategoryService
         $skipped = (int) ($result['skipped_waiver'] ?? 0);
         $note = '';
         if ($count > 0) {
-            $note .= ' কার্যকর তারিখ থেকে ' . \bnDigits((string) $count) . 'টি মাসিক বিলে নতুন হার বসানো হয়েছে।';
+            $note .= ' কার্যকর তারিখের মাস থেকে ' . \bnDigits((string) $count) . 'টি মাসিক বিলে নতুন আদায়ের হার বসানো হয়েছে।';
             if ($capped > 0) {
                 $note .= ' তার মধ্যে ' . \bnDigits((string) $capped) . 'টিতে আদায় থাকায় বকেয়া শূন্য পর্যন্ত হার হয়েছে; আদায় করা টাকা ফেরত যায় না।';
             }

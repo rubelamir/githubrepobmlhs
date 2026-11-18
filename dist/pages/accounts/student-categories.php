@@ -90,7 +90,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">বৃত্তি/উপবৃত্তি</h3>
-            <p class="text-secondary mb-0">কে সাধারণ হারে দেবেন, কে উপবৃত্তি বা বৃত্তি পাবেন। অনুমোদিত হলে কার্যকর তারিখ থেকে মাসিক বেতনে সেই হার বসে। তার আগের মাস আগের হারে থাকে। আদায় করা টাকা কমে না।<?= $autoApprove ? '' : ' আপনার আবেদন প্রধান শিক্ষক অনুমোদন করলে কার্যকর হবে।' ?></p>
+            <p class="text-secondary mb-0">কে সাধারণ হারে দেবেন, কে উপবৃত্তি বা বৃত্তি পাবেন। অনুমোদিত হলে কার্যকর তারিখের মাস থেকে মাসিক আদায়ের হার বসে। তার আগের মাস আগের হারে থাকে। আদায় করা টাকা কমে না।<?= $autoApprove ? '' : ' আপনার আবেদন প্রধান শিক্ষক অনুমোদন করলে কার্যকর হবে।' ?></p>
           </div>
         </div>
         <div class="app-content">
@@ -141,7 +141,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <button class="btn btn-success w-100" type="submit"><i class="bi bi-check2-circle me-1"></i><?= $autoApprove ? 'নির্ধারণ করুন' : 'আবেদন পাঠান' ?></button>
                       </div>
                     </div>
-                    <div class="small text-secondary mt-2">সাধারণ শ্রেণীতে ফেরাতে «সাধারণ» নির্বাচন করুন। মাসিক বিলের ১ তারিখ কার্যকর তারিখের আগে হলে সেই মাস আগের হারে থাকে। সেশন, ভর্তি ও পরীক্ষার বিল বদলায় না।</div>
+                    <div class="small text-secondary mt-2">সাধারণ শ্রেণীতে ফেরাতে «সাধারণ» নির্বাচন করুন। কার্যকর তারিখ মাসের মাঝামাঝি হলেও সেই মাস থেকে নতুন আদায়ের হার বসে। সেশন, ভর্তি ও পরীক্ষার বিল বদলায় না।</div>
                   </div>
                 </div>
                 <?php endif; ?>
