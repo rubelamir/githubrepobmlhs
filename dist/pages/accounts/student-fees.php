@@ -235,10 +235,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="row g-3">
               <div class="col-lg-7">
                 <div class="card h-100">
-                  <div class="card-header">
-                    <h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3>
-                    <p class="small text-secondary mb-0 mt-1">অনুমোদিত হলে এই ফির আগের বিলের বকেয়াতেও ছাড় বসে। যা আগে আদায় হয়ে অতিরিক্ত থাকে, বকেয়া থাকলে তা থেকে কাটা হয়। বকেয়া না থাকলে অগ্রিম থাকে। একই সাথে বকেয়া ও অগ্রিম থাকে না।</p>
-                  </div>
+                  <div class="card-header"><h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3></div>
                   <div class="card-body p-0">
                     <?php if ($concessions === []): ?>
                       <p class="text-secondary p-3 mb-0">কোনো ব্যক্তিগত ছাড় নেই।</p>
