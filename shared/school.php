@@ -2165,7 +2165,7 @@ function schoolBengaliDate(?string $datetime): array
         5 => 'মে', 6 => 'জুন', 7 => 'জুলাই', 8 => 'আগস্ট',
         9 => 'সেপ্টেম্বর', 10 => 'অক্টোবর', 11 => 'নভেম্বর', 12 => 'ডিসেম্বর',
     ];
-    $ampm = date('a', $stamp) === 'am' ? 'পূর্বাহ্ন' : 'অপরাহ্ন';
+    $ampm = date('a', $stamp) === 'am' ? 'A.M' : 'P.M';
 
     return [
         'stamp' => $stamp,

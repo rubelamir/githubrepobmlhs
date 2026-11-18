@@ -671,7 +671,7 @@ function accRoleBadgeClass(string $role): string
     };
 }
 
-/** Plain text (escape when printing): "2026-11-08 14:05:00" → "০৮/১১/২০২৬, ০২:০৫ অপরাহ্ণ" */
+/** Plain text (escape when printing): "2026-11-08 14:05:00" → "০৮/১১/২০২৬, ০২:০৫ P.M" */
 function accFormatDateTime(?string $value): string
 {
     if ($value === null || trim($value) === '') {
@@ -682,5 +682,5 @@ function accFormatDateTime(?string $value): string
         return $value;
     }
 
-    return bnDigits(date('d/m/Y, h:i', $time)) . ' ' . (date('A', $time) === 'AM' ? 'পূর্বাহ্ণ' : 'অপরাহ্ণ');
+    return bnDigits(date('d/m/Y, h:i', $time)) . ' ' . (date('A', $time) === 'AM' ? 'A.M' : 'P.M');
 }

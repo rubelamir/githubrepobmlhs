@@ -189,6 +189,15 @@ $check(InvoiceService::statusFor(90000, 100) === InvoiceService::PARTIAL, 'parti
 $check(InvoiceService::statusFor(90000, 90000) === InvoiceService::PAID, 'paid');
 $check(InvoiceService::statusFor(0, 0) === InvoiceService::PAID, 'fully concessioned invoice is settled');
 
+$check(accFormatDateTime('2026-11-08 02:05:00') === bnDigits('08/11/2026, 02:05') . ' A.M', 'morning time uses A.M');
+$check(accFormatDateTime('2026-11-08 14:05:00') === bnDigits('08/11/2026, 02:05') . ' P.M', 'afternoon time uses P.M');
+$check(accFormatDateTime('2026-11-08 00:00:00') === bnDigits('08/11/2026, 12:00') . ' A.M', 'midnight uses A.M');
+$check(accFormatDateTime('2026-11-08 12:00:00') === bnDigits('08/11/2026, 12:00') . ' P.M', 'noon uses P.M');
+$morning = schoolBengaliDate('2026-11-08 09:30:00');
+$afternoon = schoolBengaliDate('2026-11-08 15:45:00');
+$check($morning['time'] === bnDigits('9:30') . ' A.M', 'event time uses A.M');
+$check($afternoon['time'] === bnDigits('3:45') . ' P.M', 'event time uses P.M');
+
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' failure(s)' . PHP_EOL);
     exit(1);
