@@ -6,7 +6,9 @@ namespace School\Accounting\Access;
 
 /**
  * Single source of truth for what each accounting role may do.
- * Every page and POST action must check one of these server-side.
+ * The head teacher may also do every accounts-officer and class-teacher task,
+ * school-wide, whenever they choose to. Every page and POST action must check
+ * one of these server-side.
  */
 final class Capability
 {
@@ -53,14 +55,29 @@ final class Capability
         Role::HEAD => [
             self::DASHBOARD_VIEW,
             self::OFFICERS_MANAGE,
+            self::FEE_STRUCTURE_MANAGE,
+            self::CHART_MANAGE,
             self::FEES_VIEW_ALL,
             self::FEES_VIEW_CLASS,
+            self::FEES_COLLECT,
+            self::CONCESSION_REQUEST,
             self::CONCESSION_APPROVE,
+            self::INVOICE_MANAGE,
+            self::INVOICE_CANCEL,
+            self::WAIVER_REQUEST,
             self::WAIVER_APPROVE,
+            self::PAYMENT_REVERSE,
+            self::HANDOVER_SUBMIT,
+            self::HANDOVER_RECEIVE,
+            self::VOUCHER_CREATE,
             self::VOUCHER_APPROVE,
+            self::BANK_RECONCILE,
+            self::GATEWAY_SETTINGS,
+            self::REFUND_REQUEST,
             self::REFUND_APPROVE,
             self::REPORTS_VIEW_ALL,
             self::REPORTS_VIEW_CLASS,
+            self::PERIOD_CLOSE,
             self::AUDIT_VIEW,
         ],
         Role::OFFICER => [

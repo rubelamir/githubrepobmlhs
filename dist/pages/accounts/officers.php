@@ -48,7 +48,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">হিসাব রক্ষক নিয়োগ</h3>
-            <p class="text-secondary mb-0">হিসাব রক্ষক ফির হার, বিল, আদায়, ভাউচার, ব্যাংক ও মাস বন্ধ নিয়ন্ত্রণ করেন। আপনি নিয়োগ দেন এবং ছাড়, ভাউচার, ব্যাংক জমা ও টাকা ফেরত যাচাই করেন।</p>
+            <p class="text-secondary mb-0">হিসাব রক্ষক ফির হার, বিল, আদায়, ভাউচার, ব্যাংক ও মাস বন্ধ করেন। আপনি নিয়োগ দেন, এবং চাইলে এই কাজ ও শ্রেণী শিক্ষকের আদায়ের কাজ নিজেও করতে পারেন।</p>
           </div>
         </div>
         <div class="app-content">

@@ -150,7 +150,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
               <div>
                 <h3 class="mb-1">হিসাব ড্যাশবোর্ড</h3>
-                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন এবং হিসাব দেখে যাচাই করেন।' : 'নিচের কার্ড থেকে শুরু করুন।' ?></p>
+                <p class="text-secondary mb-0">স্বাগতম, <?= h($access->teacherName()) ?>। <?= $access->can(Capability::OFFICERS_MANAGE) ? 'আপনি হিসাব রক্ষক নিয়োগ দেন। চাইলে হিসাব রক্ষক ও শ্রেণী শিক্ষকের হিসাবের কাজও নিজে করতে পারেন।' : 'নিচের কার্ড থেকে শুরু করুন।' ?></p>
               </div>
               <div class="acc-role-badges d-flex flex-wrap gap-1">
                 <?php foreach ($access->roles() as $role): ?>

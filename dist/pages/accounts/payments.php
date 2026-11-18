@@ -83,7 +83,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">রসিদ</h3>
-            <p class="text-secondary mb-0"><?= $schoolWide ? 'এই মাসের আদায়।' : 'আপনার নেওয়া আদায়।' ?> নাম, রোল বা রসিদ নম্বর লিখে খুঁজুন। কোনো রসিদ মুছে যায় না; ভুল হলে হিসাব রক্ষক কারণ লিখে বাতিল করেন।</p>
+            <p class="text-secondary mb-0"><?= $schoolWide ? 'এই মাসের আদায়।' : 'আপনার নেওয়া আদায়।' ?> নাম, রোল বা রসিদ নম্বর লিখে খুঁজুন। কোনো রসিদ মুছে যায় না; ভুল হলে প্রধান শিক্ষক বা হিসাব রক্ষক কারণ লিখে বাতিল করেন।</p>
           </div>
         </div>
         <div class="app-content">
