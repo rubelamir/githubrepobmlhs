@@ -27,6 +27,8 @@ foreach (['acc_payments', 'acc_invoices', 'acc_vouchers', 'acc_voucher_lines', '
     $check(in_array($table, $reset, true), $table . ' is wiped');
 }
 $check(count($reset) === count(array_unique($reset)), 'reset list has no duplicates');
+$check(ACC_SCHEMA_VERSION === 12, 'schema version runs the fresh-books step');
+$check(function_exists('accMigrationV12') && function_exists('accClearMoneyMovements'), 'fresh-books step is available');
 $check(in_array('4110', SimpleBooks::FEE_INCOME_CODES, true), 'tuition stays on fee collection');
 $check(SimpleBooks::STAFF_ADVANCE === '1180', 'staff advance account');
 $check(SimpleBooks::FUND === '3100', 'opening balance credits the fund');

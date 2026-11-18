@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Each step is idempotent and recorded in schema_migrations.
  */
 
-const ACC_SCHEMA_VERSION = 11;
+const ACC_SCHEMA_VERSION = 12;
 
 function accEnsureSchema(PDO $db): void
 {
@@ -902,7 +902,16 @@ function accMigrationV7(PDO $db): void
         'code' => '1180', 'name' => 'কর্মচারী অগ্রিম', 'type' => 'asset', 'money' => 'none', 'parent' => '1000',
         'now' => $now, 'now2' => $now,
     ]);
+    accClearMoneyMovements($db);
+}
 
+/**
+ * Deletes every recorded money movement so the books can start again.
+ * Fee rates, the chart of accounts, officers, concessions and student
+ * fee-category assignments are left in place.
+ */
+function accClearMoneyMovements(PDO $db): void
+{
     if (tableExists($db, 'acc_attachments') && function_exists('privateMediaDirectoryPath')) {
         try {
             $directory = privateMediaDirectoryPath('acc_attachments');
@@ -931,6 +940,12 @@ function accMigrationV7(PDO $db): void
     } finally {
         $db->exec('SET FOREIGN_KEY_CHECKS=1');
     }
+}
+
+/** The practice receipts, bills and vouchers are cleared for real work. */
+function accMigrationV12(PDO $db): void
+{
+    accClearMoneyMovements($db);
 }
 
 /**
