@@ -24,7 +24,7 @@ final class StudentCategoryService
 
     /**
      * @param list<int> $studentIds
-     * @return array{created: int, skipped: list<string>}
+     * @return array{created: int, skipped: list<string>, applied: int, capped: int, raised: int, skipped_waiver: int}
      */
     public function request(
         AccessContext $actor,
@@ -59,6 +59,7 @@ final class StudentCategoryService
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
         $created = 0;
         $skipped = [];
+        $applied = ['applied' => 0, 'capped' => 0, 'raised' => 0, 'skipped_waiver' => 0];
 
         $this->db->beginTransaction();
         try {
@@ -108,7 +109,9 @@ final class StudentCategoryService
                     'ফি-শ্রেণী আবেদন: ' . $name . ' → ' . $category['name_bn']
                 );
                 if ($autoApprove) {
-                    $this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি নির্ধারিত');
+                    foreach ($this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি নির্ধারিত') as $key => $count) {
+                        $applied[$key] += $count;
+                    }
                 }
                 $created++;
             }
@@ -118,10 +121,34 @@ final class StudentCategoryService
             throw $exception;
         }
 
-        return ['created' => $created, 'skipped' => $skipped];
+        return ['created' => $created, 'skipped' => $skipped] + $applied;
     }
 
-    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): void
+    public static function appliedToBillsNote(array $result): string
+    {
+        $count = (int) ($result['applied'] ?? 0);
+        $capped = (int) ($result['capped'] ?? 0);
+        $raised = (int) ($result['raised'] ?? 0);
+        $skipped = (int) ($result['skipped_waiver'] ?? 0);
+        $note = '';
+        if ($count > 0) {
+            $note .= ' কার্যকর তারিখ থেকে ' . \bnDigits((string) $count) . 'টি মাসিক বিলে নতুন হার বসানো হয়েছে।';
+            if ($capped > 0) {
+                $note .= ' তার মধ্যে ' . \bnDigits((string) $capped) . 'টিতে আদায় থাকায় বকেয়া শূন্য পর্যন্ত হার হয়েছে; আদায় করা টাকা ফেরত যায় না।';
+            }
+            if ($raised > 0) {
+                $note .= ' ' . \bnDigits((string) $raised) . 'টিতে নতুন হার বেশি বলে বকেয়া বেড়েছে।';
+            }
+        }
+        if ($skipped > 0) {
+            $note .= ' ' . \bnDigits((string) $skipped) . 'টিতে মওকুফের আবেদন অপেক্ষমাণ থাকায় হার বসানো হয়নি।';
+        }
+
+        return $note;
+    }
+
+    /** @return array{applied: int, capped: int, raised: int, skipped_waiver: int} */
+    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): array
     {
         if (!$actor->can(Capability::CONCESSION_APPROVE)) {
             throw AccessDeniedException::forCapability(Capability::CONCESSION_APPROVE);
@@ -131,9 +158,10 @@ final class StudentCategoryService
             throw new RuntimeException('প্রত্যাখ্যানের কারণ লিখুন।');
         }
         $this->db->beginTransaction();
+        $result = ['applied' => 0, 'capped' => 0, 'raised' => 0, 'skipped_waiver' => 0];
         try {
             if ($approve) {
-                $this->approveLocked($actor, $audit, $id, $note);
+                $result = $this->approveLocked($actor, $audit, $id, $note);
             } else {
                 $row = $this->lockPending($id);
                 $this->db->prepare(
@@ -153,6 +181,8 @@ final class StudentCategoryService
             $this->db->rollBack();
             throw $exception;
         }
+
+        return $result;
     }
 
     /**
@@ -254,8 +284,13 @@ final class StudentCategoryService
         ) !== [];
     }
 
-    /** Caller holds the transaction. Ends any assignment the new one overlaps. */
-    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): void
+    /**
+     * Caller holds the transaction. Ends any assignment the new one overlaps,
+     * then applies its monthly rate from the effective date.
+     *
+     * @return array{applied: int, capped: int, raised: int, skipped_waiver: int}
+     */
+    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): array
     {
         $row = $this->lockPending($id);
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
@@ -276,14 +311,17 @@ final class StudentCategoryService
             'note' => $note === '' ? null : $note,
             'id' => $id,
         ]);
+        $applied = \accInvoices()->applyApprovedCategory($row);
         $audit->record(
             'student_category.approve',
             'student_fee_category',
             $id,
             ['status' => ApprovalStatus::PENDING],
-            ['status' => ApprovalStatus::APPROVED, 'student_id' => (int) $row['student_id'], 'category_id' => (int) $row['fee_category_id'], 'effective_from' => $row['effective_from']],
+            ['status' => ApprovalStatus::APPROVED, 'student_id' => (int) $row['student_id'], 'category_id' => (int) $row['fee_category_id'], 'effective_from' => $row['effective_from']] + $applied,
             'ফি-শ্রেণী অনুমোদিত'
         );
+
+        return $applied;
     }
 
     /** @return array<string, mixed> */

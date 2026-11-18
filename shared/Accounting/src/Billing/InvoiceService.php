@@ -409,6 +409,219 @@ final class InvoiceService
         return $result;
     }
 
+    /**
+     * Monthly category rate on a bill that already exists.
+     * The new rate may raise what is still unpaid. It never falls below money already collected.
+     *
+     * @param array<string, mixed>|null $concession
+     * @return array{amount: int, standard: int, category_id: int, category_concession: int, discount: int, concession_id: int|null, net: int, capped: bool, raised: bool, changed: bool}
+     */
+    public static function monthlyCategoryForExistingLine(
+        int $newAmount,
+        int $newStandard,
+        int $newCategoryId,
+        ?array $concession,
+        int $amount,
+        int $standard,
+        int $categoryId,
+        int $categoryConcession,
+        int $discount,
+        ?int $concessionId,
+        int $waived,
+        int $paid,
+        int $net
+    ): array {
+        $desiredDiscount = $concession !== null
+            ? ConcessionService::discountFor($concession, $newAmount)
+            : min($discount, max(0, $newAmount));
+        $target = $newAmount - $desiredDiscount - $waived;
+        $nextNet = max($paid, $target);
+        $nextDiscount = $newAmount - $waived - $nextNet;
+        if ($nextDiscount < 0) {
+            $nextDiscount = 0;
+        }
+        $nextCategoryConcession = $newStandard - $newAmount;
+        if ($concession !== null) {
+            $nextConcessionId = (int) $concession['id'];
+        } elseif ($nextDiscount === 0) {
+            $nextConcessionId = null;
+        } else {
+            $nextConcessionId = $concessionId;
+        }
+        $changed = $newAmount !== $amount
+            || $newStandard !== $standard
+            || $newCategoryId !== $categoryId
+            || $nextCategoryConcession !== $categoryConcession
+            || $nextDiscount !== $discount
+            || $nextConcessionId !== $concessionId
+            || $nextNet !== $net;
+
+        return [
+            'amount' => $newAmount,
+            'standard' => $newStandard,
+            'category_id' => $newCategoryId,
+            'category_concession' => $nextCategoryConcession,
+            'discount' => $nextDiscount,
+            'concession_id' => $nextConcessionId,
+            'net' => $nextNet,
+            'capped' => $paid > 0 && $target < $paid && $nextNet === $paid,
+            'raised' => $nextNet > $net,
+            'changed' => $changed,
+        ];
+    }
+
+    /**
+     * Writes an approved stipend or scholarship onto monthly bills from its effective date.
+     * Earlier months, and session, admission and exam bills, stay as they were.
+     * Caller holds the transaction. Collected money and the ledger are left as they are.
+     *
+     * @param array<string, mixed> $assignment
+     * @return array{applied: int, capped: int, raised: int, skipped_waiver: int}
+     */
+    public function applyApprovedCategory(array $assignment): array
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('মাসিক হার আগের বিলে বসাতে লেনদেনের ভিতরে থাকতে হবে।');
+        }
+        $result = ['applied' => 0, 'capped' => 0, 'raised' => 0, 'skipped_waiver' => 0];
+        $studentId = (int) ($assignment['student_id'] ?? 0);
+        $session = (string) ($assignment['session_year'] ?? '');
+        $from = (string) ($assignment['effective_from'] ?? '');
+        $to = $assignment['effective_to'] ?? null;
+        $to = $to !== null && (string) $to !== '' ? (string) $to : null;
+        $categoryId = (int) ($assignment['fee_category_id'] ?? 0);
+        if ($studentId < 1 || preg_match('/^\d{4}$/', $session) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) !== 1 || $categoryId < 1) {
+            return $result;
+        }
+        $lines = \fetchRows(
+            $this->db,
+            'SELECT i.id, i.invoice_id, i.billing_key, i.fee_head_id, i.fee_category_id, i.standard_amount,
+                    i.category_concession, i.amount, i.discount, i.concession_id, i.waived, i.paid, i.net,
+                    inv.class_id, inv.section_id
+             FROM acc_invoice_items i
+             JOIN acc_invoices inv ON inv.id = i.invoice_id
+             WHERE i.student_id = :student AND inv.session_year = :session AND i.billing_key LIKE :monthly
+               AND i.line_kind = :kind AND inv.status <> :cancelled AND i.uniq_key IS NOT NULL
+             FOR UPDATE',
+            [
+                'student' => $studentId,
+                'session' => $session,
+                'monthly' => 'M:' . $session . '-%',
+                'kind' => self::LINE_FEE,
+                'cancelled' => self::CANCELLED,
+            ]
+        );
+        if ($lines === []) {
+            return $result;
+        }
+        $pending = [];
+        foreach (\fetchRows(
+            $this->db,
+            'SELECT invoice_item_id FROM acc_waivers WHERE status = :status AND invoice_item_id IN (' . implode(',', array_map(static fn (array $line): int => (int) $line['id'], $lines)) . ')',
+            ['status' => ApprovalStatus::PENDING]
+        ) as $waiver) {
+            $pending[(int) $waiver['invoice_item_id']] = true;
+        }
+        $concessions = \fetchRows(
+            $this->db,
+            'SELECT * FROM acc_concessions WHERE student_id = :student AND session_year = :session AND status = :status',
+            ['student' => $studentId, 'session' => $session, 'status' => ApprovalStatus::APPROVED]
+        );
+        $generalId = $this->catalog->defaultCategoryId();
+        $ratesByClass = [];
+        $update = $this->db->prepare(
+            'UPDATE acc_invoice_items
+             SET fee_category_id = :category, standard_amount = :standard, category_concession = :category_concession,
+                 amount = :amount, discount = :discount, concession_id = :concession, net = :net
+             WHERE id = :id'
+        );
+        $touched = [];
+        foreach ($lines as $line) {
+            $reference = BillingPeriod::referenceDateForKey((string) $line['billing_key'], '');
+            if ($reference === null || $reference < $from || ($to !== null && $reference > $to)) {
+                continue;
+            }
+            if (isset($pending[(int) $line['id']])) {
+                $result['skipped_waiver']++;
+                continue;
+            }
+            $classId = (int) $line['class_id'];
+            $sectionId = (int) $line['section_id'];
+            $rateKey = $classId . ':' . $sectionId;
+            $ratesByClass[$rateKey] ??= $this->structures->rowsForClass($session, $classId, $sectionId);
+            $rate = FeeStructureRepository::resolve($ratesByClass[$rateKey], (int) $line['fee_head_id'], $sectionId, $categoryId, $generalId, $reference);
+            if ($rate === null) {
+                continue;
+            }
+            $next = self::monthlyCategoryForExistingLine(
+                $rate['amount'],
+                $rate['standard'],
+                $rate['category_id'],
+                self::concessionOnDate($concessions, (int) $line['fee_head_id'], $reference),
+                Money::fromDb($line['amount']),
+                Money::fromDb($line['standard_amount']),
+                (int) ($line['fee_category_id'] ?? 0),
+                Money::fromDb($line['category_concession']),
+                Money::fromDb($line['discount']),
+                $line['concession_id'] !== null ? (int) $line['concession_id'] : null,
+                Money::fromDb($line['waived']),
+                Money::fromDb($line['paid']),
+                Money::fromDb($line['net'])
+            );
+            if (!$next['changed']) {
+                continue;
+            }
+            $update->execute([
+                'category' => $next['category_id'],
+                'standard' => Money::toDb($next['standard']),
+                'category_concession' => Money::toDb($next['category_concession']),
+                'amount' => Money::toDb($next['amount']),
+                'discount' => Money::toDb($next['discount']),
+                'concession' => $next['concession_id'],
+                'net' => Money::toDb($next['net']),
+                'id' => (int) $line['id'],
+            ]);
+            $touched[(int) $line['invoice_id']] = true;
+            $result['applied']++;
+            if ($next['capped']) {
+                $result['capped']++;
+            }
+            if ($next['raised']) {
+                $result['raised']++;
+            }
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->recompute($invoiceId);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $concessions
+     * @return array<string, mixed>|null
+     */
+    private static function concessionOnDate(array $concessions, int $headId, string $date): ?array
+    {
+        $best = null;
+        foreach ($concessions as $concession) {
+            if ((int) $concession['fee_head_id'] !== $headId || (string) $concession['effective_from'] > $date) {
+                continue;
+            }
+            $until = $concession['effective_to'] ?? null;
+            if ($until !== null && (string) $until !== '' && (string) $until < $date) {
+                continue;
+            }
+            if ($best === null
+                || (string) $concession['effective_from'] > (string) $best['effective_from']
+                || ((string) $concession['effective_from'] === (string) $best['effective_from'] && (int) $concession['id'] > (int) $best['id'])) {
+                $best = $concession;
+            }
+        }
+
+        return $best;
+    }
+
     public static function uniqKey(int $studentId, int $headId, string $billingKey, string $lineKind): string
     {
         return $studentId . ':' . $headId . ':' . $billingKey . ':' . $lineKind;

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use School\Accounting\Access\Capability;
 use School\Accounting\Billing\ConcessionService;
+use School\Accounting\Billing\StudentCategoryService;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -41,8 +42,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         $result = ($kinds[$kind]['service'])()->decide($access, accAudit(), $id, $decision === 'approve', $note);
         $message = $kinds[$kind]['label'] . ' আবেদন ' . ($decision === 'approve' ? 'অনুমোদিত' : 'প্রত্যাখ্যাত') . ' হয়েছে।';
-        if ($kind === 'concession' && $decision === 'approve' && is_array($result)) {
+        if ($decision === 'approve' && is_array($result) && $kind === 'concession') {
             $message .= ConcessionService::appliedToBillsNote($result);
+        }
+        if ($decision === 'approve' && is_array($result) && $kind === 'category') {
+            $message .= StudentCategoryService::appliedToBillsNote($result);
         }
         redirectWithMessage('approvals.php#' . $kind, 'success', $message);
     } catch (Throwable $exception) {

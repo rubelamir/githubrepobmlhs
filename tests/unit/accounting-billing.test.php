@@ -128,6 +128,19 @@ $check($partlyPaid['changed'] && $partlyPaid['discount'] === 20000 && $partlyPai
 $smaller = InvoiceService::concessionForExistingLine(['kind' => ConcessionService::PERCENT, 'value' => '10.00'], 100000, 40000, 0, 0, 60000);
 $check(!$smaller['changed'] && $smaller['net'] === 60000, 'a smaller concession does not raise an existing bill');
 
+// A stipend or scholarship monthly rate replaces the issued monthly amount from its effective month.
+$halfPaid = ['kind' => ConcessionService::PERCENT, 'value' => '50.00', 'id' => 9];
+$scholarship = InvoiceService::monthlyCategoryForExistingLine(0, 100000, 3, null, 100000, 100000, 1, 0, 0, null, 0, 0, 100000);
+$check($scholarship['changed'] && $scholarship['amount'] === 0 && $scholarship['net'] === 0 && $scholarship['category_concession'] === 100000 && !$scholarship['capped'] && !$scholarship['raised'], 'unpaid monthly bill takes a zero scholarship rate');
+$collected = InvoiceService::monthlyCategoryForExistingLine(0, 100000, 3, null, 100000, 100000, 1, 0, 0, null, 0, 80000, 100000);
+$check($collected['changed'] && $collected['amount'] === 0 && $collected['net'] === 80000 && $collected['capped'] && !$collected['raised'], 'scholarship rate stops at money already collected');
+$backToGeneral = InvoiceService::monthlyCategoryForExistingLine(100000, 100000, 1, null, 40000, 100000, 2, 60000, 0, null, 0, 0, 40000);
+$check($backToGeneral['changed'] && $backToGeneral['net'] === 100000 && $backToGeneral['raised'] && !$backToGeneral['capped'], 'returning to the general rate raises an unpaid monthly bill');
+$sameRate = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, null, 40000, 100000, 2, 60000, 0, null, 0, 0, 40000);
+$check(!$sameRate['changed'], 'the same monthly rate leaves the bill alone');
+$withConcession = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, $halfPaid, 100000, 100000, 1, 0, 0, null, 0, 0, 100000);
+$check($withConcession['changed'] && $withConcession['discount'] === 20000 && $withConcession['net'] === 20000 && $withConcession['concession_id'] === 9, 'personal concession is recalculated on the new monthly rate');
+
 // A student's bills: session fee, admission fee, then each month's tuition,
 // with exam and other fees after the tuition of the month they were created.
 $bill = static function (int $id, string $key, string $issued, array $heads = []) {
