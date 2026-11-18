@@ -419,8 +419,48 @@ function accBootPage(string|array $capability): AccessContext
         redirectWithMessage($target, 'danger', 'এই পাতার অনুমতি আপনার নেই: ' . $label . '।');
     }
     accSyncPostings();
+    accSyncCategoryRates($access->teacherId());
 
     return $access;
+}
+
+/**
+ * One catch-up: monthly bills keep the rate from the day they were created.
+ * Categories approved before that rate was written onto old bills are applied once.
+ */
+function accSyncCategoryRates(int $actorId): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $db = getDatabaseConnection();
+    if (!tableExists($db, 'acc_student_fee_categories') || schemaMigrationApplied($db, 'acc_category_bill_rates_v1')) {
+        return;
+    }
+    $rows = fetchRows(
+        $db,
+        'SELECT id FROM acc_student_fee_categories WHERE status = :status ORDER BY effective_from, id',
+        ['status' => 'approved']
+    );
+    $failed = false;
+    foreach ($rows as $row) {
+        $marker = 'acc_category_bill_rate_' . (int) $row['id'];
+        if (schemaMigrationApplied($db, $marker)) {
+            continue;
+        }
+        try {
+            accStudentCategories()->syncApprovedRate((int) $row['id'], $actorId);
+            recordSchemaMigration($db, $marker);
+        } catch (Throwable $exception) {
+            $failed = true;
+            error_log('Accounting category rate ' . (int) $row['id'] . ': ' . $exception->getMessage());
+        }
+    }
+    if (!$failed) {
+        recordSchemaMigration($db, 'acc_category_bill_rates_v1');
+    }
 }
 
 /** Posts collections and handovers that have no voucher yet (e.g. recorded before the ledger existed). */
