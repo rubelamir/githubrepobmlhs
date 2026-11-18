@@ -119,7 +119,7 @@ final class ConcessionService
         if ($applied > 0) {
             $note .= ' আগের ' . \bnDigits((string) $applied) . 'টি বিলে ছাড় বসানো হয়েছে।';
             if ($advance > 0) {
-                $note .= ' অতিরিক্ত আদায় ' . Money::format($advance) . ' অগ্রিম হিসেবে জমা হয়েছে।';
+                $note .= ' অতিরিক্ত আদায় ' . Money::format($advance) . '। এই টাকা আগে বকেয়া থেকে কাটা হয়; বকেয়া না থাকলে অগ্রিম থাকে।';
             }
         }
         if ($skipped > 0) {

@@ -30,6 +30,7 @@ use School\Accounting\Ledger\PostingService;
 use School\Accounting\Ledger\SimpleBooks;
 use School\Accounting\Ledger\VoucherService;
 use School\Accounting\Report\ReportService;
+use School\Accounting\Support\Money;
 
 /**
  * Thin procedural helpers so admin pages and the sidebar can use the
@@ -421,13 +422,15 @@ function accBootPage(string|array $capability): AccessContext
     accSyncPostings();
     accSyncCategoryRates($access->teacherId());
     accSyncConcessionRates($access->teacherId());
+    accSettleAdvanceAgainstDues($access->teacherId());
 
     return $access;
 }
 
 /**
  * One catch-up: a concession approved while a month was already fully paid
- * left that month at the old fee. Apply those concessions again so the excess is advance.
+ * left that month at the old fee. Apply those concessions again. Excess pays
+ * any due that is still open; only a leftover with no due stays as advance.
  */
 function accSyncConcessionRates(int $actorId): void
 {
@@ -461,6 +464,62 @@ function accSyncConcessionRates(int $actorId): void
     }
     if (!$failed) {
         recordSchemaMigration($db, 'acc_concession_bill_rates_v1');
+    }
+}
+
+/**
+ * A student never keeps both an outstanding due and unused advance.
+ * Runs on each accounts page so a concession or category catch-up that
+ * already parked excess is applied to the dues that remain.
+ */
+function accSettleAdvanceAgainstDues(int $actorId): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $db = getDatabaseConnection();
+    if (!tableExists($db, 'acc_payment_allocations') || !tableExists($db, 'acc_invoice_items')) {
+        return;
+    }
+    $students = fetchRows(
+        $db,
+        'SELECT student_id FROM acc_payment_allocations WHERE invoice_item_id IS NULL GROUP BY student_id HAVING SUM(amount) > 0'
+    );
+    foreach ($students as $student) {
+        $studentId = (int) $student['student_id'];
+        $due = fetchRows(
+            $db,
+            "SELECT 1 FROM acc_invoice_items i
+             JOIN acc_invoices inv ON inv.id = i.invoice_id
+             WHERE i.student_id = :student AND inv.status <> 'cancelled' AND i.net > i.paid
+             LIMIT 1",
+            ['student' => $studentId]
+        );
+        if ($due === []) {
+            continue;
+        }
+        $db->beginTransaction();
+        try {
+            $applied = accPayments()->settleAdvanceLocked($studentId, $actorId);
+            if ($applied > 0) {
+                accAudit()->record(
+                    'payment.advance_apply',
+                    'student',
+                    $studentId,
+                    null,
+                    ['applied' => Money::toDb($applied)],
+                    'বকেয়া থাকায় অগ্রিম থেকে সমন্বয়: ' . Money::format($applied)
+                );
+            }
+            $db->commit();
+        } catch (Throwable $exception) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Accounting advance settle ' . $studentId . ': ' . $exception->getMessage());
+        }
     }
 }
 

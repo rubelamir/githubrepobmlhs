@@ -21,7 +21,8 @@ use School\Accounting\Support\Sequence;
 /**
  * Fee collection. A payment is split over the student's outstanding lines
  * (session, admission, monthly tuition, exam, then other fees; or only the
- * invoices the collector picked). Any extra is kept as advance. Receipts are never deleted:
+ * invoices the collector picked). Extra money pays any remaining dues first and is
+ * advance only when nothing is still due, so a student never has both. Receipts are never deleted:
  * a wrong one is reversed with opposite allocation rows.
  */
 final class PaymentService
@@ -189,7 +190,7 @@ final class PaymentService
             );
             if ($split['remainder'] > 0 && !$allowAdvance) {
                 $due = $amount - $split['remainder'];
-                throw new RuntimeException('পরিমাণটি নির্বাচিত বকেয়ার (' . Money::format($due) . ') চেয়ে বেশি। অতিরিক্ত টাকা অগ্রিম হিসেবে রাখতে চাইলে "অগ্রিম" টিক দিন।');
+                throw new RuntimeException('পরিমাণটি নির্বাচিত বকেয়ার (' . Money::format($due) . ') চেয়ে বেশি। অতিরিক্ত টাকা আগে বাকি বকেয়া থেকে কাটবে, বকেয়া না থাকলে অগ্রিম থাকবে — সেজন্য "অগ্রিম" টিক দিন।');
             }
 
             $now = AuditTrail::now();
@@ -238,6 +239,9 @@ final class PaymentService
                 $this->invoices->recompute($invoiceId);
             }
             $this->posting?->postPayment($paymentId);
+            if ($split['remainder'] > 0) {
+                $this->settleAdvanceLocked($studentId, $actor->teacherId());
+            }
             $audit->record(
                 'payment.collect',
                 'payment',
@@ -271,6 +275,7 @@ final class PaymentService
 
     /**
      * Uses the student's advance on outstanding lines, oldest advance first.
+     * Session, admission, monthly, exam, then other fees.
      *
      * @return int paisa applied
      */
@@ -279,55 +284,7 @@ final class PaymentService
         $this->students->requireInScope($actor, Capability::FEES_COLLECT, $studentId);
         $this->db->beginTransaction();
         try {
-            \fetchRows(
-                $this->db,
-                'SELECT id FROM acc_payment_allocations WHERE student_id = :student AND invoice_item_id IS NULL FOR UPDATE',
-                ['student' => $studentId]
-            );
-            $credits = \fetchRows(
-                $this->db,
-                'SELECT payment_id, SUM(amount) AS balance FROM acc_payment_allocations
-                 WHERE student_id = :student AND invoice_item_id IS NULL
-                 GROUP BY payment_id HAVING SUM(amount) > 0 ORDER BY payment_id',
-                ['student' => $studentId]
-            );
-            if ($credits === []) {
-                $this->db->commit();
-
-                return 0;
-            }
-            $lines = $this->outstandingLines($studentId, true);
-            $remaining = array_map(static fn (array $line): array => [
-                'id' => (int) $line['id'],
-                'invoice_id' => (int) $line['invoice_id'],
-                'outstanding' => Money::fromDb($line['net']) - Money::fromDb($line['paid']),
-            ], $lines);
-            $applied = 0;
-            $touched = [];
-            $creditedPayments = [];
-            foreach ($credits as $credit) {
-                $paymentId = (int) $credit['payment_id'];
-                $split = Allocator::allocate($remaining, Money::fromDb($credit['balance']));
-                foreach ($split['lines'] as $itemId => $paisa) {
-                    foreach ($remaining as &$line) {
-                        if ($line['id'] === $itemId) {
-                            $line['outstanding'] -= $paisa;
-                            $this->allocate($paymentId, $studentId, $itemId, $line['invoice_id'], $paisa, self::KIND_ADVANCE_APPLIED, $actor);
-                            $this->allocate($paymentId, $studentId, null, null, -$paisa, self::KIND_ADVANCE_APPLIED, $actor);
-                            $touched[$line['invoice_id']] = true;
-                            $creditedPayments[$paymentId] = true;
-                        }
-                    }
-                    unset($line);
-                    $applied += $paisa;
-                }
-            }
-            foreach (array_keys($touched) as $invoiceId) {
-                $this->invoices->recompute($invoiceId);
-            }
-            foreach (array_keys($creditedPayments) as $creditedPayment) {
-                $this->posting?->postPayment($creditedPayment);
-            }
+            $applied = $this->settleAdvanceLocked($studentId, $actor->teacherId());
             if ($applied > 0) {
                 $audit->record(
                     'payment.advance_apply',
@@ -340,8 +297,76 @@ final class PaymentService
             }
             $this->db->commit();
         } catch (\Throwable $exception) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $exception;
+        }
+
+        return $applied;
+    }
+
+    /**
+     * Pays outstanding dues from unused advance. Caller holds the transaction.
+     * Nothing stays as advance while a due remains.
+     *
+     * @return int paisa moved from advance onto dues
+     */
+    public function settleAdvanceLocked(int $studentId, int $actorId): int
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('অগ্রিম বকেয়ার সাথে মেলাতে লেনদেনের ভিতরে থাকতে হবে।');
+        }
+        \fetchRows(
+            $this->db,
+            'SELECT id FROM acc_payment_allocations WHERE student_id = :student AND invoice_item_id IS NULL FOR UPDATE',
+            ['student' => $studentId]
+        );
+        $credits = \fetchRows(
+            $this->db,
+            'SELECT payment_id, SUM(amount) AS balance FROM acc_payment_allocations
+             WHERE student_id = :student AND invoice_item_id IS NULL
+             GROUP BY payment_id HAVING SUM(amount) > 0 ORDER BY payment_id',
+            ['student' => $studentId]
+        );
+        if ($credits === []) {
+            return 0;
+        }
+        $lines = $this->outstandingLines($studentId, true);
+        if ($lines === []) {
+            return 0;
+        }
+        $remaining = array_map(static fn (array $line): array => [
+            'id' => (int) $line['id'],
+            'invoice_id' => (int) $line['invoice_id'],
+            'outstanding' => Money::fromDb($line['net']) - Money::fromDb($line['paid']),
+        ], $lines);
+        $applied = 0;
+        $touched = [];
+        $creditedPayments = [];
+        $now = AuditTrail::now()->format('Y-m-d H:i:s');
+        foreach ($credits as $credit) {
+            $paymentId = (int) $credit['payment_id'];
+            $split = Allocator::allocate($remaining, Money::fromDb($credit['balance']));
+            foreach ($split['lines'] as $itemId => $paisa) {
+                foreach ($remaining as &$line) {
+                    if ($line['id'] === $itemId) {
+                        $line['outstanding'] -= $paisa;
+                        $this->allocate($paymentId, $studentId, $itemId, $line['invoice_id'], $paisa, self::KIND_ADVANCE_APPLIED, $actorId, $now);
+                        $this->allocate($paymentId, $studentId, null, null, -$paisa, self::KIND_ADVANCE_APPLIED, $actorId, $now);
+                        $touched[$line['invoice_id']] = true;
+                        $creditedPayments[$paymentId] = true;
+                    }
+                }
+                unset($line);
+                $applied += $paisa;
+            }
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->invoices->recompute($invoiceId);
+        }
+        foreach (array_keys($creditedPayments) as $creditedPayment) {
+            $this->posting?->postPayment($creditedPayment);
         }
 
         return $applied;
@@ -429,7 +454,7 @@ final class PaymentService
      * Records a gateway payment that the gateway itself confirmed. Runs inside
      * the caller's transaction (which holds the gateway transaction row lock).
      * Money already received is never rejected: whatever the selected invoices
-     * no longer need is kept as advance.
+     * no longer need pays any other due first and is advance only when nothing remains.
      *
      * @param array<string, mixed> $txn acc_gateway_transactions row
      */
@@ -501,6 +526,9 @@ final class PaymentService
             $this->invoices->recompute($invoiceId);
         }
         $this->posting?->postPayment($paymentId);
+        if ($split['remainder'] > 0) {
+            $this->settleAdvanceLocked($studentId, $system->teacherId());
+        }
         $audit->record(
             'payment.online',
             'payment',
@@ -522,10 +550,11 @@ final class PaymentService
     }
 
     /**
-     * Moves money already collected above a line's new net onto the student's advance.
-     * The cash stays on the same receipt. Caller holds the transaction.
+     * Moves money already collected above a line's new net off that line.
+     * The cash stays on the same receipt. Any other due is paid from it first;
+     * only what is left with no due remaining stays as advance. Caller holds the transaction.
      *
-     * @return int paisa parked as advance
+     * @return int paisa taken off the line
      */
     public function parkExcessAsAdvance(int $itemId, int $actorId): int
     {
@@ -600,6 +629,7 @@ final class PaymentService
         foreach ($touched as $paymentId) {
             $this->posting?->postPayment($paymentId);
         }
+        $this->settleAdvanceLocked($studentId, $actorId);
 
         return $excess;
     }
@@ -701,7 +731,7 @@ final class PaymentService
              FROM acc_payment_allocations a
              LEFT JOIN acc_invoice_items i ON i.id = a.invoice_item_id
              LEFT JOIN acc_invoices inv ON inv.id = a.invoice_id
-             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance')
+             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance', 'advance_applied')
              GROUP BY a.invoice_item_id, i.description, inv.invoice_no, inv.billing_label
              ORDER BY MIN(a.id)",
             ['id' => $paymentId]
@@ -794,7 +824,7 @@ final class PaymentService
         );
     }
 
-    private function allocate(int $paymentId, int $studentId, ?int $itemId, ?int $invoiceId, int $paisa, string $kind, AccessContext $actor): void
+    private function allocate(int $paymentId, int $studentId, ?int $itemId, ?int $invoiceId, int $paisa, string $kind, AccessContext|int $actor, ?string $at = null): void
     {
         $this->db->prepare(
             'INSERT INTO acc_payment_allocations (payment_id, student_id, invoice_item_id, invoice_id, amount, kind, created_by, created_at)
@@ -806,8 +836,8 @@ final class PaymentService
             'invoice' => $invoiceId,
             'amount' => Money::toDb($paisa),
             'kind' => $kind,
-            'actor' => $actor->teacherId(),
-            'now' => AuditTrail::now()->format('Y-m-d H:i:s'),
+            'actor' => $actor instanceof AccessContext ? $actor->teacherId() : $actor,
+            'now' => $at ?? AuditTrail::now()->format('Y-m-d H:i:s'),
         ]);
         if ($itemId !== null) {
             $this->db->prepare('UPDATE acc_invoice_items SET paid = paid + :amount WHERE id = :id')

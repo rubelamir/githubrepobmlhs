@@ -56,7 +56,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $waiver = accWaivers()->request($access, accAudit(), postedRecordId('acc_invoice_item', 'item_ref'), (string) ($_POST['amount'] ?? ''), (string) ($_POST['reason'] ?? ''));
             $message = $access->can(Capability::WAIVER_APPROVE) ? 'মওকুফ প্রয়োগ হয়েছে।' : 'মওকুফের আবেদন অনুমোদনের জন্য পাঠানো হয়েছে।';
             if (($waiver['advance'] ?? 0) > 0) {
-                $message .= ' অতিরিক্ত আদায় ' . Money::format((int) $waiver['advance']) . ' অগ্রিম হিসেবে জমা হয়েছে।';
+                $message .= ' অতিরিক্ত আদায় ' . Money::format((int) $waiver['advance']) . '। এই টাকা আগে বকেয়া থেকে কাটা হয়; বকেয়া না থাকলে অগ্রিম থাকে।';
             }
             redirectWithMessage($self . '#invoices', 'success', $message);
         }
@@ -237,7 +237,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <div class="card h-100">
                   <div class="card-header">
                     <h3 class="card-title mb-0">ব্যক্তিগত ছাড়</h3>
-                    <p class="small text-secondary mb-0 mt-1">অনুমোদিত হলে এই ফির আগের বিলের বকেয়াতেও ছাড় বসে। যা আগে আদায় হয়ে অতিরিক্ত থাকে, সেটি অগ্রিম হিসেবে জমা হয়।</p>
+                    <p class="small text-secondary mb-0 mt-1">অনুমোদিত হলে এই ফির আগের বিলের বকেয়াতেও ছাড় বসে। যা আগে আদায় হয়ে অতিরিক্ত থাকে, বকেয়া থাকলে তা থেকে কাটা হয়। বকেয়া না থাকলে অগ্রিম থাকে। একই সাথে বকেয়া ও অগ্রিম থাকে না।</p>
                   </div>
                   <div class="card-body p-0">
                     <?php if ($concessions === []): ?>

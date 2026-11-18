@@ -126,7 +126,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ফি আদায়</h3>
-            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হয়; বেশি দিলে বাকিটা অগ্রিম থাকে।</p>
+            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হয়। বেশি দিলে আগে বাকি বকেয়া কাটে; বকেয়া শেষ হলে তবেই অগ্রিম থাকে।</p>
           </div>
         </div>
         <div class="app-content">
@@ -284,7 +284,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে।</div>
                       <div class="form-check mt-2">
                         <input class="form-check-input" type="checkbox" name="allow_advance" value="1" id="pay-advance"<?= $invoiceGroups === [] ? ' checked' : '' ?>>
-                        <label class="form-check-label" for="pay-advance">বকেয়ার অতিরিক্ত টাকা অগ্রিম হিসেবে জমা রাখুন</label>
+                        <label class="form-check-label" for="pay-advance">অতিরিক্ত টাকা আগে বাকি বকেয়া থেকে কাটুন; বকেয়া শেষ হলে অগ্রিম রাখুন</label>
                       </div>
                       <div class="row g-2 mt-1">
                         <div class="col-sm-6">

@@ -135,7 +135,7 @@ final class StudentCategoryService
         if ($count > 0) {
             $note .= ' কার্যকর তারিখের মাস থেকে ' . \bnDigits((string) $count) . 'টি মাসিক বিলে নতুন আদায়ের হার বসানো হয়েছে।';
             if ($advance > 0) {
-                $note .= ' অতিরিক্ত আদায় ' . Money::format($advance) . ' অগ্রিম হিসেবে জমা হয়েছে।';
+                $note .= ' অতিরিক্ত আদায় ' . Money::format($advance) . '। এই টাকা আগে বকেয়া থেকে কাটা হয়; বকেয়া না থাকলে অগ্রিম থাকে।';
             }
             if ($raised > 0) {
                 $note .= ' ' . \bnDigits((string) $raised) . 'টিতে নতুন হার বেশি বলে বকেয়া বেড়েছে।';

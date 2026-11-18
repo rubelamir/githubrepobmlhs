@@ -49,7 +49,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $message .= StudentCategoryService::appliedToBillsNote($result);
         }
         if ($kind === 'waiver' && $decision === 'approve' && is_int($result) && $result > 0) {
-            $message .= ' অতিরিক্ত আদায় ' . Money::format($result) . ' অগ্রিম হিসেবে জমা হয়েছে।';
+            $message .= ' অতিরিক্ত আদায় ' . Money::format($result) . '। এই টাকা আগে বকেয়া থেকে কাটা হয়; বকেয়া না থাকলে অগ্রিম থাকে।';
         }
         redirectWithMessage('approvals.php#' . $kind, 'success', $message);
     } catch (Throwable $exception) {
