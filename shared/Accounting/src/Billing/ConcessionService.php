@@ -69,7 +69,7 @@ final class ConcessionService
         }
 
         $id = 0;
-        $applied = ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
+        $applied = ['applied' => 0, 'advance' => 0, 'skipped_waiver' => 0];
         $this->db->beginTransaction();
         try {
             $this->db->prepare(
@@ -109,17 +109,17 @@ final class ConcessionService
         return ['id' => $id] + $applied;
     }
 
-    /** @param array{applied?: int, capped?: int, skipped_waiver?: int} $result */
+    /** @param array{applied?: int, advance?: int, skipped_waiver?: int} $result */
     public static function appliedToBillsNote(array $result): string
     {
         $applied = (int) ($result['applied'] ?? 0);
-        $capped = (int) ($result['capped'] ?? 0);
+        $advance = (int) ($result['advance'] ?? 0);
         $skipped = (int) ($result['skipped_waiver'] ?? 0);
         $note = '';
         if ($applied > 0) {
             $note .= ' আগের ' . \bnDigits((string) $applied) . 'টি বিলে ছাড় বসানো হয়েছে।';
-            if ($capped > 0) {
-                $note .= ' তার মধ্যে ' . \bnDigits((string) $capped) . 'টিতে আদায় থাকায় বকেয়া শূন্য পর্যন্ত ছাড় হয়েছে; আদায় করা টাকা ফেরত যায় না।';
+            if ($advance > 0) {
+                $note .= ' অতিরিক্ত আদায় ' . Money::format($advance) . ' অগ্রিম হিসেবে জমা হয়েছে।';
             }
         }
         if ($skipped > 0) {
@@ -129,7 +129,7 @@ final class ConcessionService
         return $note;
     }
 
-    /** @return array{applied: int, capped: int, skipped_waiver: int} */
+    /** @return array{applied: int, advance: int, skipped_waiver: int} */
     public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): array
     {
         if (!$actor->can(Capability::CONCESSION_APPROVE)) {
@@ -165,7 +165,7 @@ final class ConcessionService
             throw $exception;
         }
 
-        return ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
+        return ['applied' => 0, 'advance' => 0, 'skipped_waiver' => 0];
     }
 
     /** Ends an approved concession from a date onward (head only). */
@@ -274,7 +274,7 @@ final class ConcessionService
         );
     }
 
-    /** @return array{applied: int, capped: int, skipped_waiver: int} */
+    /** @return array{applied: int, advance: int, skipped_waiver: int} */
     private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): array
     {
         $row = $this->lockPending($id);
@@ -294,7 +294,7 @@ final class ConcessionService
             'note' => $note === '' ? null : $note,
             'id' => $id,
         ]);
-        $applied = \accInvoices()->applyApprovedConcession($row);
+        $applied = \accInvoices()->applyApprovedConcession($row, $actor->teacherId());
         $audit->record(
             'concession.approve',
             'concession',

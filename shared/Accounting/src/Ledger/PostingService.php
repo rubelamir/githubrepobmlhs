@@ -15,6 +15,7 @@ use School\Accounting\Support\Money;
  *   collection by teacher   Dr 1120 teacher custody   Cr fee income / 2110 advance
  *   collection at office    Dr 1110 cash              Cr fee income / 2110 advance
  *   advance applied         Dr 2110 advance           Cr fee income
+ *   excess parked as advance Dr fee income           Cr 2110 advance
  *   receipt reversed        Dr fee income / 2110      Cr 1110 or 1120 (where the cash is)
  *   handover received       Dr 1110 cash              Cr 1120 teacher custody
  *   online payment          Dr 1130 bKash              Cr fee income / 2110
@@ -51,6 +52,7 @@ final class PostingService
         foreach ($rows as $row) {
             $group = match ((string) $row['kind']) {
                 'advance_applied' => 'adv:' . $row['created_at'],
+                'to_advance' => 'toadv:' . $row['created_at'],
                 'refund' => 'refund:' . $row['created_at'],
                 'reversal' => 'reversal',
                 default => 'collect',
@@ -73,6 +75,12 @@ final class PostingService
                     'payment:' . $paymentId . ':reversal',
                     'রসিদ রিভার্স — ' . $receipt . ', ' . $name . ($payment['reversal_reason'] ? ' (' . $payment['reversal_reason'] . ')' : ''),
                     self::custodyAccount((string) $payment['custody']),
+                ],
+                str_starts_with($group, 'toadv:') => [
+                    VoucherService::JOURNAL,
+                    'payment:' . $paymentId . ':toadv:' . $groupRows[0]['id'],
+                    'অতিরিক্ত আদায় অগ্রিমে — রসিদ ' . $receipt . ', ' . $name,
+                    null,
                 ],
                 str_starts_with($group, 'refund:') => [
                     VoucherService::PAYMENT,

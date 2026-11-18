@@ -48,6 +48,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($decision === 'approve' && is_array($result) && $kind === 'category') {
             $message .= StudentCategoryService::appliedToBillsNote($result);
         }
+        if ($kind === 'waiver' && $decision === 'approve' && is_int($result) && $result > 0) {
+            $message .= ' অতিরিক্ত আদায় ' . Money::format($result) . ' অগ্রিম হিসেবে জমা হয়েছে।';
+        }
         redirectWithMessage('approvals.php#' . $kind, 'success', $message);
     } catch (Throwable $exception) {
         redirectWithMessage('approvals.php', 'danger', userFacingError($exception));

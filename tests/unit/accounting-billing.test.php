@@ -130,20 +130,20 @@ $check(BillingPeriod::referenceDateForKey('A:2026', '2026-02-01') === '2026-01-0
 $check(BillingPeriod::referenceDateForKey('E:2026:4', '2026-06-15') === '2026-06-15', 'exam bill uses its issue date');
 $half = ['kind' => ConcessionService::PERCENT, 'value' => '50.00'];
 $open = InvoiceService::concessionForExistingLine($half, 100000, 0, 0, 0, 100000);
-$check($open['changed'] && $open['discount'] === 50000 && $open['net'] === 50000 && !$open['capped'], 'full concession reduces an unpaid existing line');
+$check($open['changed'] && $open['discount'] === 50000 && $open['net'] === 50000 && $open['advance'] === 0, 'full concession reduces an unpaid existing line');
 $partlyPaid = InvoiceService::concessionForExistingLine($half, 100000, 0, 0, 80000, 100000);
-$check($partlyPaid['changed'] && $partlyPaid['discount'] === 20000 && $partlyPaid['net'] === 80000 && $partlyPaid['capped'], 'concession stops at money already collected');
+$check($partlyPaid['changed'] && $partlyPaid['discount'] === 50000 && $partlyPaid['net'] === 50000 && $partlyPaid['advance'] === 30000, 'concession already collected above the new net becomes advance');
 $smaller = InvoiceService::concessionForExistingLine(['kind' => ConcessionService::PERCENT, 'value' => '10.00'], 100000, 40000, 0, 0, 60000);
 $check(!$smaller['changed'] && $smaller['net'] === 60000, 'a smaller concession does not raise an existing bill');
 
 // A stipend or scholarship monthly rate replaces the issued monthly amount from its effective month.
 $halfPaid = ['kind' => ConcessionService::PERCENT, 'value' => '50.00', 'id' => 9];
 $scholarship = InvoiceService::monthlyCategoryForExistingLine(0, 100000, 3, null, 100000, 100000, 1, 0, 0, null, 0, 0, 100000);
-$check($scholarship['changed'] && $scholarship['amount'] === 0 && $scholarship['net'] === 0 && $scholarship['category_concession'] === 100000 && !$scholarship['capped'] && !$scholarship['raised'], 'unpaid monthly bill takes a zero scholarship rate');
+$check($scholarship['changed'] && $scholarship['amount'] === 0 && $scholarship['net'] === 0 && $scholarship['category_concession'] === 100000 && $scholarship['advance'] === 0 && !$scholarship['raised'], 'unpaid monthly bill takes a zero scholarship rate');
 $collected = InvoiceService::monthlyCategoryForExistingLine(0, 100000, 3, null, 100000, 100000, 1, 0, 0, null, 0, 80000, 100000);
-$check($collected['changed'] && $collected['amount'] === 0 && $collected['net'] === 80000 && $collected['capped'] && !$collected['raised'], 'scholarship rate stops at money already collected');
+$check($collected['changed'] && $collected['amount'] === 0 && $collected['net'] === 0 && $collected['advance'] === 80000 && !$collected['raised'], 'scholarship money already collected becomes advance');
 $backToGeneral = InvoiceService::monthlyCategoryForExistingLine(100000, 100000, 1, null, 40000, 100000, 2, 60000, 0, null, 0, 0, 40000);
-$check($backToGeneral['changed'] && $backToGeneral['net'] === 100000 && $backToGeneral['raised'] && !$backToGeneral['capped'], 'returning to the general rate raises an unpaid monthly bill');
+$check($backToGeneral['changed'] && $backToGeneral['net'] === 100000 && $backToGeneral['raised'] && $backToGeneral['advance'] === 0, 'returning to the general rate raises an unpaid monthly bill');
 $sameRate = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, null, 40000, 100000, 2, 60000, 0, null, 0, 0, 40000);
 $check(!$sameRate['changed'], 'the same monthly rate leaves the bill alone');
 $withConcession = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, $halfPaid, 100000, 100000, 1, 0, 0, null, 0, 0, 100000);

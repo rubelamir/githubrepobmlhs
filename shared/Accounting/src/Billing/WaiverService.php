@@ -22,7 +22,8 @@ final class WaiverService
     {
     }
 
-    public function request(AccessContext $actor, AuditTrail $audit, int $itemId, string $amountInput, string $reason): int
+    /** @return array{id: int, advance: int} */
+    public function request(AccessContext $actor, AuditTrail $audit, int $itemId, string $amountInput, string $reason): array
     {
         if (!$actor->can(Capability::WAIVER_REQUEST)) {
             throw AccessDeniedException::forCapability(Capability::WAIVER_REQUEST);
@@ -46,6 +47,7 @@ final class WaiverService
             throw new RuntimeException('এই লাইনে একটি মওকুফের আবেদন ইতিমধ্যে অনুমোদনের অপেক্ষায়।');
         }
 
+        $advance = 0;
         $this->db->beginTransaction();
         try {
             $this->db->prepare(
@@ -71,7 +73,7 @@ final class WaiverService
                 'মওকুফের আবেদন: ' . StudentDirectory::displayName($student) . ' — ' . $invoice['invoice_no']
             );
             if ($actor->can(Capability::WAIVER_APPROVE)) {
-                $this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি মওকুফ');
+                $advance = $this->approveLocked($actor, $audit, $id, 'প্রধান শিক্ষক কর্তৃক সরাসরি মওকুফ');
             }
             $this->db->commit();
         } catch (\Throwable $exception) {
@@ -79,10 +81,11 @@ final class WaiverService
             throw $exception;
         }
 
-        return $id;
+        return ['id' => $id, 'advance' => $advance];
     }
 
-    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): void
+    /** @return int paisa of already-collected money parked as advance */
+    public function decide(AccessContext $actor, AuditTrail $audit, int $id, bool $approve, string $note): int
     {
         if (!$actor->can(Capability::WAIVER_APPROVE)) {
             throw AccessDeniedException::forCapability(Capability::WAIVER_APPROVE);
@@ -91,10 +94,11 @@ final class WaiverService
         if (!$approve && mb_strlen($note, 'UTF-8') < 3) {
             throw new RuntimeException('প্রত্যাখ্যানের কারণ লিখুন।');
         }
+        $advance = 0;
         $this->db->beginTransaction();
         try {
             if ($approve) {
-                $this->approveLocked($actor, $audit, $id, $note);
+                $advance = $this->approveLocked($actor, $audit, $id, $note);
             } else {
                 $this->lockPending($id);
                 $this->db->prepare('UPDATE acc_waivers SET status = :status, decided_by = :actor, decided_at = :now, decision_note = :note WHERE id = :id')
@@ -112,6 +116,8 @@ final class WaiverService
             $this->db->rollBack();
             throw $exception;
         }
+
+        return $advance;
     }
 
     /** @return list<array<string, mixed>> */
@@ -149,7 +155,8 @@ final class WaiverService
         );
     }
 
-    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): void
+    /** @return int paisa parked as advance */
+    private function approveLocked(AccessContext $actor, AuditTrail $audit, int $id, string $note): int
     {
         $waiver = $this->lockPending($id);
         $statement = $this->db->prepare('SELECT * FROM acc_invoice_items WHERE id = :id FOR UPDATE');
@@ -161,13 +168,13 @@ final class WaiverService
         }
         $amount = Money::fromDb($waiver['amount']);
         $net = Money::fromDb($item['net']);
-        $outstanding = $net - Money::fromDb($item['paid']);
-        if ($amount > $outstanding) {
-            throw new RuntimeException('মওকুফের পরিমাণ এখনকার বকেয়ার (' . Money::format(max(0, $outstanding)) . ') চেয়ে বেশি; আবেদনটি প্রত্যাখ্যান করে নতুন আবেদন নিন।');
+        if ($amount > $net) {
+            throw new RuntimeException('মওকুফের পরিমাণ এখনকার বিলের (' . Money::format($net) . ') চেয়ে বেশি; আবেদনটি প্রত্যাখ্যান করে নতুন আবেদন নিন।');
         }
         $waived = Money::fromDb($item['waived']) + $amount;
         $this->db->prepare('UPDATE acc_invoice_items SET waived = :waived, net = :net WHERE id = :id')
             ->execute(['waived' => Money::toDb($waived), 'net' => Money::toDb($net - $amount), 'id' => (int) $item['id']]);
+        $advance = \accPayments()->parkExcessAsAdvance((int) $item['id'], $actor->teacherId());
         $this->db->prepare('UPDATE acc_waivers SET status = :status, decided_by = :actor, decided_at = :now, decision_note = :note WHERE id = :id')
             ->execute([
                 'status' => ApprovalStatus::APPROVED,
@@ -185,6 +192,8 @@ final class WaiverService
             ['item_waived' => Money::toDb($waived), 'item_net' => Money::toDb($net - $amount), 'invoice_net' => $totals['net']],
             'মওকুফ অনুমোদিত: ' . $invoice['invoice_no']
         );
+
+        return $advance;
     }
 
     /** @return array<string, mixed> */

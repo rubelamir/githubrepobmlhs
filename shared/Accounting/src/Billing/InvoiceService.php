@@ -303,42 +303,42 @@ final class InvoiceService
 
     /**
      * Discount to store on a bill that already exists.
-     * The issued net never goes up, and it never falls below money already collected.
+     * The issued net never goes up. Money already collected above the new net is advance.
      *
      * @param array<string, mixed> $concession
-     * @return array{discount: int, net: int, capped: bool, changed: bool}
+     * @return array{discount: int, net: int, advance: int, changed: bool}
      */
     public static function concessionForExistingLine(array $concession, int $amount, int $discount, int $waived, int $paid, int $net): array
     {
         $desired = ConcessionService::discountFor($concession, $amount);
-        $target = $amount - $desired - $waived;
-        $nextNet = min($net, max($paid, $target));
+        $target = max(0, $amount - $desired - $waived);
+        $nextNet = min($net, $target);
         $nextDiscount = $amount - $waived - $nextNet;
-        if ($nextDiscount < 0 || $nextNet < $paid) {
-            return ['discount' => $discount, 'net' => $net, 'capped' => false, 'changed' => false];
+        if ($nextDiscount < 0 || $nextNet > $net) {
+            return ['discount' => $discount, 'net' => $net, 'advance' => 0, 'changed' => false];
         }
 
         return [
             'discount' => $nextDiscount,
             'net' => $nextNet,
-            'capped' => $paid > 0 && $nextDiscount < $desired && $nextNet === $paid && $target < $paid,
+            'advance' => max(0, $paid - $nextNet),
             'changed' => $nextDiscount !== $discount || $nextNet !== $net,
         ];
     }
 
     /**
      * Writes an approved concession onto this student's open bills for that fee.
-     * Caller holds the transaction. Collected money and the ledger are left as they are.
+     * Caller holds the transaction. Collected money above the new net becomes advance.
      *
      * @param array<string, mixed> $concession
-     * @return array{applied: int, capped: int, skipped_waiver: int}
+     * @return array{applied: int, advance: int, skipped_waiver: int}
      */
-    public function applyApprovedConcession(array $concession): array
+    public function applyApprovedConcession(array $concession, int $actorId): array
     {
         if (!$this->db->inTransaction()) {
             throw new RuntimeException('ছাড় আগের বিলে বসাতে লেনদেনের ভিতরে থাকতে হবে।');
         }
-        $result = ['applied' => 0, 'capped' => 0, 'skipped_waiver' => 0];
+        $result = ['applied' => 0, 'advance' => 0, 'skipped_waiver' => 0];
         $from = (string) ($concession['effective_from'] ?? '');
         $to = $concession['effective_to'] ?? null;
         $to = $to !== null && (string) $to !== '' ? (string) $to : null;
@@ -397,11 +397,11 @@ final class InvoiceService
                 'net' => Money::toDb($next['net']),
                 'id' => (int) $line['id'],
             ]);
+            if ($next['advance'] > 0) {
+                $result['advance'] += \accPayments()->parkExcessAsAdvance((int) $line['id'], $actorId);
+            }
             $touched[(int) $line['invoice_id']] = true;
             $result['applied']++;
-            if ($next['capped']) {
-                $result['capped']++;
-            }
         }
         foreach (array_keys($touched) as $invoiceId) {
             $this->recompute($invoiceId);
@@ -412,10 +412,10 @@ final class InvoiceService
 
     /**
      * Monthly category rate on a bill that already exists.
-     * The new rate may raise what is still unpaid. It never falls below money already collected.
+     * The new rate may raise what is still unpaid. Money already collected above the new net becomes advance.
      *
      * @param array<string, mixed>|null $concession
-     * @return array{amount: int, standard: int, category_id: int, category_concession: int, discount: int, concession_id: int|null, net: int, capped: bool, raised: bool, changed: bool}
+     * @return array{amount: int, standard: int, category_id: int, category_concession: int, discount: int, concession_id: int|null, net: int, advance: int, raised: bool, changed: bool}
      */
     public static function monthlyCategoryForExistingLine(
         int $newAmount,
@@ -436,7 +436,7 @@ final class InvoiceService
             ? ConcessionService::discountFor($concession, $newAmount)
             : min($discount, max(0, $newAmount));
         $target = $newAmount - $desiredDiscount - $waived;
-        $nextNet = max($paid, $target);
+        $nextNet = max(0, $target);
         $nextDiscount = $newAmount - $waived - $nextNet;
         if ($nextDiscount < 0) {
             $nextDiscount = 0;
@@ -465,7 +465,7 @@ final class InvoiceService
             'discount' => $nextDiscount,
             'concession_id' => $nextConcessionId,
             'net' => $nextNet,
-            'capped' => $paid > 0 && $target < $paid && $nextNet === $paid,
+            'advance' => max(0, $paid - $nextNet),
             'raised' => $nextNet > $net,
             'changed' => $changed,
         ];
@@ -477,14 +477,14 @@ final class InvoiceService
      * Caller holds the transaction. Collected money and the ledger are left as they are.
      *
      * @param array<string, mixed> $assignment
-     * @return array{applied: int, capped: int, raised: int, skipped_waiver: int}
+     * @return array{applied: int, advance: int, raised: int, skipped_waiver: int}
      */
-    public function applyApprovedCategory(array $assignment): array
+    public function applyApprovedCategory(array $assignment, int $actorId): array
     {
         if (!$this->db->inTransaction()) {
             throw new RuntimeException('মাসিক হার আগের বিলে বসাতে লেনদেনের ভিতরে থাকতে হবে।');
         }
-        $result = ['applied' => 0, 'capped' => 0, 'raised' => 0, 'skipped_waiver' => 0];
+        $result = ['applied' => 0, 'advance' => 0, 'raised' => 0, 'skipped_waiver' => 0];
         $studentId = (int) ($assignment['student_id'] ?? 0);
         $session = (string) ($assignment['session_year'] ?? '');
         $from = (string) ($assignment['effective_from'] ?? '');
@@ -585,8 +585,8 @@ final class InvoiceService
             ]);
             $touched[(int) $line['invoice_id']] = true;
             $result['applied']++;
-            if ($next['capped']) {
-                $result['capped']++;
+            if ($next['advance'] > 0) {
+                $result['advance'] += \accPayments()->parkExcessAsAdvance((int) $line['id'], $actorId);
             }
             if ($next['raised']) {
                 $result['raised']++;

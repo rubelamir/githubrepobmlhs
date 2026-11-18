@@ -39,6 +39,7 @@ final class PaymentService
     public const KIND_ADVANCE_APPLIED = 'advance_applied';
     public const KIND_REVERSAL = 'reversal';
     public const KIND_REFUND = 'refund';
+    public const KIND_TO_ADVANCE = 'to_advance';
 
     public const STATUS_LABELS = [self::CONFIRMED => 'বৈধ', self::REVERSED => 'বাতিল'];
     public const METHOD_LABELS = ['cash' => 'নগদ', 'bkash' => 'bKash', 'nagad' => 'Nagad', 'bank' => 'ব্যাংক'];
@@ -520,6 +521,89 @@ final class PaymentService
         return $paymentId;
     }
 
+    /**
+     * Moves money already collected above a line's new net onto the student's advance.
+     * The cash stays on the same receipt. Caller holds the transaction.
+     *
+     * @return int paisa parked as advance
+     */
+    public function parkExcessAsAdvance(int $itemId, int $actorId): int
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('অতিরিক্ত আদায় অগ্রিমে সরাতে লেনদেনের ভিতরে থাকতে হবে।');
+        }
+        $statement = $this->db->prepare('SELECT id, invoice_id, student_id, paid, net FROM acc_invoice_items WHERE id = :id FOR UPDATE');
+        $statement->execute(['id' => $itemId]);
+        $item = $statement->fetch(\PDO::FETCH_ASSOC);
+        if (!$item) {
+            throw new RuntimeException('ইনভয়েস লাইন পাওয়া যায়নি।');
+        }
+        $excess = Money::fromDb($item['paid']) - Money::fromDb($item['net']);
+        if ($excess <= 0) {
+            return 0;
+        }
+        $byPayment = [];
+        foreach (\fetchRows(
+            $this->db,
+            'SELECT payment_id, invoice_id, amount FROM acc_payment_allocations WHERE invoice_item_id = :item FOR UPDATE',
+            ['item' => $itemId]
+        ) as $row) {
+            $paymentId = (int) $row['payment_id'];
+            $byPayment[$paymentId]['invoice_id'] = (int) ($row['invoice_id'] ?? $item['invoice_id']);
+            $byPayment[$paymentId]['amount'] = ($byPayment[$paymentId]['amount'] ?? 0) + Money::fromDb($row['amount']);
+        }
+        krsort($byPayment);
+        $left = $excess;
+        $now = AuditTrail::now()->format('Y-m-d H:i:s');
+        $insert = $this->db->prepare(
+            'INSERT INTO acc_payment_allocations (payment_id, student_id, invoice_item_id, invoice_id, amount, kind, created_by, created_at)
+             VALUES (:payment, :student, :item, :invoice, :amount, :kind, :actor, :now)'
+        );
+        $studentId = (int) $item['student_id'];
+        $touched = [];
+        foreach ($byPayment as $paymentId => $bucket) {
+            if ($left <= 0) {
+                break;
+            }
+            if ($bucket['amount'] <= 0) {
+                continue;
+            }
+            $take = min($left, $bucket['amount']);
+            $insert->execute([
+                'payment' => $paymentId,
+                'student' => $studentId,
+                'item' => $itemId,
+                'invoice' => $bucket['invoice_id'],
+                'amount' => Money::toDb(-$take),
+                'kind' => self::KIND_TO_ADVANCE,
+                'actor' => $actorId,
+                'now' => $now,
+            ]);
+            $insert->execute([
+                'payment' => $paymentId,
+                'student' => $studentId,
+                'item' => null,
+                'invoice' => null,
+                'amount' => Money::toDb($take),
+                'kind' => self::KIND_TO_ADVANCE,
+                'actor' => $actorId,
+                'now' => $now,
+            ]);
+            $left -= $take;
+            $touched[] = $paymentId;
+        }
+        if ($left > 0) {
+            throw new RuntimeException('অতিরিক্ত আদায়ের রসিদ পাওয়া যায়নি, তাই অগ্রিমে সরানো যায়নি।');
+        }
+        $this->db->prepare('UPDATE acc_invoice_items SET paid = paid - :amount WHERE id = :id')
+            ->execute(['amount' => Money::toDb($excess), 'id' => $itemId]);
+        foreach ($touched as $paymentId) {
+            $this->posting?->postPayment($paymentId);
+        }
+
+        return $excess;
+    }
+
     /** Amount of this receipt still sitting on fee lines or advance (what a refund can take back). */
     public function refundable(int $paymentId): int
     {
@@ -617,7 +701,7 @@ final class PaymentService
              FROM acc_payment_allocations a
              LEFT JOIN acc_invoice_items i ON i.id = a.invoice_item_id
              LEFT JOIN acc_invoices inv ON inv.id = a.invoice_id
-             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance')
+             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance')
              GROUP BY a.invoice_item_id, i.description, inv.invoice_no, inv.billing_label
              ORDER BY MIN(a.id)",
             ['id' => $paymentId]
