@@ -420,8 +420,48 @@ function accBootPage(string|array $capability): AccessContext
     }
     accSyncPostings();
     accSyncCategoryRates($access->teacherId());
+    accSyncConcessionRates($access->teacherId());
 
     return $access;
+}
+
+/**
+ * One catch-up: a concession approved while a month was already fully paid
+ * left that month at the old fee. Apply those concessions again so the excess is advance.
+ */
+function accSyncConcessionRates(int $actorId): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $db = getDatabaseConnection();
+    if (!tableExists($db, 'acc_concessions') || schemaMigrationApplied($db, 'acc_concession_bill_rates_v1')) {
+        return;
+    }
+    $rows = fetchRows(
+        $db,
+        'SELECT id FROM acc_concessions WHERE status = :status ORDER BY effective_from, id',
+        ['status' => 'approved']
+    );
+    $failed = false;
+    foreach ($rows as $row) {
+        $marker = 'acc_concession_bill_rate_' . (int) $row['id'];
+        if (schemaMigrationApplied($db, $marker)) {
+            continue;
+        }
+        try {
+            accConcessions()->syncApprovedConcession((int) $row['id'], $actorId);
+            recordSchemaMigration($db, $marker);
+        } catch (Throwable $exception) {
+            $failed = true;
+            error_log('Accounting concession ' . (int) $row['id'] . ': ' . $exception->getMessage());
+        }
+    }
+    if (!$failed) {
+        recordSchemaMigration($db, 'acc_concession_bill_rates_v1');
+    }
 }
 
 /**

@@ -307,6 +307,56 @@ final class ConcessionService
         return $applied;
     }
 
+    /**
+     * Writes one already-approved concession onto bills again.
+     * A fully collected month used to keep its old fee, so the discount never appeared.
+     *
+     * @return array{applied: int, advance: int, skipped_waiver: int}
+     */
+    public function syncApprovedConcession(int $concessionId, int $actorId): array
+    {
+        $rows = \fetchRows(
+            $this->db,
+            'SELECT * FROM acc_concessions WHERE id = :id AND status = :status',
+            ['id' => $concessionId, 'status' => ApprovalStatus::APPROVED]
+        );
+        $empty = ['applied' => 0, 'advance' => 0, 'skipped_waiver' => 0];
+        if ($rows === []) {
+            return $empty;
+        }
+        $row = $rows[0];
+        $actor = (int) ($row['decided_by'] ?? 0);
+        if ($actor < 1) {
+            $actor = $actorId;
+        }
+        $this->db->beginTransaction();
+        try {
+            $applied = \accInvoices()->applyApprovedConcession($row, $actor);
+            if ($applied['applied'] > 0) {
+                \accAudit()->record(
+                    'concession.sync_bills',
+                    'concession',
+                    (int) $row['id'],
+                    null,
+                    [
+                        'student_id' => (int) $row['student_id'],
+                        'fee_head_id' => (int) $row['fee_head_id'],
+                        'effective_from' => (string) $row['effective_from'],
+                    ] + $applied,
+                    'আগে অনুমোদিত ছাড় আদায় হওয়া বিলে বসানো হয়েছে'
+                );
+            }
+            $this->db->commit();
+        } catch (\Throwable $exception) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $exception;
+        }
+
+        return $applied;
+    }
+
     /** @return array<string, mixed> */
     private function lockPending(int $id): array
     {
