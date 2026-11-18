@@ -7,8 +7,9 @@ namespace School\Accounting\Collection;
 use RuntimeException;
 
 /**
- * Splits a received amount over outstanding invoice lines in the given order
- * (callers pass oldest due first). Whatever is left over is the advance.
+ * Splits a received amount over outstanding invoice lines in the given order.
+ * Callers pass session, then admission, then monthly, then exam, then other fees.
+ * Whatever is left over is the advance.
  */
 final class Allocator
 {

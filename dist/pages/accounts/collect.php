@@ -126,7 +126,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ফি আদায়</h3>
-            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আংশিক হয়; বেশি দিলে বাকিটা অগ্রিম থাকে।</p>
+            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হয়; বেশি দিলে বাকিটা অগ্রিম থাকে।</p>
           </div>
         </div>
         <div class="app-content">
@@ -231,7 +231,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                 </div>
                 <?php if ($advance > 0 && $totalDue > 0): ?>
-                  <form method="post" class="card-footer d-flex flex-wrap gap-2 align-items-center" data-acc-confirm="অগ্রিম জমা থেকে পুরনো বকেয়া পরিশোধ করা হবে। নিশ্চিত?">
+                  <form method="post" class="card-footer d-flex flex-wrap gap-2 align-items-center" data-acc-confirm="অগ্রিম জমা থেকে সেশন ফি, ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি ক্রমে পরিশোধ হবে। নিশ্চিত?">
                     <?= csrfField() ?><?= signedRecordField($studentId, 'acc_student') ?><input type="hidden" name="action" value="apply_advance">
                     <span class="small">অগ্রিম জমা আছে, বকেয়াও আছে।</span>
                     <button class="btn btn-sm btn-success" type="submit"><i class="bi bi-arrow-repeat me-1"></i>অগ্রিম থেকে সমন্বয় করুন</button>
@@ -246,7 +246,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 <input type="hidden" name="idempotency_key" value="<?= h(PaymentService::newIdempotencyKey()) ?>">
                 <div class="col-lg-7">
                   <div class="card h-100">
-                    <div class="card-header"><h3 class="card-title mb-0">বকেয়া <span class="small text-secondary fw-normal">(যে বিল পরিশোধ হবে তা টিক দিন)</span></h3></div>
+                    <div class="card-header"><h3 class="card-title mb-0">বকেয়া <span class="small text-secondary fw-normal">(সেশন, ভর্তি, মাসিক বেতন, পরীক্ষা — যে বিল পরিশোধ হবে তা টিক দিন)</span></h3></div>
                     <div class="card-body p-0">
                       <?php if ($invoiceGroups === []): ?>
                         <p class="text-secondary p-3 mb-0">কোনো বকেয়া নেই। টাকা নিলে তা অগ্রিম হিসেবে জমা থাকবে।</p>
@@ -281,7 +281,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="card-body">
                       <label class="form-label" for="pay-amount">গৃহীত টাকা (৳)</label>
                       <input class="form-control form-control-lg text-end" id="pay-amount" name="amount" inputmode="decimal" required maxlength="16" value="<?= $totalDue > 0 ? h(Money::toInput($totalDue)) : '' ?>" data-acc-amount autocomplete="off">
-                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আংশিক পরিশোধ হবে।</div>
+                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে।</div>
                       <div class="form-check mt-2">
                         <input class="form-check-input" type="checkbox" name="allow_advance" value="1" id="pay-advance"<?= $invoiceGroups === [] ? ' checked' : '' ?>>
                         <label class="form-check-label" for="pay-advance">বকেয়ার অতিরিক্ত টাকা অগ্রিম হিসেবে জমা রাখুন</label>

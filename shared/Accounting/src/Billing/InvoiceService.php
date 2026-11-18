@@ -583,6 +583,42 @@ final class InvoiceService
     }
 
     /**
+     * Money is applied session fee, then admission, then each month's tuition,
+     * then exam fees, then anything else. Earlier months come before later ones.
+     *
+     * @param array<string, mixed> $line billing_key, issue_date, invoice_id, id, line_kind, sort_order
+     * @return array{0: int, 1: int|string, 2: int, 3: int|string, 4: int, 5: int, 6: int, 7: int}
+     */
+    public static function paymentSortKey(array $line): array
+    {
+        $key = (string) ($line['billing_key'] ?? '');
+        $issue = (string) ($line['issue_date'] ?? '');
+        $invoiceId = (int) ($line['invoice_id'] ?? 0);
+        $lineId = (int) ($line['id'] ?? 0);
+        $fine = (string) ($line['line_kind'] ?? self::LINE_FEE) === self::LINE_FEE ? 0 : 1;
+        $sort = (int) ($line['sort_order'] ?? 0);
+        $tail = [$invoiceId, $fine, $sort, $lineId];
+
+        if (preg_match('/^S:(\d{4})$/', $key, $match) === 1) {
+            return [0, (int) $match[1], 0, '', ...$tail];
+        }
+        if (preg_match('/^A:(\d{4})$/', $key, $match) === 1) {
+            return [1, (int) $match[1], 0, '', ...$tail];
+        }
+        if (preg_match('/^M:(\d{4})-(\d{2})$/', $key, $match) === 1) {
+            return [2, (int) $match[1], (int) $match[2], '', ...$tail];
+        }
+        if (preg_match('/^E:\d{4}:(\d+)$/', $key, $match) === 1) {
+            return [3, $issue, (int) $match[1], '', ...$tail];
+        }
+        if (preg_match('/^O:(\d{4})-(\d{2})$/', $key, $match) === 1) {
+            return [4, (int) $match[1], (int) $match[2], '', ...$tail];
+        }
+
+        return [5, $issue, 0, '', ...$tail];
+    }
+
+    /**
      * @param array<string, mixed> $line
      * @return array{0: int, 1: int, 2: int}
      */

@@ -20,8 +20,8 @@ use School\Accounting\Support\Sequence;
 
 /**
  * Fee collection. A payment is split over the student's outstanding lines
- * (oldest due first, or only the invoices the collector picked); any extra is
- * kept as advance and applied to later invoices. Receipts are never deleted:
+ * (session, admission, monthly tuition, exam, then other fees; or only the
+ * invoices the collector picked). Any extra is kept as advance. Receipts are never deleted:
  * a wrong one is reversed with opposite allocation rows.
  */
 final class PaymentService
@@ -59,23 +59,28 @@ final class PaymentService
     }
 
     /**
-     * Outstanding lines of live invoices, oldest due first; a fine follows its fee.
+     * Outstanding lines of live invoices, in the order a payment settles them.
+     * Session fee, then admission, then monthly tuition month by month, then exam, then other fees.
      *
      * @return list<array<string, mixed>>
      */
     public function outstandingLines(int $studentId, bool $lock = false): array
     {
-        return \fetchRows(
+        $rows = \fetchRows(
             $this->db,
             "SELECT i.id, i.invoice_id, i.description, i.line_kind, i.net, i.paid, i.due_date,
-                    inv.invoice_no, inv.billing_label, inv.due_date AS invoice_due
+                    inv.invoice_no, inv.billing_key, inv.billing_label, inv.issue_date, inv.due_date AS invoice_due,
+                    h.sort_order
              FROM acc_invoice_items i
              JOIN acc_invoices inv ON inv.id = i.invoice_id
-             WHERE i.student_id = :student AND inv.status <> 'cancelled' AND i.net > i.paid
-             ORDER BY inv.due_date, inv.id, CASE WHEN i.line_kind = 'fee' THEN 0 ELSE 1 END, i.id"
+             LEFT JOIN acc_fee_heads h ON h.id = i.fee_head_id
+             WHERE i.student_id = :student AND inv.status <> 'cancelled' AND i.net > i.paid"
             . ($lock ? ' FOR UPDATE' : ''),
             ['student' => $studentId]
         );
+        usort($rows, static fn (array $left, array $right): int => InvoiceService::paymentSortKey($left) <=> InvoiceService::paymentSortKey($right));
+
+        return $rows;
     }
 
     /** Unused advance in paisa. */
