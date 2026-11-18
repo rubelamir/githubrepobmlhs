@@ -40,6 +40,15 @@ $pair = [$fine, $due(1, 'S:2026')];
 $pair[1]['invoice_id'] = 1;
 usort($pair, static fn (array $left, array $right): int => InvoiceService::paymentSortKey($left) <=> InvoiceService::paymentSortKey($right));
 $check(array_column($pair, 'id') === [1, 9], 'a fine is settled after its own fee');
+$receiptOrder = PaymentService::orderReceiptLines([
+    ['id' => 5, 'invoice_id' => 5, 'billing_key' => 'O:2026-01', 'issue_date' => '2026-01-20', 'line_kind' => 'fee', 'sort_order' => 0],
+    ['id' => 3, 'invoice_id' => 3, 'billing_key' => 'M:2026-03', 'issue_date' => '2026-03-31', 'line_kind' => 'fee', 'sort_order' => 0],
+    ['id' => 4, 'invoice_id' => 4, 'billing_key' => 'E:2026:2', 'issue_date' => '2026-06-01', 'line_kind' => 'fee', 'sort_order' => 0],
+    ['id' => 2, 'invoice_id' => 2, 'billing_key' => 'A:2026', 'issue_date' => '2026-01-01', 'line_kind' => 'fee', 'sort_order' => 0],
+    ['id' => 1, 'invoice_id' => 1, 'billing_key' => 'S:2026', 'issue_date' => '2026-01-01', 'line_kind' => 'fee', 'sort_order' => 0],
+    ['id' => 6, 'invoice_id' => 6, 'billing_key' => 'M:2026-01', 'issue_date' => '2026-01-31', 'line_kind' => 'fee', 'sort_order' => 0],
+]);
+$check(array_column($receiptOrder, 'id') === [1, 2, 6, 3, 4, 5], 'a receipt lists session, admission, months, exam, then other');
 $result = Allocator::allocate($lines, 200000);
 $check($result['lines'] === [7 => 45000, 9 => 90000] && $result['remainder'] === 65000, 'overpayment leaves a remainder for advance');
 $result = Allocator::allocate([], 1000);

@@ -726,13 +726,15 @@ final class PaymentService
     {
         $rows = \fetchRows(
             $this->db,
-            "SELECT a.invoice_item_id, SUM(a.amount) AS amount, i.description, inv.invoice_no, inv.billing_label
+            "SELECT a.invoice_item_id, SUM(a.amount) AS amount, i.description, i.line_kind, i.billing_key,
+                    inv.id AS invoice_id, inv.invoice_no, inv.billing_label, inv.issue_date, h.sort_order
              FROM acc_payment_allocations a
              LEFT JOIN acc_invoice_items i ON i.id = a.invoice_item_id
              LEFT JOIN acc_invoices inv ON inv.id = a.invoice_id
+             LEFT JOIN acc_fee_heads h ON h.id = i.fee_head_id
              WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance', 'advance_applied')
-             GROUP BY a.invoice_item_id, i.description, inv.invoice_no, inv.billing_label
-             ORDER BY MIN(a.id)",
+             GROUP BY a.invoice_item_id, i.description, i.line_kind, i.billing_key,
+                      inv.id, inv.invoice_no, inv.billing_label, inv.issue_date, h.sort_order",
             ['id' => $paymentId]
         );
         $lines = [];
@@ -742,10 +744,25 @@ final class PaymentService
                 $advance += Money::fromDb($row['amount']);
                 continue;
             }
+            $row['id'] = (int) $row['invoice_item_id'];
             $lines[] = $row;
         }
 
-        return ['lines' => $lines, 'advance' => $advance];
+        return ['lines' => self::orderReceiptLines($lines), 'advance' => $advance];
+    }
+
+    /**
+     * Receipt rows follow the same order as collection: session, admission,
+     * monthly tuition (earlier months first), exam, then other fees.
+     *
+     * @param list<array<string, mixed>> $lines
+     * @return list<array<string, mixed>>
+     */
+    public static function orderReceiptLines(array $lines): array
+    {
+        usort($lines, static fn (array $left, array $right): int => InvoiceService::paymentSortKey($left) <=> InvoiceService::paymentSortKey($right));
+
+        return $lines;
     }
 
     /** @return list<array<string, mixed>> */
