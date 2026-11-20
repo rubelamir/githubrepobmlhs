@@ -4,7 +4,6 @@ declare(strict_types=1);
 use School\Accounting\Access\Capability;
 use School\Accounting\Access\Role;
 use School\Accounting\Ledger\ChartOfAccounts;
-use School\Accounting\Ledger\SimpleBooks;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -69,10 +68,6 @@ if ($access->can(Capability::FEES_COLLECT) || $access->can(Capability::FEES_VIEW
         'collector' => $access->hasSchoolWideScope() ? 0 : $access->teacherId(),
     ], 8);
 }
-$staffAdvance = null;
-if ($access->can(Capability::REPORTS_VIEW_ALL)) {
-    $staffAdvance = accChart()->balance(accChart()->idOf(SimpleBooks::STAFF_ADVANCE));
-}
 $vouchersWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accVouchers()->submittedCount() : null;
 $bankWaiting = $access->can(Capability::VOUCHER_APPROVE) ? accBank()->submittedCount() : null;
 $bkashBalance = null;
@@ -131,7 +126,7 @@ if ($access->can(Capability::FEES_COLLECT)) {
     $steps[] = ['ফি আদায়', 'নাম বা রোল দিয়ে', 'collect.php', 'bi-cash-stack'];
 }
 if ($access->can(Capability::VOUCHER_CREATE)) {
-    $steps[] = ['খরচ যোগ', 'আয়, খরচ, অগ্রিম', 'expense.php', 'bi-wallet2'];
+    $steps[] = ['খরচ যোগ', 'আয় ও খরচ', 'expense.php', 'bi-wallet2'];
 }
 if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPORTS_VIEW_CLASS)) {
     $steps[] = ['রিপোর্ট', 'আয়, বকেয়া, উদ্বৃত্ত', 'reports.php', 'bi-bar-chart'];
@@ -327,17 +322,6 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <?php endif; ?>
             </div>
-
-            <?php if ($staffAdvance !== null && $staffAdvance > 0): ?>
-            <div class="row g-3 mb-3">
-              <div class="col-6 col-lg-3">
-                <a class="acc-stat d-block text-decoration-none text-body" href="<?= $access->can(Capability::VOUCHER_CREATE) ? 'expense.php' : 'vouchers.php' ?>">
-                  <div class="acc-stat-label">কর্মচারী অগ্রিম বকেয়া</div>
-                  <div class="acc-stat-value"><?= h(Money::format($staffAdvance)) ?></div>
-                </a>
-              </div>
-            </div>
-            <?php endif; ?>
 
             <?php if ($recentPayments !== []): ?>
             <div class="card mb-3">
