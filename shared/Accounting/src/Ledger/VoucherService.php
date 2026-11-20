@@ -37,6 +37,30 @@ final class VoucherService
     ];
     public const PREFIXES = [self::RECEIPT => 'RV', self::PAYMENT => 'PV', self::CONTRA => 'CV', self::JOURNAL => 'JV'];
 
+    /** Plain names for the two amount columns, keyed by voucher type. */
+    public const SIDE_COPY = [
+        self::PAYMENT => [
+            'in' => 'কীসের জন্য',
+            'out' => 'কোথা থেকে',
+            'hint' => 'খরচের নাম «কীসের জন্য»-এ লিখুন। নগদ, ব্যাংক বা বিকাশ «কোথা থেকে»-এ লিখুন। দুই দিকের মোট সমান হতে হবে।',
+        ],
+        self::RECEIPT => [
+            'in' => 'কোথায় এল',
+            'out' => 'কীসের আয়',
+            'hint' => 'নগদ, ব্যাংক বা বিকাশ «কোথায় এল»-এ লিখুন। আয়ের নাম «কীসের আয়»-এ লিখুন। দুই দিকের মোট সমান হতে হবে।',
+        ],
+        self::CONTRA => [
+            'in' => 'কোথায় এল',
+            'out' => 'কোথা থেকে',
+            'hint' => 'যেখানে টাকা এসেছে «কোথায় এল»-এ লিখুন। যেখান থেকে গেছে «কোথা থেকে»-এ লিখুন। দুই দিকের মোট সমান হতে হবে।',
+        ],
+        self::JOURNAL => [
+            'in' => 'যেখানে যোগ',
+            'out' => 'যেখানে বাদ',
+            'hint' => 'নগদ, ব্যাংক বা বিকাশ এখানে লিখবেন না। এক হিসাবে «যেখানে যোগ», অন্য হিসাবে «যেখানে বাদ»। দুই দিকের মোট সমান হতে হবে।',
+        ],
+    ];
+
     public const DRAFT = 'draft';
     public const SUBMITTED = 'submitted';
     public const APPROVED = 'approved';
@@ -85,7 +109,7 @@ final class VoucherService
         if (mb_strlen($narration, 'UTF-8') < 3) {
             throw new RuntimeException('ভাউচারের বিবরণ (narration) লিখুন।');
         }
-        $lines = $this->normalizeLines(is_array($input['lines'] ?? null) ? $input['lines'] : []);
+        $lines = $this->normalizeLines(is_array($input['lines'] ?? null) ? $input['lines'] : [], $type);
         $this->assertTypeRules($type, $lines);
         $total = array_sum(array_column($lines, 'debit'));
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
@@ -311,7 +335,7 @@ final class VoucherService
         $debit = array_sum(array_column($lines, 'debit'));
         $credit = array_sum(array_column($lines, 'credit'));
         if ($debit !== $credit || $debit <= 0) {
-            throw new RuntimeException('স্বয়ংক্রিয় ভাউচারে দুই ঘরের টাকা সমান হয়নি।');
+            throw new RuntimeException('স্বয়ংক্রিয় ভাউচারে দুই দিকের টাকা সমান হয়নি।');
         }
         $number = $this->assignNumber($type, $date);
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
@@ -448,8 +472,11 @@ final class VoucherService
      * @param list<mixed> $raw
      * @return list<array{account_id: int, debit: int, credit: int, party_type: string, party_id: int|null, memo: string}>
      */
-    public function normalizeLines(array $raw): array
+    public function normalizeLines(array $raw, string $type = self::PAYMENT): array
     {
+        $sides = self::SIDE_COPY[$type] ?? self::SIDE_COPY[self::PAYMENT];
+        $inName = $sides['in'];
+        $outName = $sides['out'];
         $postable = [];
         foreach ($this->chart->postable() as $account) {
             $postable[(int) $account['id']] = $account;
@@ -470,15 +497,15 @@ final class VoucherService
             if (!isset($postable[$accountId])) {
                 throw new RuntimeException($rowLabel . ': হিসাব নির্বাচন করুন।');
             }
-            $debit = Money::parseOptional($debitInput, $rowLabel . '-এর বাম ঘর') ?? 0;
-            $credit = Money::parseOptional($creditInput, $rowLabel . '-এর ডান ঘর') ?? 0;
+            $debit = Money::parseOptional($debitInput, $rowLabel . '-এর ' . $inName) ?? 0;
+            $credit = Money::parseOptional($creditInput, $rowLabel . '-এর ' . $outName) ?? 0;
             if (($debit > 0) === ($credit > 0)) {
-                throw new RuntimeException($rowLabel . ': বাম ঘর অথবা ডান ঘর — একটিতেই টাকা লিখুন।');
+                throw new RuntimeException($rowLabel . ': «' . $inName . '» অথবা «' . $outName . '» — একটিতেই টাকা লিখুন।');
             }
             $lines[] = ['account_id' => $accountId, 'debit' => $debit, 'credit' => $credit, 'party_type' => '', 'party_id' => null, 'memo' => $memo];
         }
         if (count($lines) < 2) {
-            throw new RuntimeException('অন্তত দুটি লাইন দিন। এক লাইনে বাম ঘরে, অন্য লাইনে ডান ঘরে।');
+            throw new RuntimeException('অন্তত দুটি লাইন দিন। এক লাইনে «' . $inName . '», অন্য লাইনে «' . $outName . '»।');
         }
         if (count($lines) > self::MAX_LINES) {
             throw new RuntimeException('একটি ভাউচারে সর্বোচ্চ ' . bnDigits((string) self::MAX_LINES) . 'টি লাইন দেওয়া যায়।');
@@ -486,7 +513,7 @@ final class VoucherService
         $debit = array_sum(array_column($lines, 'debit'));
         $credit = array_sum(array_column($lines, 'credit'));
         if ($debit !== $credit) {
-            throw new RuntimeException('বাম ঘরের মোট (' . Money::format($debit) . ') ও ডান ঘরের মোট (' . Money::format($credit) . ') সমান নয়।');
+            throw new RuntimeException('«' . $inName . '»-এর মোট (' . Money::format($debit) . ') ও «' . $outName . '»-এর মোট (' . Money::format($credit) . ') সমান নয়।');
         }
 
         return $lines;
@@ -512,8 +539,8 @@ final class VoucherService
             }
         }
         $error = match ($type) {
-            self::RECEIPT => !$moneyDebit || $moneyCredit ? 'প্রাপ্তি ভাউচারে নগদ, ব্যাংক বা বিকাশ বাম ঘরে লিখুন (টাকা আসছে)। ডান ঘরে নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
-            self::PAYMENT => !$moneyCredit || $moneyDebit ? 'প্রদান ভাউচারে নগদ, ব্যাংক বা বিকাশ ডান ঘরে লিখুন (টাকা যাচ্ছে)। বাম ঘরে নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
+            self::RECEIPT => !$moneyDebit || $moneyCredit ? 'প্রাপ্তি ভাউচারে নগদ, ব্যাংক বা বিকাশ «কোথায় এল»-এ লিখুন। «কীসের আয়»-এ নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
+            self::PAYMENT => !$moneyCredit || $moneyDebit ? 'প্রদান ভাউচারে নগদ, ব্যাংক বা বিকাশ «কোথা থেকে»-এ লিখুন। «কীসের জন্য»-এ নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
             self::CONTRA => $nonMoney ? 'কন্ট্রা ভাউচারে শুধু নগদ ও ব্যাংক হিসাব থাকবে।' : null,
             self::JOURNAL => $moneyDebit || $moneyCredit ? 'জার্নাল ভাউচারে নগদ/ব্যাংক হিসাব থাকবে না; টাকা লেনদেনের জন্য প্রাপ্তি/প্রদান/কন্ট্রা ব্যবহার করুন।' : null,
             default => 'ভাউচারের ধরন সঠিক নয়।',

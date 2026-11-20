@@ -138,7 +138,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <summary class="small text-secondary mb-2">হিসাবের ভিতরের হিসাব</summary>
                 <div class="table-responsive">
                   <table class="table table-sm table-bordered align-middle mb-2">
-                    <thead><tr><th>কোড</th><th>হিসাব</th><th>নোট</th><th class="text-end">বাম ঘর</th><th class="text-end">ডান ঘর</th></tr></thead>
+                    <?php $sideCopy = VoucherService::SIDE_COPY[$voucher['voucher_type']] ?? VoucherService::SIDE_COPY[VoucherService::JOURNAL]; ?>
+                    <thead><tr><th>কোড</th><th>হিসাব</th><th>নোট</th><th class="text-end"><?= h($sideCopy['in']) ?></th><th class="text-end"><?= h($sideCopy['out']) ?></th></tr></thead>
                     <tbody>
                       <?php foreach ($lines as $line): ?>
                         <tr>

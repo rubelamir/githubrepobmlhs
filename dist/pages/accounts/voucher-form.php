@@ -114,11 +114,12 @@ $accountOptions = static function (int $selected) use ($byType): string {
 
     return $html;
 };
-$lineRow = static function (int|string $index, array $line) use ($accountOptions): string {
+$sideCopy = VoucherService::SIDE_COPY[$form['type']] ?? VoucherService::SIDE_COPY[VoucherService::PAYMENT];
+$lineRow = static function (int|string $index, array $line) use ($accountOptions, $sideCopy): string {
     return '<tr data-acc-vline>'
         . '<td data-label="হিসাব"><select class="form-select form-select-sm" name="lines[' . $index . '][account_id]" aria-label="হিসাব">' . $accountOptions((int) $line['account_id']) . '</select></td>'
-        . '<td data-label="বাম ঘর"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][debit]" value="' . h((string) $line['debit']) . '" inputmode="decimal" data-acc-vdebit aria-label="বাম ঘর"></td>'
-        . '<td data-label="ডান ঘর"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][credit]" value="' . h((string) $line['credit']) . '" inputmode="decimal" data-acc-vcredit aria-label="ডান ঘর"></td>'
+        . '<td data-label="' . h($sideCopy['in']) . '"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][debit]" value="' . h((string) $line['debit']) . '" inputmode="decimal" data-acc-vdebit aria-label="' . h($sideCopy['in']) . '"></td>'
+        . '<td data-label="' . h($sideCopy['out']) . '"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][credit]" value="' . h((string) $line['credit']) . '" inputmode="decimal" data-acc-vcredit aria-label="' . h($sideCopy['out']) . '"></td>'
         . '<td data-label="নোট"><input class="form-control form-control-sm" name="lines[' . $index . '][memo]" value="' . h((string) $line['memo']) . '" maxlength="160" aria-label="নোট"></td>'
         . '<td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-acc-vremove aria-label="লাইন মুছুন"><i class="bi bi-x-lg"></i></button></td>'
         . '</tr>';
@@ -129,7 +130,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1"><?= $voucher === null ? 'নতুন ভাউচার' : 'ভাউচার সংশোধন — খসড়া #' . h(bnDigits((string) $voucherId)) ?></h3>
-            <p class="text-secondary mb-0">এক লাইনে একটি হিসাব বেছে শুধু এক ঘরে টাকা লিখুন। বাম ঘর ও ডান ঘরের মোট সমান হতে হবে। খরচ দিলে খরচের নাম বাম ঘরে, নগদ বা ব্যাংক ডান ঘরে। টাকা এলে নগদ বা ব্যাংক বাম ঘরে, আয়ের নাম ডান ঘরে। এক জায়গা থেকে আরেক জায়গায় সরালে যেখানে এসেছে বাম ঘরে, যেখান থেকে গেছে ডান ঘরে।</p>
+            <p class="text-secondary mb-0" data-acc-vhint><?= h($sideCopy['hint']) ?></p>
           </div>
         </div>
         <div class="app-content">
@@ -138,6 +139,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php if (isset($flashError)): ?><div class="alert alert-danger"><?= h($flashError) ?></div><?php endif; ?>
             <form method="post" enctype="multipart/form-data" class="card" data-acc-voucher-form>
               <?= csrfField() ?>
+              <script type="application/json" data-acc-vsides><?= json_encode(VoucherService::SIDE_COPY, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
               <?php if ($voucher !== null): ?><?= signedRecordField($voucherId, 'acc_voucher') ?><?php else: ?><input type="hidden" name="idempotency_key" value="<?= h((string) ($_POST['idempotency_key'] ?? PaymentService::newIdempotencyKey())) ?>"><?php endif; ?>
               <div class="card-body">
                 <div class="row g-2 mb-3">
@@ -158,7 +160,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
                 <div class="table-responsive">
                   <table class="table table-sm align-middle acc-table-stack acc-voucher-lines">
-                    <thead><tr><th style="min-width:16rem">হিসাব</th><th style="width:9rem" class="text-end">বাম ঘর</th><th style="width:9rem" class="text-end">ডান ঘর</th><th>নোট</th><th style="width:3rem"></th></tr></thead>
+                    <thead><tr><th style="min-width:16rem">হিসাব</th><th class="text-end" style="width:11rem" data-acc-vhead="in"><?= h($sideCopy['in']) ?></th><th class="text-end" style="width:11rem" data-acc-vhead="out"><?= h($sideCopy['out']) ?></th><th>নোট</th><th style="width:3rem"></th></tr></thead>
                     <tbody data-acc-vlines>
                       <?php foreach (array_values($formLines) as $index => $line): ?><?= $lineRow($index, $line) ?><?php endforeach; ?>
                     </tbody>

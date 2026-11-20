@@ -236,6 +236,37 @@
     const debitOut = form.querySelector('[data-acc-vtotal-debit]');
     const creditOut = form.querySelector('[data-acc-vtotal-credit]');
     const status = form.querySelector('[data-acc-vstatus]');
+    const hint = document.querySelector('[data-acc-vhint]');
+    const typeField = form.querySelector('[name="type"]');
+    let sideCopy = {};
+    try {
+      sideCopy = JSON.parse(form.querySelector('[data-acc-vsides]')?.textContent || '{}');
+    } catch (error) {
+      sideCopy = {};
+    }
+    const applySides = () => {
+      const copy = sideCopy[typeField?.value] || sideCopy.payment;
+      if (!copy) {
+        return;
+      }
+      form.querySelector('[data-acc-vhead="in"]').textContent = copy.in;
+      form.querySelector('[data-acc-vhead="out"]').textContent = copy.out;
+      if (hint) {
+        hint.textContent = copy.hint;
+      }
+      const label = (selector, name) => {
+        form.querySelectorAll(selector).forEach((field) => {
+          field.setAttribute('aria-label', name);
+          field.closest('td')?.setAttribute('data-label', name);
+        });
+        template?.content.querySelectorAll(selector).forEach((field) => {
+          field.setAttribute('aria-label', name);
+          field.closest('td')?.setAttribute('data-label', name);
+        });
+      };
+      label('[data-acc-vdebit]', copy.in);
+      label('[data-acc-vcredit]', copy.out);
+    };
     let next = body.querySelectorAll('[data-acc-vline]').length;
     const update = () => {
       let debit = 0;
@@ -250,7 +281,7 @@
         status.textContent = '';
         status.className = 'small';
       } else if (debit === credit) {
-        status.textContent = '✓ বাম ঘর ও ডান ঘরের মোট সমান';
+        status.textContent = '✓ দুই দিকের মোট সমান';
         status.className = 'small text-success';
       } else {
         status.textContent = `পার্থক্য ${formatTaka(Math.abs(debit - credit))}`;
@@ -265,6 +296,7 @@
       next += 1;
       body.insertAdjacentHTML('beforeend', html);
       body.lastElementChild.querySelector('select')?.focus();
+      applySides();
     });
     body.addEventListener('click', (event) => {
       const button = event.target.closest('[data-acc-vremove]');
@@ -287,6 +319,8 @@
       }
       update();
     });
+    typeField?.addEventListener('change', applySides);
+    applySides();
     update();
   });
 
