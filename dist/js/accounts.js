@@ -230,12 +230,79 @@
     const [whole, fraction = ''] = text.split('.');
     return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
   };
+  document.querySelectorAll('form[data-acc-simple-voucher]').forEach((form) => {
+    const typeField = form.querySelector('[name="type"]');
+    const hint = document.querySelector('[data-acc-vhint]');
+    const same = form.querySelector('[data-acc-same]');
+    let sideCopy = {};
+    try {
+      sideCopy = JSON.parse(form.querySelector('[data-acc-vsides]')?.textContent || '{}');
+    } catch (error) {
+      sideCopy = {};
+    }
+    const modes = {
+      payment: { in: 'other', out: 'money' },
+      receipt: { in: 'money', out: 'other' },
+      contra: { in: 'money', out: 'money' },
+      journal: { in: 'other', out: 'other' },
+    };
+    const apply = () => {
+      const type = typeField?.value || 'payment';
+      const copy = sideCopy[type] || sideCopy.payment;
+      const mode = modes[type] || modes.payment;
+      if (!copy) {
+        return;
+      }
+      if (hint) {
+        hint.textContent = copy.hint;
+      }
+      form.querySelector('[data-acc-side-label="in"]').textContent = copy.in;
+      form.querySelector('[data-acc-side-label="out"]').textContent = copy.out;
+      ['in', 'out'].forEach((side) => {
+        const select = form.querySelector(`[name="account_${side}"]`);
+        const wantMoney = mode[side] === 'money';
+        let selectedHidden = false;
+        select.querySelectorAll('option').forEach((option) => {
+          if (option.value === '') {
+            option.hidden = false;
+            option.disabled = false;
+            return;
+          }
+          const hide = (option.dataset.accMoney === '1') !== wantMoney;
+          option.hidden = hide;
+          option.disabled = hide;
+          if (hide && option.selected) {
+            selectedHidden = true;
+          }
+        });
+        select.querySelectorAll('optgroup').forEach((group) => {
+          group.hidden = ![...group.querySelectorAll('option')].some((option) => !option.hidden);
+        });
+        if (selectedHidden) {
+          select.value = '';
+        }
+      });
+      const left = form.querySelector('[name="account_in"]').value;
+      const right = form.querySelector('[name="account_out"]').value;
+      if (same) {
+        same.hidden = left === '' || left !== right;
+      }
+    };
+    typeField?.addEventListener('change', apply);
+    form.querySelector('[name="account_in"]')?.addEventListener('change', apply);
+    form.querySelector('[name="account_out"]')?.addEventListener('change', apply);
+    apply();
+  });
+
   document.querySelectorAll('form[data-acc-voucher-form]').forEach((form) => {
     const body = form.querySelector('[data-acc-vlines]');
     const template = form.querySelector('template[data-acc-vtemplate]');
     const debitOut = form.querySelector('[data-acc-vtotal-debit]');
     const creditOut = form.querySelector('[data-acc-vtotal-credit]');
     const status = form.querySelector('[data-acc-vstatus]');
+    if (!body || !debitOut || !creditOut || !status) {
+      return;
+    }
     const hint = document.querySelector('[data-acc-vhint]');
     const typeField = form.querySelector('[name="type"]');
     let sideCopy = {};

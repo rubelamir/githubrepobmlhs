@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 use School\Accounting\Access\Capability;
 use School\Accounting\Collection\PaymentService;
-use School\Accounting\Ledger\AttachmentStore;
 use School\Accounting\Ledger\ChartOfAccounts;
 use School\Accounting\Ledger\VoucherService;
 use School\Accounting\Support\Money;
@@ -30,30 +29,86 @@ if ($voucherId !== null) {
         redirectWithMessage('vouchers.php', 'danger', $exception->getMessage());
     }
 }
-$pageTitle = ($voucher === null ? 'নতুন ভাউচার' : 'ভাউচার সংশোধন') . ' | School Admin';
+$pageTitle = ($voucher === null ? 'বিশেষ এন্ট্রি' : 'বিশেষ এন্ট্রি সংশোধন') . ' | School Admin';
 
-$formLines = [];
+$kindLabels = [
+    VoucherService::PAYMENT => 'খরচ',
+    VoucherService::RECEIPT => 'আয়',
+    VoucherService::CONTRA => 'টাকা এক জায়গা থেকে আরেক জায়গায়',
+    VoucherService::JOURNAL => 'হিসাব মেলানো',
+];
 $form = ['type' => VoucherService::PAYMENT, 'voucher_date' => accToday()->format('Y-m-d'), 'narration' => ''];
+$simple = ['account_in' => 0, 'account_out' => 0, 'amount' => '', 'note' => ''];
+$replacedLines = [];
+
+$readSimple = static function (array $lines): ?array {
+    $debit = null;
+    $credit = null;
+    foreach ($lines as $line) {
+        $in = Money::fromDb($line['debit']);
+        $out = Money::fromDb($line['credit']);
+        if ($in > 0 && $out === 0 && $debit === null) {
+            $debit = ['account_id' => (int) $line['account_id'], 'amount' => $in, 'note' => (string) $line['memo']];
+            continue;
+        }
+        if ($out > 0 && $in === 0 && $credit === null) {
+            $credit = ['account_id' => (int) $line['account_id'], 'amount' => $out];
+            continue;
+        }
+
+        return null;
+    }
+    if ($debit === null || $credit === null || $debit['amount'] !== $credit['amount'] || $debit['account_id'] === $credit['account_id']) {
+        return null;
+    }
+
+    return [
+        'account_in' => $debit['account_id'],
+        'account_out' => $credit['account_id'],
+        'amount' => Money::toInput($debit['amount']),
+        'note' => $debit['note'],
+    ];
+};
+
 if ($voucher !== null) {
     $form = ['type' => (string) $voucher['voucher_type'], 'voucher_date' => (string) $voucher['voucher_date'], 'narration' => (string) $voucher['narration']];
-    foreach ($vouchers->lines($voucherId) as $line) {
-        $formLines[] = [
-            'account_id' => (int) $line['account_id'],
-            'debit' => Money::fromDb($line['debit']) > 0 ? Money::toInput(Money::fromDb($line['debit'])) : '',
-            'credit' => Money::fromDb($line['credit']) > 0 ? Money::toInput(Money::fromDb($line['credit'])) : '',
-            'memo' => (string) $line['memo'],
-        ];
+    $savedLines = $vouchers->lines($voucherId);
+    $parsed = $readSimple($savedLines);
+    if ($parsed !== null) {
+        $simple = $parsed;
+    } else {
+        $replacedLines = $savedLines;
     }
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $input = [
+    $form = [
         'type' => (string) ($_POST['type'] ?? ''),
         'voucher_date' => (string) ($_POST['voucher_date'] ?? ''),
         'narration' => (string) ($_POST['narration'] ?? ''),
-        'lines' => is_array($_POST['lines'] ?? null) ? array_values($_POST['lines']) : [],
+    ];
+    $simple = [
+        'account_in' => (int) ($_POST['account_in'] ?? 0),
+        'account_out' => (int) ($_POST['account_out'] ?? 0),
+        'amount' => trim((string) ($_POST['amount'] ?? '')),
+        'note' => trim((string) ($_POST['note'] ?? '')),
+    ];
+    $input = [
+        'type' => $form['type'],
+        'voucher_date' => $form['voucher_date'],
+        'narration' => $form['narration'],
+        'lines' => [
+            ['account_id' => $simple['account_in'], 'debit' => $simple['amount'], 'credit' => '', 'memo' => $simple['note']],
+            ['account_id' => $simple['account_out'], 'debit' => '', 'credit' => $simple['amount'], 'memo' => ''],
+        ],
     ];
     try {
+        if ($simple['account_in'] < 1 || $simple['account_out'] < 1) {
+            throw new RuntimeException('দুইটি হিসাবই বেছে নিন।');
+        }
+        if ($simple['account_in'] === $simple['account_out']) {
+            throw new RuntimeException('দুই জায়গায় একই হিসাব দেওয়া যায় না।');
+        }
         accAttachments()->assertValid($_FILES['attachments'] ?? []);
         $result = $vouchers->saveDraft($access, accAudit(), $voucherId, $input, (string) ($_POST['idempotency_key'] ?? ''));
         $savedId = $result['voucher_id'];
@@ -76,17 +131,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         redirectWithMessage(signedRecordUrl('voucher.php', $savedId, 'acc_voucher'), $result['duplicate'] ? 'info' : 'success', $message);
     } catch (Throwable $exception) {
         $flashError = userFacingError($exception);
-        $form = ['type' => $input['type'], 'voucher_date' => $input['voucher_date'], 'narration' => $input['narration']];
-        $formLines = array_map(static fn ($line): array => [
-            'account_id' => (int) ($line['account_id'] ?? 0),
-            'debit' => (string) ($line['debit'] ?? ''),
-            'credit' => (string) ($line['credit'] ?? ''),
-            'memo' => (string) ($line['memo'] ?? ''),
-        ], array_filter($input['lines'], 'is_array'));
     }
-}
-while (count($formLines) < 2) {
-    $formLines[] = ['account_id' => 0, 'debit' => '', 'credit' => '', 'memo' => ''];
 }
 
 $accounts = accChart()->postable();
@@ -98,7 +143,7 @@ foreach ($accounts as $account) {
     $byType[(string) $account['account_type']][] = $account;
 }
 $accountOptions = static function (int $selected) use ($byType): string {
-    $html = '<option value="">হিসাব নির্বাচন</option>';
+    $html = '<option value="">বেছে নিন</option>';
     foreach (ChartOfAccounts::TYPES as $type => $label) {
         if (!isset($byType[$type])) {
             continue;
@@ -115,21 +160,12 @@ $accountOptions = static function (int $selected) use ($byType): string {
     return $html;
 };
 $sideCopy = VoucherService::SIDE_COPY[$form['type']] ?? VoucherService::SIDE_COPY[VoucherService::PAYMENT];
-$lineRow = static function (int|string $index, array $line) use ($accountOptions, $sideCopy): string {
-    return '<tr data-acc-vline>'
-        . '<td data-label="হিসাব"><select class="form-select form-select-sm" name="lines[' . $index . '][account_id]" aria-label="হিসাব">' . $accountOptions((int) $line['account_id']) . '</select></td>'
-        . '<td data-label="' . h($sideCopy['in']) . '"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][debit]" value="' . h((string) $line['debit']) . '" inputmode="decimal" data-acc-vdebit aria-label="' . h($sideCopy['in']) . '"></td>'
-        . '<td data-label="' . h($sideCopy['out']) . '"><input class="form-control form-control-sm text-end" name="lines[' . $index . '][credit]" value="' . h((string) $line['credit']) . '" inputmode="decimal" data-acc-vcredit aria-label="' . h($sideCopy['out']) . '"></td>'
-        . '<td data-label="নোট"><input class="form-control form-control-sm" name="lines[' . $index . '][memo]" value="' . h((string) $line['memo']) . '" maxlength="160" aria-label="নোট"></td>'
-        . '<td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" data-acc-vremove aria-label="লাইন মুছুন"><i class="bi bi-x-lg"></i></button></td>'
-        . '</tr>';
-};
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
-            <h3 class="mb-1"><?= $voucher === null ? 'নতুন ভাউচার' : 'ভাউচার সংশোধন — খসড়া #' . h(bnDigits((string) $voucherId)) ?></h3>
+            <h3 class="mb-1"><?= $voucher === null ? 'বিশেষ এন্ট্রি' : 'বিশেষ এন্ট্রি সংশোধন — খসড়া #' . h(bnDigits((string) $voucherId)) ?></h3>
             <p class="text-secondary mb-0" data-acc-vhint><?= h($sideCopy['hint']) ?></p>
           </div>
         </div>
@@ -137,16 +173,26 @@ include __DIR__ . '/../../includes/layout-head.php';
           <div class="container-fluid">
             <?php include __DIR__ . '/../../includes/flash.php'; ?>
             <?php if (isset($flashError)): ?><div class="alert alert-danger"><?= h($flashError) ?></div><?php endif; ?>
-            <form method="post" enctype="multipart/form-data" class="card" data-acc-voucher-form>
+            <?php if ($replacedLines !== []): ?>
+              <div class="alert alert-warning">
+                এই খসড়ায় এক টাকার বেশি লাইন আছে। নিচে নতুন করে লিখে সংরক্ষণ করলে আগের লাইন সরে যাবে।
+                <ul class="mb-0 mt-2">
+                  <?php foreach ($replacedLines as $line): ?>
+                    <li><?= h((string) $line['name_bn']) ?> — <?= h(Money::format(max(Money::fromDb($line['debit']), Money::fromDb($line['credit'])))) ?></li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            <?php endif; ?>
+            <form method="post" enctype="multipart/form-data" class="card" data-acc-simple-voucher>
               <?= csrfField() ?>
               <script type="application/json" data-acc-vsides><?= json_encode(VoucherService::SIDE_COPY, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
               <?php if ($voucher !== null): ?><?= signedRecordField($voucherId, 'acc_voucher') ?><?php else: ?><input type="hidden" name="idempotency_key" value="<?= h((string) ($_POST['idempotency_key'] ?? PaymentService::newIdempotencyKey())) ?>"><?php endif; ?>
               <div class="card-body">
-                <div class="row g-2 mb-3">
+                <div class="row g-3">
                   <div class="col-md-4">
-                    <label class="form-label" for="vf-type">ধরন</label>
+                    <label class="form-label" for="vf-type">কী হচ্ছে</label>
                     <select class="form-select" id="vf-type" name="type" required>
-                      <?php foreach (VoucherService::TYPES as $key => $label): ?><option value="<?= h($key) ?>"<?= $form['type'] === $key ? ' selected' : '' ?>><?= h($label) ?></option><?php endforeach; ?>
+                      <?php foreach ($kindLabels as $key => $label): ?><option value="<?= h($key) ?>"<?= $form['type'] === $key ? ' selected' : '' ?>><?= h($label) ?></option><?php endforeach; ?>
                     </select>
                   </div>
                   <div class="col-md-3">
@@ -155,30 +201,30 @@ include __DIR__ . '/../../includes/layout-head.php';
                   </div>
                   <div class="col-md-5">
                     <label class="form-label" for="vf-narration">বিবরণ</label>
-                    <input class="form-control" id="vf-narration" name="narration" value="<?= h($form['narration']) ?>" required minlength="3" maxlength="255" placeholder="যেমন: অক্টোবর মাসের বিদ্যুৎ বিল (বিল নং …)">
+                    <input class="form-control" id="vf-narration" name="narration" value="<?= h($form['narration']) ?>" required minlength="3" maxlength="255" placeholder="যেমন: অক্টোবর মাসের বিদ্যুৎ বিল">
                   </div>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm align-middle acc-table-stack acc-voucher-lines">
-                    <thead><tr><th style="min-width:16rem">হিসাব</th><th class="text-end" style="width:11rem" data-acc-vhead="in"><?= h($sideCopy['in']) ?></th><th class="text-end" style="width:11rem" data-acc-vhead="out"><?= h($sideCopy['out']) ?></th><th>নোট</th><th style="width:3rem"></th></tr></thead>
-                    <tbody data-acc-vlines>
-                      <?php foreach (array_values($formLines) as $index => $line): ?><?= $lineRow($index, $line) ?><?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td><button class="btn btn-sm btn-outline-primary" type="button" data-acc-vadd><i class="bi bi-plus-lg"></i> লাইন যোগ</button></td>
-                        <td class="text-end fw-semibold" data-acc-vtotal-debit>৳ ০.০০</td>
-                        <td class="text-end fw-semibold" data-acc-vtotal-credit>৳ ০.০০</td>
-                        <td colspan="2" data-acc-vstatus class="small"></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                  <template data-acc-vtemplate><?= $lineRow('__i__', ['account_id' => 0, 'debit' => '', 'credit' => '', 'memo' => '']) ?></template>
-                </div>
-                <div class="mb-1">
-                  <label class="form-label" for="vf-files">বিল / রসিদের কপি (ঐচ্ছিক)</label>
-                  <input class="form-control" type="file" id="vf-files" name="attachments[]" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple>
-                  <div class="form-text">PDF, JPG, PNG বা WebP; প্রতিটি সর্বোচ্চ ৫ MB। ফাইল সুরক্ষিত ফোল্ডারে থাকে এবং মুছে ফেলা যায় না।</div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="vf-in" data-acc-side-label="in"><?= h($sideCopy['in']) ?></label>
+                    <select class="form-select" id="vf-in" name="account_in" required><?= $accountOptions($simple['account_in']) ?></select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="vf-out" data-acc-side-label="out"><?= h($sideCopy['out']) ?></label>
+                    <select class="form-select" id="vf-out" name="account_out" required><?= $accountOptions($simple['account_out']) ?></select>
+                  </div>
+                  <div class="col-12"><p class="text-danger small mb-0" data-acc-same hidden>দুই জায়গায় একই হিসাব দেওয়া যায় না।</p></div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="vf-amount">টাকা</label>
+                    <input class="form-control" id="vf-amount" name="amount" value="<?= h($simple['amount']) ?>" inputmode="decimal" required placeholder="০">
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label" for="vf-note">নোট <span class="text-secondary small">(ঐচ্ছিক)</span></label>
+                    <input class="form-control" id="vf-note" name="note" value="<?= h($simple['note']) ?>" maxlength="160">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="vf-files">বিল / রসিদের কপি <span class="text-secondary small">(ঐচ্ছিক)</span></label>
+                    <input class="form-control" type="file" id="vf-files" name="attachments[]" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple>
+                    <div class="form-text">PDF, JPG, PNG বা WebP; প্রতিটি সর্বোচ্চ ৫ MB।</div>
+                  </div>
                 </div>
               </div>
               <div class="card-footer d-flex flex-wrap gap-2">
