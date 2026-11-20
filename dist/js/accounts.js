@@ -250,7 +250,7 @@
         status.textContent = '';
         status.className = 'small';
       } else if (debit === credit) {
-        status.textContent = '✓ ডেবিট ও ক্রেডিট সমান';
+        status.textContent = '✓ বাম ঘর ও ডান ঘরের মোট সমান';
         status.className = 'small text-success';
       } else {
         status.textContent = `পার্থক্য ${formatTaka(Math.abs(debit - credit))}`;

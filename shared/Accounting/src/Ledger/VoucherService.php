@@ -311,7 +311,7 @@ final class VoucherService
         $debit = array_sum(array_column($lines, 'debit'));
         $credit = array_sum(array_column($lines, 'credit'));
         if ($debit !== $credit || $debit <= 0) {
-            throw new RuntimeException('স্বয়ংক্রিয় ভাউচারে ডেবিট ও ক্রেডিট সমান হয়নি।');
+            throw new RuntimeException('স্বয়ংক্রিয় ভাউচারে দুই ঘরের টাকা সমান হয়নি।');
         }
         $number = $this->assignNumber($type, $date);
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
@@ -470,15 +470,15 @@ final class VoucherService
             if (!isset($postable[$accountId])) {
                 throw new RuntimeException($rowLabel . ': হিসাব নির্বাচন করুন।');
             }
-            $debit = Money::parseOptional($debitInput, $rowLabel . ' ডেবিট') ?? 0;
-            $credit = Money::parseOptional($creditInput, $rowLabel . ' ক্রেডিট') ?? 0;
+            $debit = Money::parseOptional($debitInput, $rowLabel . '-এর বাম ঘর') ?? 0;
+            $credit = Money::parseOptional($creditInput, $rowLabel . '-এর ডান ঘর') ?? 0;
             if (($debit > 0) === ($credit > 0)) {
-                throw new RuntimeException($rowLabel . ': ডেবিট অথবা ক্রেডিট — যেকোনো একটিতে টাকা দিন।');
+                throw new RuntimeException($rowLabel . ': বাম ঘর অথবা ডান ঘর — একটিতেই টাকা লিখুন।');
             }
             $lines[] = ['account_id' => $accountId, 'debit' => $debit, 'credit' => $credit, 'party_type' => '', 'party_id' => null, 'memo' => $memo];
         }
         if (count($lines) < 2) {
-            throw new RuntimeException('অন্তত দুটি লাইন (একটি ডেবিট, একটি ক্রেডিট) দিন।');
+            throw new RuntimeException('অন্তত দুটি লাইন দিন। এক লাইনে বাম ঘরে, অন্য লাইনে ডান ঘরে।');
         }
         if (count($lines) > self::MAX_LINES) {
             throw new RuntimeException('একটি ভাউচারে সর্বোচ্চ ' . bnDigits((string) self::MAX_LINES) . 'টি লাইন দেওয়া যায়।');
@@ -486,7 +486,7 @@ final class VoucherService
         $debit = array_sum(array_column($lines, 'debit'));
         $credit = array_sum(array_column($lines, 'credit'));
         if ($debit !== $credit) {
-            throw new RuntimeException('মোট ডেবিট (' . Money::format($debit) . ') ও মোট ক্রেডিট (' . Money::format($credit) . ') সমান নয়।');
+            throw new RuntimeException('বাম ঘরের মোট (' . Money::format($debit) . ') ও ডান ঘরের মোট (' . Money::format($credit) . ') সমান নয়।');
         }
 
         return $lines;
@@ -512,8 +512,8 @@ final class VoucherService
             }
         }
         $error = match ($type) {
-            self::RECEIPT => !$moneyDebit || $moneyCredit ? 'প্রাপ্তি ভাউচারে নগদ/ব্যাংক হিসাব ডেবিট হবে (টাকা আসছে), ক্রেডিট নয়।' : null,
-            self::PAYMENT => !$moneyCredit || $moneyDebit ? 'প্রদান ভাউচারে নগদ/ব্যাংক হিসাব ক্রেডিট হবে (টাকা যাচ্ছে), ডেবিট নয়।' : null,
+            self::RECEIPT => !$moneyDebit || $moneyCredit ? 'প্রাপ্তি ভাউচারে নগদ, ব্যাংক বা বিকাশ বাম ঘরে লিখুন (টাকা আসছে)। ডান ঘরে নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
+            self::PAYMENT => !$moneyCredit || $moneyDebit ? 'প্রদান ভাউচারে নগদ, ব্যাংক বা বিকাশ ডান ঘরে লিখুন (টাকা যাচ্ছে)। বাম ঘরে নগদ, ব্যাংক বা বিকাশ লিখবেন না।' : null,
             self::CONTRA => $nonMoney ? 'কন্ট্রা ভাউচারে শুধু নগদ ও ব্যাংক হিসাব থাকবে।' : null,
             self::JOURNAL => $moneyDebit || $moneyCredit ? 'জার্নাল ভাউচারে নগদ/ব্যাংক হিসাব থাকবে না; টাকা লেনদেনের জন্য প্রাপ্তি/প্রদান/কন্ট্রা ব্যবহার করুন।' : null,
             default => 'ভাউচারের ধরন সঠিক নয়।',
