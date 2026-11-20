@@ -172,14 +172,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                       </div>
                     </div>
                     <div class="mb-2">
-                      <label class="form-label" for="coa-money">অর্থের ধরন (শুধু সম্পদ হিসাবের জন্য)</label>
-                      <select class="form-select" id="coa-money" name="money_kind">
-                        <option value="none">নগদ/ব্যাংক নয় (যেমন: অগ্রিম, আসবাব)</option>
-                        <option value="cash">নগদ (যেমন: পেটি ক্যাশ)</option>
-                        <option value="bank">ব্যাংক</option>
-                      </select>
-                    </div>
-                    <div class="mb-2">
                       <label class="form-label" for="coa-desc">বিবরণ (ঐচ্ছিক)</label>
                       <input class="form-control" id="coa-desc" name="description" maxlength="255">
                     </div>

@@ -256,13 +256,8 @@ final class ChartOfAccounts
             throw new RuntimeException(self::TYPES[$type] . ' হিসাবের কোড ' . bnDigits($expectedDigit) . ' দিয়ে শুরু হবে।');
         }
         $isGroup = !empty($input['is_group']) ? 1 : 0;
-        $moneyKind = 'none';
-        if ($type === 'asset') {
-            $moneyKind = (string) $parent['money_kind'] === 'bank' ? 'bank' : (string) ($input['money_kind'] ?? 'none');
-            if (!in_array($moneyKind, ['none', 'cash', 'bank'], true)) {
-                throw new RuntimeException('অর্থের ধরন সঠিক নয়।');
-            }
-        }
+        // The form no longer asks. A child of the bank group is a bank account; every other new account is not a purse.
+        $moneyKind = $type === 'asset' && (string) $parent['money_kind'] === 'bank' ? 'bank' : 'none';
         if (\fetchRows($this->db, 'SELECT id FROM acc_accounts WHERE code = :code', ['code' => $code]) !== []) {
             throw new RuntimeException('কোড ' . $code . ' আগেই ব্যবহৃত হয়েছে।');
         }
