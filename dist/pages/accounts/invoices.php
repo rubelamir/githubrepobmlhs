@@ -5,7 +5,6 @@ use School\Accounting\Access\Capability;
 use School\Accounting\Audit\AuditTrail;
 use School\Accounting\Billing\BillingPeriod;
 use School\Accounting\Billing\FeeStructureRepository;
-use School\Accounting\Billing\InvoiceService;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -14,7 +13,6 @@ require_once dirname(__DIR__, 3) . '/shared/Accounting/bootstrap.php';
 
 $access = accBootPage([Capability::INVOICE_MANAGE, Capability::FEES_VIEW_ALL]);
 $canGenerate = $access->can(Capability::INVOICE_MANAGE);
-$canCancel = $access->can(Capability::INVOICE_CANCEL);
 $invoices = accInvoices();
 $db = getDatabaseConnection();
 $basePath = '../../';
@@ -38,121 +36,77 @@ $today = accToday();
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $back = 'invoices.php?' . http_build_query($query);
     $action = (string) ($_POST['action'] ?? '');
-    $return = $query;
-    if ($action === 'cancel') {
-        $return['searched'] = '1';
-        $returnKey = (string) ($_POST['billing_key'] ?? '');
-        if ($returnKey !== '') {
-            $return['billing_key'] = $returnKey;
-        }
-        $returnStatus = (string) ($_POST['status'] ?? '');
-        if (isset(InvoiceService::STATUS_LABELS[$returnStatus])) {
-            $return['status'] = $returnStatus;
-        }
-    }
-    $searchBack = 'invoices.php?' . http_build_query($return);
     try {
-        if ($action === 'generate') {
-            if (!$ready) {
-                throw new RuntimeException('শ্রেণী ও শাখা নির্বাচন করুন।');
-            }
-            $issueDate = FeeStructureRepository::parseDate((string) ($_POST['issue_date'] ?? ''), 'বিলের তারিখ');
-            $kind = (string) ($_POST['billing_kind'] ?? '');
-            $period = match ($kind) {
-                BillingPeriod::MONTHLY => BillingPeriod::monthly((string) ($_POST['month'] ?? '')),
-                BillingPeriod::OTHER => BillingPeriod::other((string) ($_POST['month'] ?? '')),
-                BillingPeriod::SESSION => BillingPeriod::session($sessionYear),
-                BillingPeriod::ADMISSION => BillingPeriod::admission($sessionYear),
-                BillingPeriod::EXAM => (static function () use ($exams, $sessionYear, $issueDate): BillingPeriod {
-                    $examId = (int) ($_POST['exam_id'] ?? 0);
-                    foreach ($exams as $exam) {
-                        if ((int) $exam['id'] === $examId) {
-                            return BillingPeriod::exam($examId, (string) $exam['exam_name_bangla'], $sessionYear, $issueDate);
-                        }
+        if ($action !== 'generate') {
+            throw new RuntimeException('অজানা অনুরোধ।');
+        }
+        if (!$ready) {
+            throw new RuntimeException('শ্রেণী ও শাখা নির্বাচন করুন।');
+        }
+        $issueDate = FeeStructureRepository::parseDate((string) ($_POST['issue_date'] ?? ''), 'বিলের তারিখ');
+        $kind = (string) ($_POST['billing_kind'] ?? '');
+        $period = match ($kind) {
+            BillingPeriod::MONTHLY => BillingPeriod::monthly((string) ($_POST['month'] ?? '')),
+            BillingPeriod::OTHER => BillingPeriod::other((string) ($_POST['month'] ?? '')),
+            BillingPeriod::SESSION => BillingPeriod::session($sessionYear),
+            BillingPeriod::ADMISSION => BillingPeriod::admission($sessionYear),
+            BillingPeriod::EXAM => (static function () use ($exams, $sessionYear, $issueDate): BillingPeriod {
+                $examId = (int) ($_POST['exam_id'] ?? 0);
+                foreach ($exams as $exam) {
+                    if ((int) $exam['id'] === $examId) {
+                        return BillingPeriod::exam($examId, (string) $exam['exam_name_bangla'], $sessionYear, $issueDate);
                     }
-                    throw new RuntimeException('পরীক্ষা নির্বাচন করুন।');
-                })(),
-                default => throw new RuntimeException('বিলের ধরন নির্বাচন করুন।'),
-            };
-            $postedHeads = array_values(array_filter(
-                array_map('intval', is_array($_POST['heads'] ?? null) ? $_POST['heads'] : []),
-                static fn (int $id): bool => $id > 0
-            ));
-            $allowedHeads = [];
-            foreach (accCatalog()->heads(true) as $head) {
-                if (BillingPeriod::headMatchesInvoiceKind($head, $kind)) {
-                    $allowedHeads[] = (int) $head['id'];
                 }
+                throw new RuntimeException('পরীক্ষা নির্বাচন করুন।');
+            })(),
+            default => throw new RuntimeException('বিলের ধরন নির্বাচন করুন।'),
+        };
+        $postedHeads = array_values(array_filter(
+            array_map('intval', is_array($_POST['heads'] ?? null) ? $_POST['heads'] : []),
+            static fn (int $id): bool => $id > 0
+        ));
+        $allowedHeads = [];
+        foreach (accCatalog()->heads(true) as $head) {
+            if (BillingPeriod::headMatchesInvoiceKind($head, $kind)) {
+                $allowedHeads[] = (int) $head['id'];
             }
-            $headIds = array_values(array_intersect($postedHeads, $allowedHeads));
-            if ($headIds === []) {
-                throw new RuntimeException('যে ধরনের বিল তৈরি করছেন, সেই ধরনের অন্তত একটি ফিতে টিক দিন। টিক না দিলে বিল তৈরি হবে না।');
-            }
-            $result = $invoices->generate($access, accAudit(), $sessionYear, $classId, $sectionId, $period, $headIds, $issueDate);
-            $message = $period->label() . ': ' . bnDigits((string) $result['students']) . ' জন শিক্ষার্থী — নতুন বিল '
-                . bnDigits((string) $result['created']) . 'টি';
-            if ($result['already'] > 0) {
-                $message .= ', আগেই তৈরি ' . bnDigits((string) $result['already']) . 'টি';
-            }
-            if ($result['no_rate'] > 0) {
-                $message .= ', হার না থাকায় বাদ ' . bnDigits((string) $result['no_rate']) . ' জন';
-            }
-            if ($result['zero'] > 0) {
-                $message .= ', সম্পূর্ণ ছাড়প্রাপ্ত (৳০) ' . bnDigits((string) $result['zero']) . 'টি';
-            }
-            if ($result['created'] > 0 && $access->can(Capability::FEES_COLLECT)) {
-                $studentIds = array_map(static fn (array $row): int => (int) $row['id'], accStudents()->forClass($sessionYear, $classId, $sectionId));
-                $adjusted = 0;
-                foreach (array_keys(array_filter(accPayments()->advanceMap($studentIds), static fn (int $balance): bool => $balance > 0)) as $studentId) {
-                    $adjusted += accPayments()->applyAdvance($access, accAudit(), $studentId);
-                }
-                if ($adjusted > 0) {
-                    $message .= '; অগ্রিম জমা থেকে ' . Money::format($adjusted) . ' সমন্বয় হয়েছে';
-                }
-            }
-            redirectWithMessage($back, $result['created'] > 0 ? 'success' : 'warning', $message . '।');
         }
-        if ($action === 'cancel') {
-            $invoices->cancel($access, accAudit(), postedRecordId('acc_invoice'), (string) ($_POST['reason'] ?? ''));
-            redirectWithMessage($searchBack, 'success', 'বিল বাতিল হয়েছে।');
+        $headIds = array_values(array_intersect($postedHeads, $allowedHeads));
+        if ($headIds === []) {
+            throw new RuntimeException('যে ধরনের বিল তৈরি করছেন, সেই ধরনের অন্তত একটি ফিতে টিক দিন। টিক না দিলে বিল তৈরি হবে না।');
         }
-        throw new RuntimeException('অজানা অনুরোধ।');
+        $result = $invoices->generate($access, accAudit(), $sessionYear, $classId, $sectionId, $period, $headIds, $issueDate);
+        $message = $period->label() . ': ' . bnDigits((string) $result['students']) . ' জন শিক্ষার্থী — নতুন বিল '
+            . bnDigits((string) $result['created']) . 'টি';
+        if ($result['already'] > 0) {
+            $message .= ', আগেই তৈরি ' . bnDigits((string) $result['already']) . 'টি';
+        }
+        if ($result['no_rate'] > 0) {
+            $message .= ', হার না থাকায় বাদ ' . bnDigits((string) $result['no_rate']) . ' জন';
+        }
+        if ($result['zero'] > 0) {
+            $message .= ', সম্পূর্ণ ছাড়প্রাপ্ত (৳০) ' . bnDigits((string) $result['zero']) . 'টি';
+        }
+        if ($result['created'] > 0 && $access->can(Capability::FEES_COLLECT)) {
+            $studentIds = array_map(static fn (array $row): int => (int) $row['id'], accStudents()->forClass($sessionYear, $classId, $sectionId));
+            $adjusted = 0;
+            foreach (array_keys(array_filter(accPayments()->advanceMap($studentIds), static fn (int $balance): bool => $balance > 0)) as $studentId) {
+                $adjusted += accPayments()->applyAdvance($access, accAudit(), $studentId);
+            }
+            if ($adjusted > 0) {
+                $message .= '; অগ্রিম জমা থেকে ' . Money::format($adjusted) . ' সমন্বয় হয়েছে';
+            }
+        }
+        redirectWithMessage($back, $result['created'] > 0 ? 'success' : 'warning', $message . '।');
     } catch (Throwable $exception) {
-        redirectWithMessage($action === 'cancel' ? $searchBack : $back, 'danger', userFacingError($exception));
+        redirectWithMessage($back, 'danger', userFacingError($exception));
     }
 }
 
 $heads = accCatalog()->heads(true);
-$rows = [];
-$billingKeys = [];
-$billingKey = (string) ($_GET['billing_key'] ?? '');
-$status = (string) ($_GET['status'] ?? '');
-if (!isset(InvoiceService::STATUS_LABELS[$status])) {
-    $status = '';
-}
-$searched = (string) ($_GET['searched'] ?? '') === '1';
-$totals = ['net' => 0, 'paid' => 0, 'due' => 0];
 $defaultMonth = $sessionYear . '-01';
 if ($ready) {
-    $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
     $defaultMonth = BillingPeriod::nextOpenMonth($sessionYear, $invoices->liveMonthlyKeys($sessionYear, $classId, $sectionId));
-    if (!isset($billingKeys[$billingKey])) {
-        $billingKey = '';
-    }
-    if (!$searched) {
-        $status = '';
-        $billingKey = '';
-    } elseif ($billingKey !== '') {
-        $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
-    }
-    foreach ($rows as $row) {
-        if ($row['status'] === InvoiceService::CANCELLED) {
-            continue;
-        }
-        $totals['net'] += Money::fromDb($row['net']);
-        $totals['paid'] += Money::fromDb($row['paid']);
-    }
-    $totals['due'] = max(0, $totals['net'] - $totals['paid']);
 }
 
 include __DIR__ . '/../../includes/layout-head.php';
@@ -233,112 +187,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
               </div>
               <?php endif; ?>
-
-              <?php if ($ready): ?>
-              <div class="card">
-                <div class="card-header">
-                  <form method="get" class="row g-2 align-items-end">
-                    <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
-                    <input type="hidden" name="searched" value="1">
-                    <div class="col-md-6">
-                      <label class="form-label small mb-1" for="list-key">বিল</label>
-                      <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : ' required' ?>>
-                        <?php if ($billingKeys === []): ?>
-                          <option value="">এখনো কোনো বিল নেই</option>
-                        <?php else: ?>
-                          <option value="">বিল নির্বাচন করুন</option>
-                          <?php foreach ($billingKeys as $key => $label): ?>
-                            <option value="<?= h($key) ?>"<?= $key === $billingKey ? ' selected' : '' ?>><?= h($label) ?></option>
-                          <?php endforeach; ?>
-                        <?php endif; ?>
-                      </select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label small mb-1" for="list-status">অবস্থা</label>
-                      <select class="form-select form-select-sm" name="status" id="list-status">
-                        <option value="">সব</option>
-                        <?php foreach (InvoiceService::STATUS_LABELS as $key => $label): ?>
-                          <option value="<?= h($key) ?>"<?= $key === $status ? ' selected' : '' ?>><?= h($label) ?></option>
-                        <?php endforeach; ?>
-                      </select>
-                    </div>
-                    <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100" type="submit">দেখুন</button></div>
-                  </form>
-                </div>
-                <?php if ($rows !== []): ?>
-                  <div class="card-body border-bottom py-2 d-flex flex-wrap gap-3 small">
-                    <span>মোট প্রাপ্য: <strong><?= h(Money::format($totals['net'])) ?></strong></span>
-                    <span>আদায়: <strong class="text-success"><?= h(Money::format($totals['paid'])) ?></strong></span>
-                    <span>বকেয়া: <strong class="text-danger"><?= h(Money::format($totals['due'])) ?></strong></span>
-                  </div>
-                <?php endif; ?>
-                <div class="card-body p-0">
-                  <?php if (!$searched): ?>
-                    <p class="text-secondary p-3 mb-0">বিল বেছে দেখুন চাপুন। তালিকা তখনই আসবে।</p>
-                  <?php elseif ($billingKeys === []): ?>
-                    <p class="text-secondary p-3 mb-0">এখনো কোনো বিল নেই।</p>
-                  <?php elseif ($billingKey === ''): ?>
-                    <p class="text-secondary p-3 mb-0">বিল নির্বাচন করুন।</p>
-                  <?php elseif ($rows === []): ?>
-                    <p class="text-secondary p-3 mb-0">কোনো বিল পাওয়া যায়নি।</p>
-                  <?php else: ?>
-                    <div class="table-responsive">
-                      <table class="table table-hover align-middle mb-0 acc-table-stack">
-                        <thead><tr><th>রোল</th><th>নাম</th><th class="text-end">প্রাপ্য</th><th class="text-end">আদায়</th><th class="text-end">বাকি</th><th>অবস্থা</th><th class="text-end">কার্যক্রম</th></tr></thead>
-                        <tbody>
-                          <?php foreach ($rows as $row): ?>
-                            <?php
-                            $invoiceId = (int) $row['id'];
-                            $net = Money::fromDb($row['net']);
-                            $paid = Money::fromDb($row['paid']);
-                            $relief = Money::fromDb($row['category_concession']) + Money::fromDb($row['discount']) + Money::fromDb($row['waived']);
-                            $cancelled = $row['status'] === InvoiceService::CANCELLED;
-                            ?>
-                            <tr class="<?= $cancelled ? 'text-secondary text-decoration-line-through' : '' ?>">
-                              <td data-label="রোল"><?= h(bnDigits((string) $row['roll_snapshot'])) ?></td>
-                              <td data-label="নাম">
-                                <?= h((string) $row['name_snapshot']) ?>
-                                <div class="small text-secondary"><code><?= h((string) $row['invoice_no']) ?></code><?= $relief !== 0 ? ' · ছাড় ' . h(Money::format($relief)) : '' ?></div>
-                              </td>
-                              <td class="text-end" data-label="প্রাপ্য"><strong><?= h(Money::format($net)) ?></strong></td>
-                              <td class="text-end" data-label="আদায়"><?= h(Money::format($paid)) ?></td>
-                              <td class="text-end" data-label="বাকি"><?= h(Money::format($cancelled ? 0 : max(0, $net - $paid))) ?></td>
-                              <td data-label="অবস্থা">
-                                <span class="badge <?= h(InvoiceService::STATUS_BADGES[$row['status']] ?? 'text-bg-light') ?>"><?= h(InvoiceService::STATUS_LABELS[$row['status']] ?? (string) $row['status']) ?></span>
-                                <div class="small text-secondary"><?= h(bnDigits((string) $row['due_date'])) ?></div>
-                              </td>
-                              <td class="text-end text-nowrap" data-label="কার্যক্রম">
-                                <a class="btn btn-sm btn-outline-secondary" href="<?= h(signedRecordUrl('student-fees.php#inv-' . $invoiceId, (int) $row['student_id'], 'acc_student')) ?>">বিস্তারিত</a>
-                                <?php if ($canCancel && !$cancelled && Money::fromDb($row['paid']) === 0): ?>
-                                  <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#cancel-<?= $invoiceId ?>">বাতিল</button>
-                                <?php endif; ?>
-                              </td>
-                            </tr>
-                            <?php if ($canCancel && !$cancelled && Money::fromDb($row['paid']) === 0): ?>
-                              <tr class="collapse" id="cancel-<?= $invoiceId ?>">
-                                <td colspan="7">
-                                  <form method="post" class="d-flex flex-wrap gap-2" data-acc-confirm="<?= h((string) $row['invoice_no']) ?> বাতিল করবেন? বাতিল বিল মুছে যায় না, তবে প্রয়োজনে নতুন করে বিল করা যাবে।" data-acc-confirm-variant="danger">
-                                    <?= csrfField() ?>
-                                    <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
-                                    <input type="hidden" name="searched" value="1">
-                                    <input type="hidden" name="billing_key" value="<?= h($billingKey) ?>">
-                                    <input type="hidden" name="status" value="<?= h($status) ?>">
-                                    <input type="hidden" name="action" value="cancel">
-                                    <?= signedRecordField($invoiceId, 'acc_invoice') ?>
-                                    <input class="form-control form-control-sm flex-grow-1" style="max-width:28rem" name="reason" minlength="3" maxlength="255" required placeholder="বাতিলের কারণ" aria-label="বাতিলের কারণ">
-                                    <button class="btn btn-sm btn-danger" type="submit">বাতিল নিশ্চিত</button>
-                                  </form>
-                                </td>
-                              </tr>
-                            <?php endif; ?>
-                          <?php endforeach; ?>
-                        </tbody>
-                      </table>
-                    </div>
-                  <?php endif; ?>
-                </div>
-              </div>
-            <?php endif; ?>
           </div>
         </div>
 <?php include __DIR__ . '/../../includes/layout-end.php'; ?>
