@@ -152,6 +152,22 @@ final class BillingPeriod
         return null;
     }
 
+    /**
+     * Whether an approved concession covers this bill.
+     * A session or admission fee is one bill for the year, so a concession
+     * that is active on any day of that year covers it. Monthly and other
+     * bills use the 1st of the month. An exam bill uses its issue date.
+     */
+    public static function concessionCovers(string $billingKey, string $issueDate, string $from, ?string $to): bool
+    {
+        if (preg_match('/^[SA]:(\d{4})$/', $billingKey, $match) === 1) {
+            return $from <= $match[1] . '-12-31' && ($to === null || $to >= $match[1] . '-01-01');
+        }
+        $reference = self::referenceDateForKey($billingKey, $issueDate);
+
+        return $reference !== null && $reference >= $from && ($to === null || $reference <= $to);
+    }
+
     /** Session, then admission, then later months before earlier ones. */
     public static function compareKeys(string $left, string $right): int
     {

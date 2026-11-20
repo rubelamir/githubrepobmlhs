@@ -125,7 +125,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">ফি আদায়</h3>
-            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হয়। বেশি দিলে আগে বাকি বকেয়া কাটে; বকেয়া শেষ হলে তবেই অগ্রিম থাকে।</p>
+            <p class="text-secondary mb-0">নাম বা রোল লিখে শিক্ষার্থী খুলুন, টাকা নিন, রসিদ দিন। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হয়। আগের বকেয়া বাদ দিয়ে পরের বিল শোধ হয় না। বেশি দিলে আগে বাকি বকেয়া কাটে; বকেয়া শেষ হলে তবেই অগ্রিম থাকে।</p>
           </div>
         </div>
         <div class="app-content">
@@ -280,7 +280,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     <div class="card-body">
                       <label class="form-label" for="pay-amount">গৃহীত টাকা (৳)</label>
                       <input class="form-control form-control-lg text-end" id="pay-amount" name="amount" inputmode="decimal" required maxlength="16" value="<?= $totalDue > 0 ? h(Money::toInput($totalDue)) : '' ?>" data-acc-amount autocomplete="off">
-                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে। বেশি দিলে বাকি বকেয়া আগে কাটে; বকেয়া শেষ হলে অগ্রিম থাকে।</div>
+                      <div class="form-text">নির্বাচিত বকেয়া: <strong data-acc-selected-due><?= h(Money::format($totalDue)) ?></strong>। কম দিলে আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি পরিশোধ হবে। পরের বিল টিক দিলে আগের বকেয়াও টিক হয়। বেশি দিলে বাকি বকেয়া আগে কাটে; বকেয়া শেষ হলে অগ্রিম থাকে।</div>
                       <div class="row g-2 mt-1">
                         <div class="col-sm-6">
                           <label class="form-label small mb-1" for="pay-payer">প্রদানকারী <span class="text-secondary">(ঐচ্ছিক)</span></label>

@@ -337,6 +337,7 @@ final class VoucherService
         if ($debit !== $credit || $debit <= 0) {
             throw new RuntimeException('স্বয়ংক্রিয় ভাউচারে দুই দিকের টাকা সমান হয়নি।');
         }
+        $this->assertSufficientFunds($this->withAccounts($lines), $date);
         $number = $this->assignNumber($type, $date);
         $now = AuditTrail::now()->format('Y-m-d H:i:s');
         $this->db->prepare(
@@ -571,7 +572,7 @@ final class VoucherService
         $net = [];
         $names = [];
         foreach ($lines as $line) {
-            if (!in_array((string) $line['money_kind'], ChartOfAccounts::SPENDABLE_KINDS, true)) {
+            if (!in_array((string) $line['money_kind'], [...ChartOfAccounts::SPENDABLE_KINDS, 'teacher_custody'], true)) {
                 continue;
             }
             $id = (int) $line['account_id'];

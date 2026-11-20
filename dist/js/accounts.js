@@ -215,6 +215,20 @@
       }
     };
     form.addEventListener('change', (event) => {
+      const box = event.target;
+      if (box instanceof HTMLInputElement && box.dataset.accDue) {
+        const boxes = [...form.querySelectorAll('input[data-acc-due]')];
+        const index = boxes.indexOf(box);
+        if (box.checked) {
+          boxes.slice(0, index).forEach((item) => {
+            item.checked = true;
+          });
+        } else {
+          boxes.slice(index + 1).forEach((item) => {
+            item.checked = false;
+          });
+        }
+      }
       if (event.target.matches('input[data-acc-due], input[data-acc-check-all]')) {
         setTimeout(update, 0);
       }

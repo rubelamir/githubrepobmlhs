@@ -50,7 +50,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         if ($action === 'concession_end') {
             accConcessions()->end($access, accAudit(), postedRecordId('acc_concession', 'concession_ref'), (string) ($_POST['last_day'] ?? ''), (string) ($_POST['note'] ?? ''));
-            redirectWithMessage($self . '#concessions', 'success', 'ছাড়ের মেয়াদ শেষ করা হয়েছে।');
+            redirectWithMessage($self . '#concessions', 'success', 'ছাড়ের মেয়াদ শেষ করা হয়েছে। মেয়াদের পরের বিল থেকে ছাড় উঠে গেছে।');
         }
         if ($action === 'waiver_request') {
             $waiver = accWaivers()->request($access, accAudit(), postedRecordId('acc_invoice_item', 'item_ref'), (string) ($_POST['amount'] ?? ''), (string) ($_POST['reason'] ?? ''));

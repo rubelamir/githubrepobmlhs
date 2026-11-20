@@ -128,6 +128,13 @@ $check(BillingPeriod::referenceDateForKey('M:2026-01', '2026-01-31') === '2026-0
 $check(BillingPeriod::referenceDateForKey('S:2026', '2026-03-01') === '2026-01-01', 'session bill is covered from 1 January');
 $check(BillingPeriod::referenceDateForKey('A:2026', '2026-02-01') === '2026-01-01', 'admission bill is covered from 1 January');
 $check(BillingPeriod::referenceDateForKey('E:2026:4', '2026-06-15') === '2026-06-15', 'exam bill uses its issue date');
+$check(BillingPeriod::concessionCovers('S:2026', '2026-01-04', '2026-03-01', null), 'a March concession covers the yearly session fee');
+$check(BillingPeriod::concessionCovers('A:2026', '2026-01-05', '2026-03-01', null), 'a March concession covers the yearly admission fee');
+$check(!BillingPeriod::concessionCovers('S:2026', '2026-01-04', '2027-01-01', null), 'next year does not cover this session fee');
+$check(BillingPeriod::concessionCovers('M:2026-06', '2026-06-01', '2026-01-01', '2026-06-30'), 'June stays inside a concession ending 30 June');
+$check(!BillingPeriod::concessionCovers('M:2026-07', '2026-07-01', '2026-01-01', '2026-06-30'), 'July is outside a concession ending 30 June');
+$endedLine = InvoiceService::lineAfterConcessionEnded(100000, 50000, 0, 50000, 50000);
+$check($endedLine['changed'] && $endedLine['discount'] === 0 && $endedLine['net'] === 100000 && $endedLine['advance'] === 0, 'ending a concession restores the fee on a discounted line');
 $half = ['kind' => ConcessionService::PERCENT, 'value' => '50.00'];
 $open = InvoiceService::concessionForExistingLine($half, 100000, 0, 0, 0, 100000);
 $check($open['changed'] && $open['discount'] === 50000 && $open['net'] === 50000 && $open['advance'] === 0, 'full concession reduces an unpaid existing line');
@@ -148,6 +155,8 @@ $sameRate = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, nul
 $check(!$sameRate['changed'], 'the same monthly rate leaves the bill alone');
 $withConcession = InvoiceService::monthlyCategoryForExistingLine(40000, 100000, 2, $halfPaid, 100000, 100000, 1, 0, 0, null, 0, 0, 100000);
 $check($withConcession['changed'] && $withConcession['discount'] === 20000 && $withConcession['net'] === 20000 && $withConcession['concession_id'] === 9, 'personal concession is recalculated on the new monthly rate');
+$orphanDiscount = InvoiceService::monthlyCategoryForExistingLine(100000, 100000, 1, null, 100000, 100000, 1, 0, 50000, 5, 0, 50000, 50000);
+$check($orphanDiscount['changed'] && $orphanDiscount['discount'] === 0 && $orphanDiscount['net'] === 100000 && $orphanDiscount['concession_id'] === null && $orphanDiscount['advance'] === 0, 'a rate change drops a personal discount that no longer has a concession');
 
 // A student's bills: session fee, admission fee, then each month's tuition,
 // with exam and other fees after the tuition of the month they were created.

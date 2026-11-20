@@ -372,8 +372,7 @@ final class InvoiceService
         $update = $this->db->prepare('UPDATE acc_invoice_items SET discount = :discount, concession_id = :concession, net = :net WHERE id = :id');
         $touched = [];
         foreach ($lines as $line) {
-            $reference = BillingPeriod::referenceDateForKey((string) $line['billing_key'], (string) $line['issue_date']);
-            if ($reference === null || $reference < $from || ($to !== null && $reference > $to)) {
+            if (!BillingPeriod::concessionCovers((string) $line['billing_key'], (string) $line['issue_date'], $from, $to)) {
                 continue;
             }
             if (isset($pending[(int) $line['id']])) {
@@ -411,6 +410,89 @@ final class InvoiceService
     }
 
     /**
+     * Removing a concession raises the line back to the fee minus any waiver.
+     * Money still collected above that net is advance.
+     *
+     * @return array{discount: int, net: int, advance: int, changed: bool}
+     */
+    public static function lineAfterConcessionEnded(int $amount, int $discount, int $waived, int $paid, int $net): array
+    {
+        $nextNet = max(0, $amount - $waived);
+
+        return [
+            'discount' => 0,
+            'net' => $nextNet,
+            'advance' => max(0, $paid - $nextNet),
+            'changed' => $discount !== 0 || $nextNet !== $net,
+        ];
+    }
+
+    /**
+     * Takes this concession off bills it no longer covers. Caller holds the transaction.
+     *
+     * @param array<string, mixed> $concession
+     */
+    public function releaseEndedConcession(array $concession, int $actorId): int
+    {
+        if (!$this->db->inTransaction()) {
+            throw new RuntimeException('মেয়াদ শেষ হওয়া ছাড় তুলতে লেনদেনের ভিতরে থাকতে হবে।');
+        }
+        $from = (string) ($concession['effective_from'] ?? '');
+        $to = $concession['effective_to'] ?? null;
+        $to = $to !== null && (string) $to !== '' ? (string) $to : null;
+        $lines = \fetchRows(
+            $this->db,
+            'SELECT i.id, i.invoice_id, i.billing_key, i.amount, i.discount, i.waived, i.paid, i.net, inv.issue_date
+             FROM acc_invoice_items i
+             JOIN acc_invoices inv ON inv.id = i.invoice_id
+             WHERE i.student_id = :student AND inv.session_year = :session AND i.fee_head_id = :head
+               AND i.concession_id = :concession AND i.line_kind = :kind AND inv.status <> :cancelled
+             FOR UPDATE',
+            [
+                'student' => (int) $concession['student_id'],
+                'session' => (string) $concession['session_year'],
+                'head' => (int) $concession['fee_head_id'],
+                'concession' => (int) $concession['id'],
+                'kind' => self::LINE_FEE,
+                'cancelled' => self::CANCELLED,
+            ]
+        );
+        $update = $this->db->prepare('UPDATE acc_invoice_items SET discount = :discount, concession_id = NULL, net = :net WHERE id = :id');
+        $released = 0;
+        $touched = [];
+        foreach ($lines as $line) {
+            if (BillingPeriod::concessionCovers((string) $line['billing_key'], (string) $line['issue_date'], $from, $to)) {
+                continue;
+            }
+            $next = self::lineAfterConcessionEnded(
+                Money::fromDb($line['amount']),
+                Money::fromDb($line['discount']),
+                Money::fromDb($line['waived']),
+                Money::fromDb($line['paid']),
+                Money::fromDb($line['net'])
+            );
+            if (!$next['changed']) {
+                continue;
+            }
+            $update->execute([
+                'discount' => Money::toDb($next['discount']),
+                'net' => Money::toDb($next['net']),
+                'id' => (int) $line['id'],
+            ]);
+            if ($next['advance'] > 0) {
+                \accPayments()->parkExcessAsAdvance((int) $line['id'], $actorId);
+            }
+            $touched[(int) $line['invoice_id']] = true;
+            $released++;
+        }
+        foreach (array_keys($touched) as $invoiceId) {
+            $this->recompute($invoiceId);
+        }
+
+        return $released;
+    }
+
+    /**
      * Monthly category rate on a bill that already exists.
      * The new rate may raise what is still unpaid. Money already collected above the new net becomes advance.
      *
@@ -432,9 +514,7 @@ final class InvoiceService
         int $paid,
         int $net
     ): array {
-        $desiredDiscount = $concession !== null
-            ? ConcessionService::discountFor($concession, $newAmount)
-            : min($discount, max(0, $newAmount));
+        $desiredDiscount = $concession !== null ? ConcessionService::discountFor($concession, $newAmount) : 0;
         $target = $newAmount - $desiredDiscount - $waived;
         $nextNet = max(0, $target);
         $nextDiscount = $newAmount - $waived - $nextNet;

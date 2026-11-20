@@ -187,9 +187,13 @@ final class ConcessionService
             if ($lastDay < (string) $row['effective_from']) {
                 throw new RuntimeException('শেষ তারিখ কার্যকর তারিখের আগে হতে পারে না।');
             }
+            $beforeTo = $row['effective_to'];
             $this->db->prepare('UPDATE acc_concessions SET effective_to = :to, decision_note = :note WHERE id = :id')
                 ->execute(['to' => $lastDay, 'note' => $note === '' ? $row['decision_note'] : $note, 'id' => $id]);
-            $audit->record('concession.end', 'concession', $id, ['effective_to' => $row['effective_to']], ['effective_to' => $lastDay, 'note' => $note], 'ব্যক্তিগত ছাড় সমাপ্ত');
+            $row['effective_to'] = $lastDay;
+            $released = \accInvoices()->releaseEndedConcession($row, $actor->teacherId());
+            \accPayments()->settleAdvanceLocked((int) $row['student_id'], $actor->teacherId());
+            $audit->record('concession.end', 'concession', $id, ['effective_to' => $beforeTo], ['effective_to' => $lastDay, 'note' => $note, 'released' => $released], 'ব্যক্তিগত ছাড় সমাপ্ত');
             $this->db->commit();
         } catch (\Throwable $exception) {
             $this->db->rollBack();

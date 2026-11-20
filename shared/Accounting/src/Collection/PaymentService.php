@@ -141,6 +141,44 @@ final class PaymentService
     }
 
     /**
+     * A later bill cannot be paid while an earlier due is left unticked.
+     * An empty selection is advance only, so it is not a skipped due.
+     *
+     * @param list<array<string, mixed>> $outstanding
+     * @param list<int> $selectedIds
+     */
+    public static function selectionSkipsEarlierDue(array $outstanding, array $selectedIds): bool
+    {
+        if ($selectedIds === []) {
+            return false;
+        }
+        $selected = array_fill_keys($selectedIds, true);
+        $earliest = null;
+        foreach ($outstanding as $line) {
+            if (!isset($selected[(int) $line['invoice_id']])) {
+                continue;
+            }
+            $rank = InvoiceService::paymentSortKey($line);
+            if ($earliest === null || $rank < $earliest) {
+                $earliest = $rank;
+            }
+        }
+        if ($earliest === null) {
+            return false;
+        }
+        foreach ($outstanding as $line) {
+            if (isset($selected[(int) $line['invoice_id']])) {
+                continue;
+            }
+            if (InvoiceService::paymentSortKey($line) < $earliest) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param list<int> $invoiceIds only settle these invoices; empty = all outstanding unless $onlySelected
      * @return array{payment_id: int, duplicate: bool}
      */
@@ -182,6 +220,9 @@ final class PaymentService
             if ($selection['settle_none']) {
                 $lines = [];
             } elseif ($invoiceIds !== []) {
+                if (self::selectionSkipsEarlierDue($lines, $invoiceIds)) {
+                    throw new RuntimeException('আগের বকেয়া বাদ দিয়ে পরের বিল শোধ করা যায় না। আগে সেশন ফি, তারপর ভর্তি ফি, মাসিক বেতন ও পরীক্ষার ফি।');
+                }
                 $lines = array_values(array_filter($lines, static fn (array $line): bool => in_array((int) $line['invoice_id'], $invoiceIds, true)));
             }
             $split = Allocator::allocate(
@@ -718,7 +759,9 @@ final class PaymentService
     }
 
     /**
-     * Lines this receipt originally paid (reversal rows excluded) and the advance it created.
+     * Lines this receipt collected on the day. Later use of its advance is a
+     * separate entry and is not added back onto this receipt. Reversal rows
+     * are excluded here; a cancelled receipt shows these lines at zero.
      *
      * @return array{lines: list<array<string, mixed>>, advance: int}
      */
@@ -732,7 +775,7 @@ final class PaymentService
              LEFT JOIN acc_invoice_items i ON i.id = a.invoice_item_id
              LEFT JOIN acc_invoices inv ON inv.id = a.invoice_id
              LEFT JOIN acc_fee_heads h ON h.id = i.fee_head_id
-             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance', 'advance_applied')
+             WHERE a.payment_id = :id AND a.kind IN ('fee', 'advance', 'to_advance')
              GROUP BY a.invoice_item_id, i.description, i.line_kind, i.billing_key,
                       inv.id, inv.invoice_no, inv.billing_label, inv.issue_date, h.sort_order",
             ['id' => $paymentId]

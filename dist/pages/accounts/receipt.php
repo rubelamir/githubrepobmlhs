@@ -29,8 +29,15 @@ $schoolName = trim((string) ($settings['school_name_bn'] ?? ''));
 $address = trim((string) ($settings['address'] ?? ''));
 $eiin = trim((string) ($settings['eiin'] ?? ''));
 $receipt = accPayments()->receiptLines($paymentId);
-$amount = Money::fromDb($payment['amount']);
 $reversed = $payment['status'] === PaymentService::REVERSED;
+if ($reversed) {
+    foreach ($receipt['lines'] as &$line) {
+        $line['amount'] = '0.00';
+    }
+    unset($line);
+    $receipt['advance'] = 0;
+}
+$amount = $reversed ? 0 : Money::fromDb($payment['amount']);
 [$flashType, $flashMessage] = consumeFlash();
 $back = signedRecordUrl('collect.php', (int) $payment['student_id'], 'acc_student');
 ?>

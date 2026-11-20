@@ -68,6 +68,9 @@ $all = PaymentService::resolveInvoiceSelection([], false);
 $check($all['ids'] === [] && $all['settle_none'] === false, 'an empty list without a bill list still means every outstanding bill');
 $unticked = PaymentService::resolveInvoiceSelection([], true);
 $check($unticked['ids'] === [] && $unticked['settle_none'] === true, 'unticked bills are not applied until a bill is chosen');
+$check(PaymentService::selectionSkipsEarlierDue($dues, [4]), 'paying only an exam skips the earlier dues');
+$check(!PaymentService::selectionSkipsEarlierDue($dues, [1, 2]), 'paying session and admission does not skip an earlier due');
+$check(!PaymentService::selectionSkipsEarlierDue($dues, []), 'leaving every bill unticked is not a skipped due');
 
 $check(AmountInWords::taka(0) === 'শূন্য টাকা মাত্র', 'zero');
 $check(AmountInWords::taka(200000) === 'দুই হাজার টাকা মাত্র', 'two thousand');
