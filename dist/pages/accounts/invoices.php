@@ -6,7 +6,6 @@ use School\Accounting\Audit\AuditTrail;
 use School\Accounting\Billing\BillingPeriod;
 use School\Accounting\Billing\FeeStructureRepository;
 use School\Accounting\Billing\InvoiceService;
-use School\Accounting\Billing\StudentDirectory;
 use School\Accounting\Support\Money;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -45,13 +44,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $returnKey = (string) ($_POST['billing_key'] ?? '');
         if ($returnKey !== '') {
             $return['billing_key'] = $returnKey;
-        }
-        $returnQuery = trim((string) ($_POST['q'] ?? ''));
-        if (mb_strlen($returnQuery, 'UTF-8') > 40) {
-            $returnQuery = mb_substr($returnQuery, 0, 40, 'UTF-8');
-        }
-        if ($returnQuery !== '') {
-            $return['q'] = $returnQuery;
         }
         $returnStatus = (string) ($_POST['status'] ?? '');
         if (isset(InvoiceService::STATUS_LABELS[$returnStatus])) {
@@ -140,7 +132,6 @@ if (!isset(InvoiceService::STATUS_LABELS[$status])) {
 }
 $searched = (string) ($_GET['searched'] ?? '') === '1';
 $totals = ['net' => 0, 'paid' => 0, 'due' => 0];
-$search = '';
 $defaultMonth = $sessionYear . '-01';
 if ($ready) {
     $billingKeys = $invoices->billingKeys($sessionYear, $classId, $sectionId);
@@ -148,31 +139,11 @@ if ($ready) {
     if (!isset($billingKeys[$billingKey])) {
         $billingKey = '';
     }
-    $search = trim((string) ($_GET['q'] ?? ''));
-    if (mb_strlen($search, 'UTF-8') > 40) {
-        $search = mb_substr($search, 0, 40, 'UTF-8');
-    }
     if (!$searched) {
-        $search = '';
         $status = '';
         $billingKey = '';
     } elseif ($billingKey !== '') {
         $rows = $invoices->listForClass(['session_year' => $sessionYear, 'class_id' => $classId, 'section_id' => $sectionId, 'billing_key' => $billingKey, 'status' => $status]);
-    }
-    if ($searched && $search !== '') {
-        $rows = array_values(array_filter(
-            $rows,
-            static function (array $row) use ($search): bool {
-                if (mb_stripos((string) $row['invoice_no'], $search) !== false) {
-                    return true;
-                }
-
-                return StudentDirectory::matchesQuery([
-                    'name_ban' => (string) $row['name_snapshot'],
-                    'cls_roll' => (string) $row['roll_snapshot'],
-                ], $search);
-            }
-        ));
     }
     foreach ($rows as $row) {
         if ($row['status'] === InvoiceService::CANCELLED) {
@@ -269,7 +240,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <form method="get" class="row g-2 align-items-end">
                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                     <input type="hidden" name="searched" value="1">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <label class="form-label small mb-1" for="list-key">বিল</label>
                       <select class="form-select form-select-sm" name="billing_key" id="list-key"<?= $billingKeys === [] ? ' disabled' : ' required' ?>>
                         <?php if ($billingKeys === []): ?>
@@ -282,11 +253,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <?php endif; ?>
                       </select>
                     </div>
-                    <div class="col-md-3">
-                      <label class="form-label small mb-1" for="list-q">নাম, রোল বা বিল নং</label>
-                      <input class="form-control form-control-sm" id="list-q" name="q" value="<?= h($search) ?>" maxlength="40">
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                       <label class="form-label small mb-1" for="list-status">অবস্থা</label>
                       <select class="form-select form-select-sm" name="status" id="list-status">
                         <option value="">সব</option>
@@ -313,7 +280,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <?php elseif ($billingKey === ''): ?>
                     <p class="text-secondary p-3 mb-0">বিল নির্বাচন করুন।</p>
                   <?php elseif ($rows === []): ?>
-                    <p class="text-secondary p-3 mb-0"><?= $search !== '' ? 'এই নাম, রোল বা বিল নম্বরে কিছু নেই।' : 'কোনো বিল পাওয়া যায়নি।' ?></p>
+                    <p class="text-secondary p-3 mb-0">কোনো বিল পাওয়া যায়নি।</p>
                   <?php else: ?>
                     <div class="table-responsive">
                       <table class="table table-hover align-middle mb-0 acc-table-stack">
@@ -355,7 +322,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                                     <?php foreach ($query as $key => $value): ?><input type="hidden" name="<?= h($key) ?>" value="<?= h((string) $value) ?>"><?php endforeach; ?>
                                     <input type="hidden" name="searched" value="1">
                                     <input type="hidden" name="billing_key" value="<?= h($billingKey) ?>">
-                                    <input type="hidden" name="q" value="<?= h($search) ?>">
                                     <input type="hidden" name="status" value="<?= h($status) ?>">
                                     <input type="hidden" name="action" value="cancel">
                                     <?= signedRecordField($invoiceId, 'acc_invoice') ?>
