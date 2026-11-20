@@ -138,7 +138,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <summary class="small text-secondary mb-2">হিসাবের ভিতরের হিসাব</summary>
                 <div class="table-responsive">
                   <table class="table table-sm table-bordered align-middle mb-2">
-                    <thead><tr><th>কোড</th><th>হিসাব</th><th>নোট</th><th class="text-end">ডেবিট</th><th class="text-end">ক্রেডিট</th></tr></thead>
+                    <thead><tr><th>কোড</th><th>হিসাব</th><th>নোট</th><th class="text-end">বাম ঘর</th><th class="text-end">ডান ঘর</th></tr></thead>
                     <tbody>
                       <?php foreach ($lines as $line): ?>
                         <tr>
