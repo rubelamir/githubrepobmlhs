@@ -281,7 +281,11 @@ function canAccessModule(string $module, ?array $teacher = null): bool
         return true;
     }
 
-    if (in_array($module, ['student-details-list', 'student-profiles', 'student-profile'], true)) {
+    if ($module === 'student-profiles' || $module === 'student-profile') {
+        return true;
+    }
+
+    if ($module === 'student-details-list') {
         return canAccessStudentDetailPages($teacher);
     }
 

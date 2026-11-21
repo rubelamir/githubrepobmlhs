@@ -12,10 +12,6 @@ $id = requestRecordId('student');
 if ($id < 1) {
     redirectWithMessage('students.php', 'danger', 'Select a student first.');
 }
-$studentOwner = fetchRows($db, 'SELECT cls, sections, session_year FROM students_info WHERE id = :id LIMIT 1', ['id' => $id])[0] ?? null;
-if (!panelMayViewStudentRecord($db, $studentOwner)) {
-    redirectWithMessage('student-profiles.php', 'danger', 'You can view only students of the class assigned to you.');
-}
 
 $sheetVars = studentProfileSheetData($db, $id);
 if ($sheetVars === null) {

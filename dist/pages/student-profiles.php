@@ -11,35 +11,14 @@ require_once dirname(__DIR__, 2) . '/bmlhs/includes/site.php';
 require_once __DIR__ . '/../includes/student-profile-sheet.php';
 require_once dirname(__DIR__, 2) . '/shared/student-profiles-pdf.php';
 $classes = schoolClasses($db);
+$sectionCatalog = examRoutineSectionCatalog(schoolSections($db));
 $search = trim((string) ($_GET['q'] ?? ''));
 $sessionYear = trim((string) ($_GET['session_year'] ?? date('Y')));
 $classId = (int) ($_GET['cls'] ?? 0);
 $sectionId = (int) ($_GET['sections'] ?? 0);
 $rollFilter = trim((string) ($_GET['cls_roll'] ?? ''));
 $loadList = (string) ($_GET['load'] ?? '') === '1';
-$panelTeacher = getAuthenticatedTeacher();
-$seeAllClasses = panelSeesAllStudents($panelTeacher);
-if (!$seeAllClasses) {
-    $scope = classTeacherScope($db, $panelTeacher, $sessionYear);
-    $classes = array_values(array_filter(
-        $classes,
-        static fn (array $class): bool => isset($scope['entire'][(int) $class['id']]) || isset($scope['sections'][(int) $class['id']])
-    ));
-    if ($classId > 0 && !isset($scope['entire'][$classId]) && !isset($scope['sections'][$classId])) {
-        $classId = 0;
-        $sectionId = 0;
-    }
-}
 $sections = $classId > 0 ? schoolSections($db, $classId) : [];
-if (!$seeAllClasses && $classId > 0 && !isset($scope['entire'][$classId])) {
-    $sections = array_values(array_filter(
-        $sections,
-        static fn (array $section): bool => isset($scope['sections'][$classId][(int) $section['id']])
-    ));
-    if ($sectionId > 0 && !isset($scope['sections'][$classId][$sectionId])) {
-        $sectionId = 0;
-    }
-}
 $sectionId = studentFilterSectionId($sections, $classId, $sectionId);
 $filterNotice = $loadList ? studentFilterSelectionNotice($sections, $classId, $sectionId) : '';
 if ($filterNotice !== '') {
@@ -64,7 +43,6 @@ $sheets = [];
 if ($loadList) {
     $sql = 'SELECT s.id FROM students_info s LEFT JOIN cls c ON s.cls = c.id LEFT JOIN sections sec ON s.sections = sec.id';
     [$where, $params] = studentsQueryFilters($filterGet);
-    applyAssignedClassStudentScope($db, $where, $sessionYear, $classId, $sectionId, $panelTeacher);
     if ($where !== []) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
@@ -115,13 +93,40 @@ $pageStyles = <<<'CSS'
   .sp-sheet-item:last-child { break-after: auto; page-break-after: auto; }
 }
 CSS;
+$pageScripts = [<<<'JS'
+document.addEventListener('DOMContentLoaded', () => {
+  const cls = document.getElementById('filterClass');
+  const sections = document.getElementById('filterSection');
+  const catalog = JSON.parse(document.getElementById('profileSections')?.textContent || '{}');
+  cls?.addEventListener('change', () => {
+    if (!sections) return;
+    sections.innerHTML = '';
+    if (!cls.value) {
+      sections.add(new Option('আগে শ্রেণী নির্বাচন করুন', ''));
+      return;
+    }
+    const rows = catalog[cls.value] || [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      sections.add(new Option('শাখা নেই—পুরো শ্রেণী', '0'));
+      sections.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    sections.add(new Option('শাখা নির্বাচন করুন', ''));
+    rows.forEach((row) => sections.add(new Option(row.name, String(row.id))));
+    if (rows.length === 1) {
+      sections.value = String(rows[0].id);
+    }
+    sections.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+});
+JS];
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header no-print">
           <div class="container-fluid d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
               <h3 class="mb-0">Student Profile</h3>
-              <p class="text-secondary mb-0">Filter students and view their profiles one after another.</p>
+              <p class="text-secondary mb-0">যেকোনো শ্রেণী ও শাখার শিক্ষার্থীর তথ্য বিবরণী দেখুন।</p>
             </div>
             <?php if ($sheets !== []): ?>
               <div class="d-flex flex-wrap gap-2">
@@ -137,6 +142,7 @@ include __DIR__ . '/../includes/layout-head.php';
         </div>        <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
+            <script type="application/json" id="profileSections"><?= json_encode($sectionCatalog, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
             <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="প্রোফাইল ফিল্টার"<?= $loadList ? ' data-sf-result-count="' . count($sheets) . '"' : '' ?>>
               <div class="card-body">
                 <input type="hidden" name="load" value="1">
@@ -160,7 +166,7 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-md-4">
                     <label class="form-label" for="filterSection">Section</label>
-                    <select class="form-select" name="sections" id="filterSection" required data-sf-sections>
+                    <select class="form-select" name="sections" id="filterSection" required>
                       <?= studentFilterSectionOptionsHtml($sections, $classId, $sectionId > 0 ? (string) $sectionId : '') ?>
                     </select>
                   </div>
