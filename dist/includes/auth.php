@@ -631,7 +631,6 @@ function currentScriptPanelModule(): ?string
         'student-form' => 'student-form',
         'student-import' => 'admissions',
         'student-birthdate-fix' => 'admissions',
-        '_tmp_birthdate_apply' => null,
         'students' => 'student-list',
         'admission-tokens' => 'admissions',
         'admin-roles' => 'admin-roles',
