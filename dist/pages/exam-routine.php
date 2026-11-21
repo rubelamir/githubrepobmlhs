@@ -13,6 +13,7 @@ $settings = schoolSettings($db);
 
 $exams = schoolExams($db, true);
 $classes = schoolClasses($db);
+$sectionCatalog = examRoutineSectionCatalog(schoolSections($db));
 $sessionYears = [];
 for ($year = (int) date('Y') + 1; $year >= 2015; $year--) {
     $sessionYears[] = (string) $year;
@@ -370,18 +371,19 @@ $pageScripts = [<<<'JS'
 document.addEventListener('DOMContentLoaded', () => {
   const cls = document.getElementById('filterClass');
   const sections = document.getElementById('filterSection');
-  cls?.addEventListener('change', async () => {
+  const sectionCatalog = JSON.parse(document.getElementById('examRoutineSections')?.textContent || '{}');
+  cls?.addEventListener('change', () => {
     sections.innerHTML = '';
     if (!cls.value) {
       sections.add(new Option('আগে শ্রেণী নির্বাচন করুন', '0'));
       return;
     }
-    const rows = await (await fetch('academic-api.php?type=sections&class_id=' + encodeURIComponent(cls.value))).json();
+    const rows = sectionCatalog[cls.value] || [];
     if (!Array.isArray(rows) || rows.length === 0) {
       sections.add(new Option('শাখা নেই', '0'));
       return;
     }
-    rows.forEach((row) => sections.add(new Option(row.section_name_ban, row.id)));
+    rows.forEach((row) => sections.add(new Option(row.name, String(row.id))));
   });
 
   const subjectSelect = document.getElementById('classSubjectId');
@@ -404,7 +406,9 @@ include __DIR__ . '/../includes/layout-head.php';
           <div class="container-fluid d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
               <h3 class="mb-0">পরীক্ষার রুটিন</h3>
-              <p class="text-secondary mb-0">পরীক্ষা, শিক্ষাবর্ষ ও শ্রেণী অনুযায়ী তারিখভিত্তিক রুটিন তৈরি ও ব্যবস্থাপনা।</p>
+              <p class="text-secondary mb-0"><?= $canEditRoutine
+                ? 'যেকোনো শ্রেণী ও শাখার রুটিন দেখুন। প্রয়োজনে নতুন বিষয় যোগ বা মুছুন।'
+                : 'যেকোনো শ্রেণী ও শাখার পরীক্ষার রুটিন দেখুন।' ?></p>
             </div>
             <?php if ($loadList && $rows !== []): ?>
               <div class="d-flex flex-wrap gap-2">
@@ -420,6 +424,7 @@ include __DIR__ . '/../includes/layout-head.php';
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
 
+            <script type="application/json" id="examRoutineSections"><?= json_encode($sectionCatalog, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
             <form method="get" class="card stat-card mb-3 no-print" data-student-filter data-sf-title="রুটিনের ফিল্টার"<?= $loadList ? ' data-sf-applied="1"' : '' ?>>
               <div class="card-body">
                 <div class="row g-2 align-items-end">
@@ -475,7 +480,7 @@ include __DIR__ . '/../includes/layout-head.php';
 
             <?php if (!$loadList): ?>
               <div class="card stat-card">
-                <div class="card-body text-secondary">শিক্ষাবর্ষ, পরীক্ষা ও শ্রেণী নির্বাচন করে রুটিন তৈরি করুন।</div>
+                <div class="card-body text-secondary">শিক্ষাবর্ষ, পরীক্ষা, শ্রেণী ও শাখা বেছে রুটিন দেখুন।</div>
               </div>
             <?php else: ?>
               <div class="exam-routine-print-head">
@@ -572,7 +577,9 @@ include __DIR__ . '/../includes/layout-head.php';
 
               <?php if ($rows === []): ?>
                 <div class="card stat-card mb-3">
-                  <div class="card-body text-secondary">এই ফিল্টারে এখনো কোনো রুটিন নেই। উপরের ফর্ম থেকে বিষয় যোগ করুন।</div>
+                  <div class="card-body text-secondary"><?= $canEditRoutine
+                    ? 'এই ফিল্টারে এখনো কোনো রুটিন নেই। উপরের ফর্ম থেকে বিষয় যোগ করুন।'
+                    : 'এই শ্রেণী ও শাখায় এখনো কোনো রুটিন নেই।' ?></div>
                 </div>
               <?php else: ?>
                 <div class="routine-table-wrap">

@@ -21,6 +21,9 @@ $head = [
 ];
 
 foreach ($modules as $module) {
+    if ($module === 'exam-routine') {
+        continue;
+    }
     $expectedAdmin = in_array($module, ['routine', 'result-publication'], true);
     if (canAccessModule($module, $admin) !== $expectedAdmin) {
         fwrite(STDERR, "FAIL: admin module access was not exact for {$module}\n");
@@ -31,9 +34,18 @@ foreach ($modules as $module) {
         exit(1);
     }
 }
+if (!canAccessModule('exam-routine', $teacher)
+    || !canAccessModule('exam-routine', $admin)
+    || !canAccessModule('exam-routine', $head)
+    || canManageModule('exam-routine', $teacher)
+    || canManageModule('exam-routine', $admin)
+    || !canManageModule('exam-routine', $head)
+) {
+    fwrite(STDERR, "FAIL: every staff member can view exam routines; only a manager can change them\n");
+    exit(1);
+}
 if (!canAccessModule('results', $teacher)
     || canAccessModule('routine', $teacher)
-    || canAccessModule('exam-routine', $teacher)
     || canAccessModule('result-publication', $teacher)
 ) {
     fwrite(STDERR, "FAIL: teacher permissions do not match the existing module policy\n");

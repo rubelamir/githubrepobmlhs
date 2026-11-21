@@ -505,6 +505,32 @@ function examRoutineRows(
     return fetchRows($db, $sql, $params);
 }
 
+/**
+ * Every section of every class, for staff who may read any exam routine.
+ * Keys are class ids. This is not the class-teacher scope used by academic-api.
+ *
+ * @param list<array<string, mixed>> $sections
+ * @return array<int, list<array{id: int, name: string}>>
+ */
+function examRoutineSectionCatalog(array $sections): array
+{
+    $catalog = [];
+    foreach ($sections as $section) {
+        $classId = (int) ($section['class_id'] ?? 0);
+        $id = (int) ($section['id'] ?? 0);
+        if ($classId < 1 || $id < 1) {
+            continue;
+        }
+        $name = trim((string) ($section['section_name_ban'] ?? ''));
+        if ($name === '') {
+            $name = trim((string) ($section['section_name'] ?? ''));
+        }
+        $catalog[$classId][] = ['id' => $id, 'name' => $name];
+    }
+
+    return $catalog;
+}
+
 function examRoutineTimeLabel(string $start, string $end): string
 {
     $start = examRoutineClock12($start);

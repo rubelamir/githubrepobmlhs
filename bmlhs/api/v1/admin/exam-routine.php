@@ -62,7 +62,10 @@ try {
     $db = getDatabaseConnection();
     $identity = mobileApiRequireIdentity($db);
     if ($identity['account_type'] !== 'staff' || !canAccessModule('exam-routine', $identity['account'])) {
-        mobileApiJson(['error' => ['code' => 'forbidden', 'message' => 'You do not have permission to manage exam routines.']], 403);
+        mobileApiJson(['error' => ['code' => 'forbidden', 'message' => 'You do not have permission to view exam routines.']], 403);
+    }
+    if ($method === 'POST' && !canManageModule('exam-routine', $identity['account'])) {
+        mobileApiJson(['error' => ['code' => 'forbidden', 'message' => 'You do not have permission to change exam routines.']], 403);
     }
     if ($method === 'POST') {
         mobileApiBeginIdempotentWrite($db, $identity);
