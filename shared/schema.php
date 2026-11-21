@@ -67,6 +67,15 @@ function ensureHistoryTimelineTable(PDO $db): void
     );
 }
 
+/** Board registration number used to match a class list and its photos. */
+function ensureStudentRegistrationColumn(PDO $db): void
+{
+    if (!tableExists($db, 'students_info')) {
+        return;
+    }
+    ensureColumn($db, 'students_info', 'reg_no', "VARCHAR(255) NOT NULL DEFAULT ''");
+}
+
 function ensureSubjectRosterStorage(PDO $db): void
 {
     ensureColumn($db, 'class_subjects', 'audience_religion', 'VARCHAR(20) DEFAULT NULL');
@@ -154,6 +163,7 @@ function ensureSchoolSchema(PDO $db): void
     ensureContactMessagesTable($db);
     ensureHistoryTimelineTable($db);
     ensureSubjectRosterStorage($db);
+    ensureStudentRegistrationColumn($db);
 
     if (schemaVersionIsCurrent($db)) {
         @file_put_contents($marker, (string) time());

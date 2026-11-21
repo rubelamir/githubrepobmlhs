@@ -128,6 +128,9 @@ include __DIR__ . '/../includes/layout-head.php';
             </div>
             <div class="d-flex gap-2">
               <a class="btn btn-outline-primary" href="<?= h(publicSiteUrl('online_admission.php')) ?>" target="_blank">Public admission form</a>
+              <?php if (canManageModule('admissions', $panelTeacher)): ?>
+              <a class="btn btn-outline-primary" href="student-import.php">এক্সেল ও ছবি</a>
+              <?php endif; ?>
               <a class="btn btn-primary" href="student-form.php">New admission</a>
             </div>
           </div>

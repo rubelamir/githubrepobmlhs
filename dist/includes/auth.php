@@ -629,6 +629,7 @@ function currentScriptPanelModule(): ?string
         'add_teacher' => 'teachers',
         'view_all_teacherlist' => 'teachers',
         'student-form' => 'student-form',
+        'student-import' => 'admissions',
         'students' => 'student-list',
         'admission-tokens' => 'admissions',
         'admin-roles' => 'admin-roles',
