@@ -388,6 +388,7 @@ function mobileAdminStudentsCreate(PDO $db, array $payload): array
         'exam_roll' => 255,
         'passing_year' => 255,
         'last_school_name' => 255,
+        'reg_no' => 255,
     ];
     $values = [];
     foreach ($textFields as $field => $maxLength) {

@@ -74,6 +74,12 @@ function ensureStudentRegistrationColumn(PDO $db): void
         return;
     }
     ensureColumn($db, 'students_info', 'reg_no', "VARCHAR(255) NOT NULL DEFAULT ''");
+    if (schemaMigrationApplied($db, 'students_info_reg_no_default_v1') || !columnExists($db, 'students_info', 'reg_no')) {
+        return;
+    }
+    // Older dumps had NOT NULL without DEFAULT; omitting the column then breaks admissions under strict SQL mode.
+    $db->exec("ALTER TABLE `students_info` MODIFY `reg_no` VARCHAR(255) NOT NULL DEFAULT ''");
+    recordSchemaMigration($db, 'students_info_reg_no_default_v1');
 }
 
 function ensureSubjectRosterStorage(PDO $db): void

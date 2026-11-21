@@ -121,8 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $payload = $values;
-        if (!$hasRegNo || $id === 0) {
+        if (!$hasRegNo) {
             unset($payload['reg_no']);
+        } else {
+            $payload['reg_no'] = trim((string) ($payload['reg_no'] ?? ''));
         }
         if ($id > 0) {
             unset($payload['scholarship_stipend_info']);
@@ -137,6 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload['district'] = (int) ($payload['district'] ?: 0);
         $payload['upazilla'] = (int) ($payload['upazilla'] ?: 0);
         $payload['status'] = (int) ($payload['status'] ?: 1);
+        foreach (array_keys($payload) as $column) {
+            if (!columnExists($db, 'students_info', $column)) {
+                unset($payload[$column]);
+            }
+        }
 
         if (
             (int) $payload['status'] === studentStatusAdmitted()
@@ -298,7 +305,7 @@ include __DIR__ . '/../includes/layout-head.php';
                     <label class="form-label">Class roll</label>
                     <input class="form-control" name="cls_roll" value="<?= h($values['cls_roll']) ?>">
                   </div>
-                  <?php if ($id > 0 && $hasRegNo): ?>
+                  <?php if ($hasRegNo): ?>
                   <div class="col-md-3">
                     <label class="form-label">Registration no.</label>
                     <input class="form-control" name="reg_no" value="<?= h($values['reg_no']) ?>" maxlength="255">
