@@ -204,9 +204,9 @@ $check(studentScholarshipFlag('general') === 'not_applicable' && studentScholars
 
 $form = file_get_contents(__DIR__ . '/../../dist/pages/student-form.php');
 $check(is_string($form)
-    && str_contains($form, 'id="scholarshipStipend" disabled')
+    && !str_contains($form, 'Scholarship / Stipend')
     && !str_contains($form, 'name="scholarship_stipend_info"')
-    && str_contains($form, "unset(\$payload['scholarship_stipend_info'])"), 'the admission form shows stipend as read-only and does not save it');
+    && str_contains($form, "unset(\$payload['scholarship_stipend_info'])"), 'the admission form has no stipend field and does not save it');
 
 $updateAllowlist = file_get_contents(__DIR__ . '/../../bmlhs/includes/security.php');
 $check(is_string($updateAllowlist) && preg_match("/function preparedUpdateById.*?function preparedInsert/s", $updateAllowlist, $updateBlock) === 1
