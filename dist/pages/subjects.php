@@ -318,12 +318,17 @@ foreach ($teachers as $teacher) {
 include __DIR__ . '/../includes/layout-head.php';
 ?>
         <div class="app-content-header">
-          <div class="container-fluid">
-            <h3 class="mb-0">Subjects</h3>
-            <p class="text-secondary mb-0">
-              Any number of papers, in any order, with their own MCQ / written / practical flags and full marks.
-              Result entry and the class routine both read this list — there is no 14-subject ceiling.
-            </p>
+          <div class="container-fluid d-flex justify-content-between align-items-start gap-2">
+            <div class="min-w-0">
+              <h3 class="mb-0">Subjects</h3>
+              <p class="text-secondary mb-0">
+                Any number of papers, in any order, with their own MCQ / written / practical flags and full marks.
+                Result entry and the class routine both read this list — there is no 14-subject ceiling.
+              </p>
+            </div>
+            <?php if (canAccessModule('subject-choices')): ?>
+              <a class="btn btn-outline-primary text-nowrap flex-shrink-0" href="subject-choices.php?<?= h(http_build_query(['cls' => $selectedClassId, 'sections' => $selectedSectionId])) ?>">কৃষি ও গার্হস্থ্য</a>
+            <?php endif; ?>
           </div>
         </div>
         <div class="app-content">

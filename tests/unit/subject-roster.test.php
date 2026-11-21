@@ -72,6 +72,9 @@ $check(subjectAudienceReligion($religionPapers[5]['audience_religion']) === '', 
 $subjectsPage = file_get_contents(__DIR__ . '/../../dist/pages/subjects.php');
 $check(!str_contains($subjectsPage, 'name="audience_religion"'), 'the subject form has no religion dropdown');
 $check(!str_contains($subjectsPage, 'name="choice_group"'), 'the subject form has no choice-group field');
+$check(str_contains($subjectsPage, 'subject-choices.php') && str_contains($subjectsPage, 'কৃষি ও গার্হস্থ্য'), 'subjects page links to agriculture and home science');
+$sidebar = file_get_contents(__DIR__ . '/../../dist/includes/sidebar.php');
+$check(!str_contains($sidebar, 'কৃষি ও গার্হস্থ্য'), 'the sidebar does not list agriculture and home science');
 $check(subjectAudienceReligion($religionPapers[6]['audience_religion']) === 'Christian', 'the moral-education spelling still matches Christian students');
 $check(subjectAppliesToStudent($religionPapers[0], 'Islam', null) && !subjectAppliesToStudent($religionPapers[0], 'Hindu', null), 'only a Muslim student sits the Islam paper');
 $check(subjectAppliesToStudent($religionPapers[1], 'Hindu', null) && !subjectAppliesToStudent($religionPapers[1], 'Islam', null), 'only a Hindu student sits the Hindu paper');
