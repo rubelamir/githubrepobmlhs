@@ -61,7 +61,7 @@ function mobileAdminStudentsEditableFields(): array
         'birth_date', 'birth_reg_no', 'mobile', 'division', 'district',
         'upazilla', 'post_office', 'post_office_en', 'village', 'village_en',
         'house_name', 'last_class', 'exam_roll', 'passing_year',
-        'scholarship_stipend_info', 'last_school_name',
+        'last_school_name',
     ];
 }
 
@@ -387,7 +387,6 @@ function mobileAdminStudentsCreate(PDO $db, array $payload): array
         'last_class' => 255,
         'exam_roll' => 255,
         'passing_year' => 255,
-        'scholarship_stipend_info' => 255,
         'last_school_name' => 255,
     ];
     $values = [];
@@ -445,6 +444,7 @@ function mobileAdminStudentsCreate(PDO $db, array $payload): array
         'last_exam' => '',
         'exam_result' => '',
         'mobile' => $mobile,
+        'scholarship_stipend_info' => 'not_applicable',
         'pass' => $passwordHash,
         'student_pic' => '',
         'birth_reg_pic' => '',

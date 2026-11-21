@@ -198,6 +198,23 @@ $check(InvoiceService::statusFor(90000, 100) === InvoiceService::PARTIAL, 'parti
 $check(InvoiceService::statusFor(90000, 90000) === InvoiceService::PAID, 'paid');
 $check(InvoiceService::statusFor(0, 0) === InvoiceService::PAID, 'fully concessioned invoice is settled');
 
+$check(studentScholarshipFlag('stipend') === 'stipend', 'an approved stipend category marks the student as stipend');
+$check(studentScholarshipFlag('scholarship') === 'scholarship', 'an approved scholarship category marks the student as scholarship');
+$check(studentScholarshipFlag('general') === 'not_applicable' && studentScholarshipFlag(null) === 'not_applicable', 'any other fee category leaves stipend unset');
+
+$form = file_get_contents(__DIR__ . '/../../dist/pages/student-form.php');
+$check(is_string($form)
+    && str_contains($form, 'id="scholarshipStipend" disabled')
+    && !str_contains($form, 'name="scholarship_stipend_info"')
+    && str_contains($form, "unset(\$payload['scholarship_stipend_info'])"), 'the admission form shows stipend as read-only and does not save it');
+
+$updateAllowlist = file_get_contents(__DIR__ . '/../../bmlhs/includes/security.php');
+$check(is_string($updateAllowlist) && preg_match("/function preparedUpdateById.*?function preparedInsert/s", $updateAllowlist, $updateBlock) === 1
+    && !str_contains($updateBlock[0], "'scholarship_stipend_info'"), 'public admission edits cannot change stipend');
+
+$categoryService = file_get_contents(__DIR__ . '/../../shared/Accounting/src/Billing/StudentCategoryService.php');
+$check(is_string($categoryService) && str_contains($categoryService, 'mirrorStudentStipendFlag'), 'approving a fee category copies stipend onto the student record');
+
 $check(accFormatDateTime('2026-11-08 02:05:00') === bnDigits('08/11/2026, 02:05') . ' A.M', 'morning time uses A.M');
 $check(accFormatDateTime('2026-11-08 14:05:00') === bnDigits('08/11/2026, 02:05') . ' P.M', 'afternoon time uses P.M');
 $check(accFormatDateTime('2026-11-08 00:00:00') === bnDigits('08/11/2026, 12:00') . ' A.M', 'midnight uses A.M');

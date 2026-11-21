@@ -51,6 +51,16 @@ const STUDENT_FILTER_SECTION_UNASSIGNED = 'none';
  * Student filters always target one class and one section. A class without sections
  * is filtered as a whole (section value "0"). Auto-picks the only section of a class.
  */
+/** Student record flag written only when accounts approves a fee category. */
+function studentScholarshipFlag(?string $categoryCode): string
+{
+    return match ($categoryCode) {
+        'stipend' => 'stipend',
+        'scholarship' => 'scholarship',
+        default => 'not_applicable',
+    };
+}
+
 function studentFilterSectionId(array $sections, int $classId, int $sectionId, bool $autoPickSingle = true): int
 {
     if ($classId < 1 || $sections === []) {

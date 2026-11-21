@@ -104,7 +104,7 @@ foreach (['name_eng', 'mobile', 'birth_date', 'village_en'] as $field) {
         exit(1);
     }
 }
-foreach (['id', 'status', 'cls', 'sections', 'cls_roll', 'session_year', 'pass', 'student_pic'] as $field) {
+foreach (['id', 'status', 'cls', 'sections', 'cls_roll', 'session_year', 'pass', 'student_pic', 'scholarship_stipend_info'] as $field) {
     if (in_array($field, $allowedFields, true)) {
         fwrite(STDERR, "FAIL: protected field {$field} is editable\n");
         exit(1);

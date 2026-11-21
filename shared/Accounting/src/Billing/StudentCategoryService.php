@@ -313,6 +313,7 @@ final class StudentCategoryService
             'id' => $id,
         ]);
         $applied = \accInvoices()->applyApprovedCategory($row, $actor->teacherId());
+        $this->mirrorStudentStipendFlag((int) $row['student_id'], (int) $row['fee_category_id']);
         $audit->record(
             'student_category.approve',
             'student_fee_category',
@@ -386,5 +387,19 @@ final class StudentCategoryService
         }
 
         return $row;
+    }
+
+    /** Copies the approved fee category onto the student record. The admission form cannot set this. */
+    private function mirrorStudentStipendFlag(int $studentId, int $categoryId): void
+    {
+        if ($studentId < 1 || !\columnExists($this->db, 'students_info', 'scholarship_stipend_info')) {
+            return;
+        }
+        $category = $this->catalog->category($categoryId);
+        $this->db->prepare('UPDATE students_info SET scholarship_stipend_info = :flag WHERE id = :id')
+            ->execute([
+                'flag' => \studentScholarshipFlag(is_array($category) ? (string) ($category['code'] ?? '') : null),
+                'id' => $studentId,
+            ]);
     }
 }

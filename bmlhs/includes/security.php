@@ -63,7 +63,7 @@ function migratePasswordIfLegacy(mysqli $conn, string $table, int $id, string $p
 function preparedUpdateById(mysqli $conn, string $table, array $data, int $id): bool
 {
     $allowedTables = [
-        'students_info' => ['cls', 'sections', 'session_year', 'name_eng', 'name_ban', 'fname_eng', 'fname_ban', 'father_nid_no', 'mname_eng', 'mname_ban', 'mother_nid_no', 'gender', 'religion', 'birth_date', 'birth_reg_no', 'division', 'district', 'upazilla', 'post_office', 'village', 'house_name', 'last_class', 'exam_roll', 'passing_year', 'scholarship_stipend_info', 'last_school_name', 'mobile', 'student_pic', 'birth_reg_pic'],
+        'students_info' => ['cls', 'sections', 'session_year', 'name_eng', 'name_ban', 'fname_eng', 'fname_ban', 'father_nid_no', 'mname_eng', 'mname_ban', 'mother_nid_no', 'gender', 'religion', 'birth_date', 'birth_reg_no', 'division', 'district', 'upazilla', 'post_office', 'village', 'house_name', 'last_class', 'exam_roll', 'passing_year', 'last_school_name', 'mobile', 'student_pic', 'birth_reg_pic'],
         'teacher_info' => ['teacher_name', 'teacher_father_name', 'teacher_mother_name', 'teacher_index_number', 'teacher_mobile', 'teacher_email', 'teacher_subject', 'teacher_designation', 'first_working_school', 'teacher_birth_date', 'first_joining_date', 'teacher_joining_date', 'first_mpo_date', 'teacher_mpo_date', 'teacher_nid_no', 'teacher_tin_no', 'teacher_account_no', 'teacher_salary_code', 'teacher_division', 'teacher_district', 'teacher_upazilla', 'teacher_post_office', 'teacher_village', 'educational_details', 'training_details', 'teacher_password', 'teacher_pic', 'teacher_nid_pic', 'teacher_status'],
     ];
     if (!isset($allowedTables[$table])) {

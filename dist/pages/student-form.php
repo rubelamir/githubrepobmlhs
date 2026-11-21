@@ -55,6 +55,30 @@ if (!$fullAdmission) {
 }
 
 $sections = $values['cls'] !== '' ? schoolSections($db, (int) $values['cls']) : [];
+$storedScholarship = (string) ($student['scholarship_stipend_info'] ?? 'not_applicable');
+$scholarshipDisplay = in_array($storedScholarship, ['scholarship', 'stipend'], true) ? $storedScholarship : 'not_applicable';
+if ($id > 0 && tableExists($db, 'acc_student_fee_categories') && tableExists($db, 'acc_fee_categories')) {
+    $scholarshipRows = fetchRows(
+        $db,
+        'SELECT c.code
+         FROM acc_student_fee_categories a
+         JOIN acc_fee_categories c ON c.id = a.fee_category_id
+         WHERE a.student_id = :id AND a.session_year = :session AND a.status = :status
+           AND a.effective_from <= :today AND (a.effective_to IS NULL OR a.effective_to >= :today2)
+         ORDER BY a.effective_from DESC, a.id DESC
+         LIMIT 1',
+        [
+            'id' => $id,
+            'session' => trim((string) ($student['session_year'] ?? '')),
+            'status' => 'approved',
+            'today' => date('Y-m-d'),
+            'today2' => date('Y-m-d'),
+        ]
+    );
+    if ($scholarshipRows !== []) {
+        $scholarshipDisplay = studentScholarshipFlag((string) ($scholarshipRows[0]['code'] ?? ''));
+    }
+}
 $birthRegDisplayUrl = $id > 0 && !empty($student['birth_reg_pic'])
     ? signedRecordUrl('private-media.php', $id, 'student', ['kind' => 'student-birth', 'v' => (string) time()])
     : '';
@@ -124,7 +148,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$hasRegNo || $id === 0) {
             unset($payload['reg_no']);
         }
-        if (!in_array($payload['scholarship_stipend_info'], ['not_applicable', 'scholarship', 'stipend'], true)) {
+        if ($id > 0) {
+            unset($payload['scholarship_stipend_info']);
+        } else {
             $payload['scholarship_stipend_info'] = 'not_applicable';
         }
         $payload['student_pic'] = $pictureName;
@@ -304,12 +330,13 @@ include __DIR__ . '/../includes/layout-head.php';
                   <?php endif; ?>
                   <?php if ($id > 0): ?>
                   <div class="col-md-3">
-                    <label class="form-label">Scholarship / Stipend</label>
-                    <select class="form-select" name="scholarship_stipend_info">
-                      <option value="not_applicable" <?= $values['scholarship_stipend_info'] === 'not_applicable' ? 'selected' : '' ?>>Not applicable / প্রযোজ্য নয়</option>
-                      <option value="scholarship" <?= $values['scholarship_stipend_info'] === 'scholarship' ? 'selected' : '' ?>>Scholarship / বৃত্তি প্রাপ্ত</option>
-                      <option value="stipend" <?= $values['scholarship_stipend_info'] === 'stipend' ? 'selected' : '' ?>>Stipend / উপবৃত্তি প্রাপ্ত</option>
+                    <label class="form-label" for="scholarshipStipend">Scholarship / Stipend</label>
+                    <select class="form-select" id="scholarshipStipend" disabled aria-readonly="true">
+                      <option value="not_applicable" <?= $scholarshipDisplay === 'not_applicable' ? 'selected' : '' ?>>Not applicable / প্রযোজ্য নয়</option>
+                      <option value="scholarship" <?= $scholarshipDisplay === 'scholarship' ? 'selected' : '' ?>>Scholarship / বৃত্তি প্রাপ্ত</option>
+                      <option value="stipend" <?= $scholarshipDisplay === 'stipend' ? 'selected' : '' ?>>Stipend / উপবৃত্তি প্রাপ্ত</option>
                     </select>
+                    <div class="form-text">বৃত্তি বা উপবৃত্তি হিসাবের «বৃত্তি/উপবৃত্তি» পাতা থেকে নির্ধারিত হয়।</div>
                   </div>
                   <?php endif; ?>
                   <div class="col-md-1">
