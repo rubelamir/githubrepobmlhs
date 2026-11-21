@@ -630,7 +630,8 @@ function currentScriptPanelModule(): ?string
         'view_all_teacherlist' => 'teachers',
         'student-form' => 'student-form',
         'student-import' => 'admissions',
-        'student-birthdate-fix' => 'admissions',
+        // Old URL kept as a short redirect after the correction page was removed.
+        'student-birthdate-fix' => null,
         'students' => 'student-list',
         'admission-tokens' => 'admissions',
         'admin-roles' => 'admin-roles',
