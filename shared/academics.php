@@ -295,16 +295,16 @@ function classSubjects(PDO $db, int $classId, int $sectionId, bool $activeOnly =
         ['class_id' => $classId, 'section_id' => $sectionId]
     );
     if ($own !== [] || $sectionId === 0) {
-        return pairAgricultureHomeScienceSubjects($own);
+        return pairAgricultureHomeScienceSubjects(assignReligionSubjects($own));
     }
 
-    return pairAgricultureHomeScienceSubjects(fetchRows(
+    return pairAgricultureHomeScienceSubjects(assignReligionSubjects(fetchRows(
         $db,
         "SELECT * FROM class_subjects
          WHERE class_id = :class_id AND section_id = 0{$where}
          ORDER BY sort_order ASC, id ASC",
         ['class_id' => $classId]
-    ));
+    )));
 }
 
 function admissionClasses(PDO $db): array

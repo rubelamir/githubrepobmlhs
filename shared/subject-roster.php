@@ -8,7 +8,7 @@ function subjectAudienceReligions(): array
         'Islam' => 'ইসলাম',
         'Hindu' => 'হিন্দু',
         'Buddhist' => 'বৌদ্ধ',
-        'Christian' => 'খ্রিষ্টান',
+        'Christian' => 'খ্রিস্টান',
     ];
 }
 
@@ -56,6 +56,71 @@ function subjectIsHomeSciencePaper(array $subject): bool
         || str_contains($name, 'home science')
         || str_contains($name, 'home-science')
         || str_contains($name, 'homescience');
+}
+
+function subjectReligionFromName(array $subject): string
+{
+    $name = subjectNameHaystack($subject);
+    if ($name === '') {
+        return '';
+    }
+    $keywords = [
+        'Islam' => ['ইসলাম', 'islam'],
+        'Hindu' => ['হিন্দু', 'hindu'],
+        'Buddhist' => ['বৌদ্ধ', 'buddh'],
+        'Christian' => ['খ্রিস্ট', 'খ্রিষ্ট', 'christian'],
+    ];
+    $matched = '';
+    foreach ($keywords as $religion => $needles) {
+        foreach ($needles as $needle) {
+            if (!str_contains($name, $needle) || !subjectNameCarriesReligion($name, $needle)) {
+                continue;
+            }
+            if ($matched !== '' && $matched !== $religion) {
+                return '';
+            }
+            $matched = $religion;
+            break;
+        }
+    }
+
+    return $matched;
+}
+
+function subjectNameCarriesReligion(string $name, string $keyword): bool
+{
+    foreach (['ধর্ম', 'শিক্ষা', 'religion', 'education', 'moral', 'নৈতিক', 'studies'] as $marker) {
+        if (str_contains($name, $marker)) {
+            return true;
+        }
+    }
+    $rest = str_replace($keyword, '', $name);
+    $rest = preg_replace('/[^\p{L}\p{N}]+/u', '', $rest) ?? $rest;
+
+    return $rest === '';
+}
+
+/**
+ * Islam, Hindu, Buddhist, and Christian papers follow the student's religion
+ * when the subject name says so.
+ *
+ * @param list<array<string, mixed>> $subjects
+ * @return list<array<string, mixed>>
+ */
+function assignReligionSubjects(array $subjects): array
+{
+    foreach ($subjects as $index => $subject) {
+        if (!is_array($subject)) {
+            continue;
+        }
+        $religion = subjectReligionFromName($subject);
+        if ($religion === '') {
+            continue;
+        }
+        $subjects[$index]['audience_religion'] = $religion;
+    }
+
+    return $subjects;
 }
 
 /**

@@ -53,6 +53,27 @@ $alone = pairAgricultureHomeScienceSubjects([
     ['subject_name_ban' => 'কৃষি শিক্ষা', 'subject_name' => '', 'choice_group' => ''],
 ]);
 $check(subjectChoiceGroup($alone[0]['choice_group']) === '', 'agriculture on its own stays open to the class');
+
+$religionPapers = assignReligionSubjects([
+    ['id' => 1, 'subject_name_ban' => 'ইসলাম শিক্ষা', 'subject_name' => 'Islam', 'audience_religion' => 'Hindu', 'choice_group' => ''],
+    ['id' => 2, 'subject_name_ban' => 'হিন্দু ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 3, 'subject_name_ban' => 'খ্রিস্টান ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 4, 'subject_name_ban' => 'বৌদ্ধ ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 5, 'subject_name_ban' => 'বাংলা', 'subject_name' => 'Bangla', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 6, 'subject_name_ban' => 'ইসলামের ইতিহাস', 'subject_name' => 'History', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 7, 'subject_name_ban' => 'খ্রিষ্টধর্ম ও নৈতিক শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
+]);
+$check(subjectAudienceReligion($religionPapers[0]['audience_religion']) === 'Islam', 'Islam education follows Muslim students');
+$check(subjectAudienceReligion($religionPapers[1]['audience_religion']) === 'Hindu', 'Hindu religion education follows Hindu students');
+$check(subjectAudienceReligion($religionPapers[2]['audience_religion']) === 'Christian', 'Christian religion education follows Christian students');
+$check(subjectAudienceReligion($religionPapers[3]['audience_religion']) === 'Buddhist', 'Buddhist religion education follows Buddhist students');
+$check(subjectAudienceReligion($religionPapers[4]['audience_religion']) === '', 'Bangla stays open to every student');
+$check(subjectAudienceReligion($religionPapers[5]['audience_religion']) === '', 'a history paper keeps the whole class');
+$check(subjectAudienceReligion($religionPapers[6]['audience_religion']) === 'Christian', 'the moral-education spelling still matches Christian students');
+$check(subjectAppliesToStudent($religionPapers[0], 'Islam', null) && !subjectAppliesToStudent($religionPapers[0], 'Hindu', null), 'only a Muslim student sits the Islam paper');
+$check(subjectAppliesToStudent($religionPapers[1], 'Hindu', null) && !subjectAppliesToStudent($religionPapers[1], 'Islam', null), 'only a Hindu student sits the Hindu paper');
+$check(subjectAppliesToStudent($religionPapers[2], 'Christian', null) && subjectAppliesToStudent($religionPapers[6], 'Christian', null), 'a Christian student sits both Christian papers');
+$check(!subjectAppliesToStudent($religionPapers[3], 'Christian', null) && subjectAppliesToStudent($religionPapers[3], 'Buddhist', null), 'only a Buddhist student sits the Buddhist paper');
 $schema = file_get_contents(__DIR__ . '/../../shared/schema.php');
 $storageCall = strpos($schema, 'ensureSubjectRosterStorage($db)');
 $versionGate = strpos($schema, 'if (schemaVersionIsCurrent($db))');

@@ -291,6 +291,7 @@ if (is_array($editRow)) {
     foreach ($subjects as $subject) {
         if ((int) $subject['id'] === (int) $editRow['id']) {
             $editRow['choice_group'] = $subject['choice_group'] ?? '';
+            $editRow['audience_religion'] = $subject['audience_religion'] ?? '';
             break;
         }
     }
@@ -453,7 +454,7 @@ include __DIR__ . '/../includes/layout-head.php';
                           <option value="<?= h($religionKey) ?>" <?= subjectAudienceReligion(is_array($editRow) ? ($editRow['audience_religion'] ?? '') : '') === $religionKey ? 'selected' : '' ?>><?= h($religionLabel) ?></option>
                         <?php endforeach; ?>
                       </select>
-                      <div class="form-text">ইসলাম বা হিন্দু বিষয় হলে সেই ধর্মের শিক্ষার্থীই নাম্বার তালিকায় আসে।</div>
+                      <div class="form-text">ইসলাম শিক্ষা, হিন্দু ধর্ম শিক্ষা, খ্রিস্টান ধর্ম শিক্ষা ও বৌদ্ধ ধর্ম শিক্ষা শিক্ষার্থীর ধর্ম থেকে নিজে থেকে মিলে। অন্য নাম হলে এখান থেকে ধর্ম বেছে দিন।</div>
                     </div>
                     <div class="col-md-3">
                       <label class="form-label" for="choiceGroup">পছন্দের দল</label>
