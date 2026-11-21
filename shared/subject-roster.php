@@ -113,11 +113,7 @@ function assignReligionSubjects(array $subjects): array
         if (!is_array($subject)) {
             continue;
         }
-        $religion = subjectReligionFromName($subject);
-        if ($religion === '') {
-            continue;
-        }
-        $subjects[$index]['audience_religion'] = $religion;
+        $subjects[$index]['audience_religion'] = subjectReligionFromName($subject);
     }
 
     return $subjects;

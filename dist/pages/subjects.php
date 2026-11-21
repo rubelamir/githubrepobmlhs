@@ -125,8 +125,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hasPractical = isset($_POST['has_practical']) ? 1 : 0;
             $isOptional = isset($_POST['is_optional']) ? 1 : 0;
             $isActive = isset($_POST['is_active']) ? 1 : 0;
-            $audienceReligion = subjectAudienceReligion($_POST['audience_religion'] ?? '');
-            $choiceGroup = subjectChoiceGroup($_POST['choice_group'] ?? '');
 
             if ($nameEn === '' || $nameBn === '') {
                 throw new RuntimeException('Both the English and Bangla subject name are required.');
@@ -147,12 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->prepare(
                     'INSERT INTO class_subjects
                         (class_id, section_id, subject_name, subject_name_ban, subject_code, has_mcq, has_cq,
-                         has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile,
-                         audience_religion, choice_group)
+                         has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile)
                      VALUES
                         (:class_id, :section_id, :subject_name, :subject_name_ban, :subject_code, :has_mcq, :has_cq,
-                         :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile,
-                         :audience_religion, :choice_group)'
+                         :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile)'
                 )->execute([
                     'class_id' => $classId,
                     'section_id' => $sectionId,
@@ -168,8 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'sort_order' => $sortOrder,
                     'is_active' => $isActive,
                     'teacher_mobile' => $teacherMobile !== '' ? $teacherMobile : null,
-                    'audience_religion' => $audienceReligion !== '' ? $audienceReligion : null,
-                    'choice_group' => $choiceGroup !== '' ? $choiceGroup : null,
                 ]);
                 subjectsRedirect($classId, $sectionId, 'success', 'Subject added.');
             }
@@ -184,8 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      subject_name_ban = :subject_name_ban, subject_code = :subject_code, has_mcq = :has_mcq,
                      has_cq = :has_cq, has_practical = :has_practical, full_marks = :full_marks,
                      pass_marks = :pass_marks, is_optional = :is_optional, sort_order = :sort_order,
-                     is_active = :is_active, teacher_mobile = :teacher_mobile,
-                     audience_religion = :audience_religion, choice_group = :choice_group
+                     is_active = :is_active, teacher_mobile = :teacher_mobile
                  WHERE id = :id'
             )->execute([
                 'class_id' => $classId,
@@ -202,8 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'sort_order' => $sortOrder,
                 'is_active' => $isActive,
                 'teacher_mobile' => $teacherMobile !== '' ? $teacherMobile : null,
-                'audience_religion' => $audienceReligion !== '' ? $audienceReligion : null,
-                'choice_group' => $choiceGroup !== '' ? $choiceGroup : null,
                 'id' => $id,
             ]);
             subjectsRedirect($classId, $sectionId, 'success', 'Subject updated.');
@@ -287,15 +278,6 @@ if ($editId > 0) {
 }
 
 $subjects = $selectedClassId > 0 ? classSubjects($db, $selectedClassId, $selectedSectionId, false) : [];
-if (is_array($editRow)) {
-    foreach ($subjects as $subject) {
-        if ((int) $subject['id'] === (int) $editRow['id']) {
-            $editRow['choice_group'] = $subject['choice_group'] ?? '';
-            $editRow['audience_religion'] = $subject['audience_religion'] ?? '';
-            break;
-        }
-    }
-}
 $targetOwnSubjectCount = 0;
 if ($selectedClassId > 0) {
     $targetCheck = $db->prepare(
@@ -445,23 +427,6 @@ include __DIR__ . '/../includes/layout-head.php';
                       <label class="form-label">Sort order</label>
                       <input class="form-control" type="number" name="sort_order"
                              value="<?= h((string) ($editRow['sort_order'] ?? '0')) ?>">
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label" for="audienceReligion">ধর্ম</label>
-                      <select class="form-select" name="audience_religion" id="audienceReligion">
-                        <option value="">সবাই</option>
-                        <?php foreach (subjectAudienceReligions() as $religionKey => $religionLabel): ?>
-                          <option value="<?= h($religionKey) ?>" <?= subjectAudienceReligion(is_array($editRow) ? ($editRow['audience_religion'] ?? '') : '') === $religionKey ? 'selected' : '' ?>><?= h($religionLabel) ?></option>
-                        <?php endforeach; ?>
-                      </select>
-                      <div class="form-text">ইসলাম শিক্ষা, হিন্দু ধর্ম শিক্ষা, খ্রিস্টান ধর্ম শিক্ষা ও বৌদ্ধ ধর্ম শিক্ষা শিক্ষার্থীর ধর্ম থেকে নিজে থেকে মিলে। অন্য নাম হলে এখান থেকে ধর্ম বেছে দিন।</div>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label" for="choiceGroup">পছন্দের দল</label>
-                      <input class="form-control" name="choice_group" id="choiceGroup" maxlength="40"
-                             value="<?= h(subjectChoiceGroup(is_array($editRow) ? ($editRow['choice_group'] ?? '') : '')) ?>"
-                             placeholder="যেমন কৃষি-গার্হস্থ্য">
-                      <div class="form-text">কৃষি শিক্ষা ও গার্হস্থ্য বিজ্ঞান নিজে থেকে এক জোড়া হয়। অন্য বিকল্প বিষয়ে দুটোতে একই নাম দিন।</div>
                     </div>
                     <div class="col-md-6 d-flex flex-wrap align-items-end gap-3 pb-1">
                       <div class="form-check">

@@ -59,8 +59,8 @@ $religionPapers = assignReligionSubjects([
     ['id' => 2, 'subject_name_ban' => 'হিন্দু ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
     ['id' => 3, 'subject_name_ban' => 'খ্রিস্টান ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
     ['id' => 4, 'subject_name_ban' => 'বৌদ্ধ ধর্ম শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
-    ['id' => 5, 'subject_name_ban' => 'বাংলা', 'subject_name' => 'Bangla', 'audience_religion' => '', 'choice_group' => ''],
-    ['id' => 6, 'subject_name_ban' => 'ইসলামের ইতিহাস', 'subject_name' => 'History', 'audience_religion' => '', 'choice_group' => ''],
+    ['id' => 5, 'subject_name_ban' => 'বাংলা', 'subject_name' => 'Bangla', 'audience_religion' => 'Islam', 'choice_group' => ''],
+    ['id' => 6, 'subject_name_ban' => 'ইসলামের ইতিহাস', 'subject_name' => 'History', 'audience_religion' => 'Islam', 'choice_group' => ''],
     ['id' => 7, 'subject_name_ban' => 'খ্রিষ্টধর্ম ও নৈতিক শিক্ষা', 'subject_name' => '', 'audience_religion' => '', 'choice_group' => ''],
 ]);
 $check(subjectAudienceReligion($religionPapers[0]['audience_religion']) === 'Islam', 'Islam education follows Muslim students');
@@ -69,6 +69,9 @@ $check(subjectAudienceReligion($religionPapers[2]['audience_religion']) === 'Chr
 $check(subjectAudienceReligion($religionPapers[3]['audience_religion']) === 'Buddhist', 'Buddhist religion education follows Buddhist students');
 $check(subjectAudienceReligion($religionPapers[4]['audience_religion']) === '', 'Bangla stays open to every student');
 $check(subjectAudienceReligion($religionPapers[5]['audience_religion']) === '', 'a history paper keeps the whole class');
+$subjectsPage = file_get_contents(__DIR__ . '/../../dist/pages/subjects.php');
+$check(!str_contains($subjectsPage, 'name="audience_religion"'), 'the subject form has no religion dropdown');
+$check(!str_contains($subjectsPage, 'name="choice_group"'), 'the subject form has no choice-group field');
 $check(subjectAudienceReligion($religionPapers[6]['audience_religion']) === 'Christian', 'the moral-education spelling still matches Christian students');
 $check(subjectAppliesToStudent($religionPapers[0], 'Islam', null) && !subjectAppliesToStudent($religionPapers[0], 'Hindu', null), 'only a Muslim student sits the Islam paper');
 $check(subjectAppliesToStudent($religionPapers[1], 'Hindu', null) && !subjectAppliesToStudent($religionPapers[1], 'Islam', null), 'only a Hindu student sits the Hindu paper');
