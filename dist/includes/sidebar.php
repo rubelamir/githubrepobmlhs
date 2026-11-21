@@ -12,7 +12,7 @@ function navActive(string $name, string $active): string
 {
     return $active === $name ? ' active' : '';
 }
-$academicPages = ['students', 'student-form', 'student-import', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'student-attendance-report', 'promotions', 'results', 'subject-choices', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
+$academicPages = ['students', 'student-form', 'student-import', 'student-birthdate-fix', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'student-attendance-report', 'promotions', 'results', 'subject-choices', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
 $academicOpen = in_array($active, $academicPages, true);
 $structureOpen = in_array($active, ['classes', 'sections', 'subjects', 'exams', 'periods'], true);
 $can = static fn (string $module): bool => canAccessModule($module);
@@ -140,6 +140,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/admission-tokens.php" class="nav-link<?= navActive('admission-tokens', $active) ?>"><i class="nav-icon bi bi-key"></i><p>Admission tokens</p></a></li><?php endif; ?>
                   <?php if ($can('student-form')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-form.php" class="nav-link<?= navActive('student-form', $active) ?>"><i class="nav-icon bi bi-person-vcard"></i><p>New admission</p></a></li><?php endif; ?>
                   <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-import.php" class="nav-link<?= navActive('student-import', $active) ?>"><i class="nav-icon bi bi-file-earmark-arrow-up"></i><p>এক্সেল ও ছবি</p></a></li><?php endif; ?>
+                  <?php if ($can('admissions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-birthdate-fix.php" class="nav-link<?= navActive('student-birthdate-fix', $active) ?>"><i class="nav-icon bi bi-calendar-event"></i><p>জন্মতারিখ সংশোধন</p></a></li><?php endif; ?>
                   <?php if ($can('student-list')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/students.php" class="nav-link<?= in_array($active, ['students', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-people"></i><p>Student list</p></a></li><?php endif; ?>
                   <?php if ($showStudentDetailMenus && !$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-details-list.php" class="nav-link<?= navActive('student-details-list', $active) ?>"><i class="nav-icon bi bi-card-list"></i><p>Student Details List</p></a></li><?php endif; ?>
                   <?php if (!$detailsListStandalone): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-profiles.php" class="nav-link<?= in_array($active, ['student-profiles', 'student-profile'], true) ? ' active' : '' ?>"><i class="nav-icon bi bi-person-lines-fill"></i><p>Student Profile</p></a></li><?php endif; ?>
