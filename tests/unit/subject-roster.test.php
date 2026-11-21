@@ -25,6 +25,13 @@ $check(!subjectAppliesToStudent($agriculture, 'Islam', null), 'an elective with 
 $check(subjectChoiceGroup('  কৃষি-গার্হস্থ্য  ') === 'কৃষি-গার্হস্থ্য', 'choice group names ignore extra spaces');
 $check(subjectAudienceReligion('Buddhist') === 'Buddhist' && subjectAudienceReligion('other') === '', 'only the four religions are recognized');
 $check(str_contains(subjectRosterNotice($islam), 'ইসলাম'), 'the roster notice names the religion');
+$schema = file_get_contents(__DIR__ . '/../../shared/schema.php');
+$storageCall = strpos($schema, 'ensureSubjectRosterStorage($db)');
+$versionGate = strpos($schema, 'if (schemaVersionIsCurrent($db))');
+$check(
+    $storageCall !== false && $versionGate !== false && $storageCall < $versionGate,
+    'roster columns are created before the current-schema shortcut'
+);
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' failure(s)' . PHP_EOL);

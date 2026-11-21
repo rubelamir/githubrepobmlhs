@@ -67,6 +67,23 @@ function ensureHistoryTimelineTable(PDO $db): void
     );
 }
 
+function ensureSubjectRosterStorage(PDO $db): void
+{
+    ensureColumn($db, 'class_subjects', 'audience_religion', 'VARCHAR(20) DEFAULT NULL');
+    ensureColumn($db, 'class_subjects', 'choice_group', 'VARCHAR(40) DEFAULT NULL');
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS student_subject_choices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            session_year VARCHAR(20) NOT NULL,
+            choice_group VARCHAR(40) NOT NULL,
+            class_subject_id INT NOT NULL,
+            UNIQUE KEY uniq_student_subject_choice (student_id, session_year, choice_group),
+            KEY idx_subject_choice_subject (class_subject_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+}
+
 function ensureSchoolSchema(PDO $db): void
 {
     static $completed = false;
@@ -136,6 +153,7 @@ function ensureSchoolSchema(PDO $db): void
     ensureRoutineSlotIndex($db);
     ensureContactMessagesTable($db);
     ensureHistoryTimelineTable($db);
+    ensureSubjectRosterStorage($db);
 
     if (schemaVersionIsCurrent($db)) {
         @file_put_contents($marker, (string) time());
@@ -427,19 +445,7 @@ function ensureSchoolSchema(PDO $db): void
     ensureColumn($db, 'sections', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensureColumn($db, 'cls', 'open_for_admission', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensureColumn($db, 'class_subjects', 'teacher_mobile', 'VARCHAR(50) DEFAULT NULL');
-    ensureColumn($db, 'class_subjects', 'audience_religion', 'VARCHAR(20) DEFAULT NULL');
-    ensureColumn($db, 'class_subjects', 'choice_group', 'VARCHAR(40) DEFAULT NULL');
-    $db->exec(
-        "CREATE TABLE IF NOT EXISTS student_subject_choices (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            student_id INT NOT NULL,
-            session_year VARCHAR(20) NOT NULL,
-            choice_group VARCHAR(40) NOT NULL,
-            class_subject_id INT NOT NULL,
-            UNIQUE KEY uniq_student_subject_choice (student_id, session_year, choice_group),
-            KEY idx_subject_choice_subject (class_subject_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    );
+    ensureSubjectRosterStorage($db);
     ensureColumn($db, 'exam_details', 'sort_order', 'INT NOT NULL DEFAULT 0');
     ensureColumn($db, 'exam_details', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensureColumn($db, 'exam_details', 'public_results_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');

@@ -871,6 +871,11 @@ function ensureSubjectRosterSchema(PDO $db): void
     ) {
         return;
     }
+    if (function_exists('ensureSubjectRosterStorage')) {
+        ensureSubjectRosterStorage($db);
+
+        return;
+    }
     if (function_exists('ensureSchoolSchema')) {
         ensureSchoolSchema($db);
     }
