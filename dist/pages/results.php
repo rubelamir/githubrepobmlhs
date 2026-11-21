@@ -272,13 +272,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($examId < 1 || $classId < 1 || $subjectId < 1 || $sessionYear === '') {
             throw new RuntimeException('Select exam, class, subject and session.');
         }
-        $subject = classSubjectById($db, $subjectId);
-        if ($subject === null) {
+        if (classSubjectById($db, $subjectId) === null) {
             throw new RuntimeException('Subject not found.');
         }
-        $allowedSubjects = classSubjects($db, $classId, $sectionId);
-        $allowedSubjectIds = array_map(static fn (array $row): int => (int) $row['id'], $allowedSubjects);
-        if (!in_array($subjectId, $allowedSubjectIds, true)) {
+        $subject = null;
+        foreach (classSubjects($db, $classId, $sectionId) as $row) {
+            if ((int) $row['id'] === $subjectId) {
+                $subject = $row;
+                break;
+            }
+        }
+        if ($subject === null) {
             throw new RuntimeException('Subject not found in this class / section.');
         }
 
@@ -729,7 +733,7 @@ include __DIR__ . '/../includes/layout-head.php';
               <div class="alert alert-info results-filters">
                 <?= h($rosterNotice) ?>
                 <?php if (subjectChoiceGroup($selectedSubject['choice_group'] ?? '') !== '' && canAccessModule('subject-choices')): ?>
-                  <a href="<?= h($choicePage) ?>">বিষয় পছন্দ দিন</a>
+                  <a href="<?= h($choicePage) ?>">পছন্দ বসান</a>
                 <?php endif; ?>
               </div>
             <?php endif; ?>

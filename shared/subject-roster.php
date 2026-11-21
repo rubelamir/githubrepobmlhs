@@ -36,6 +36,66 @@ function subjectChoiceGroup(mixed $value): string
     return mb_substr($value, 0, 40);
 }
 
+function subjectNameHaystack(array $subject): string
+{
+    return mb_strtolower(trim((string) ($subject['subject_name_ban'] ?? '') . ' ' . (string) ($subject['subject_name'] ?? '')));
+}
+
+function subjectIsAgriculturePaper(array $subject): bool
+{
+    $name = subjectNameHaystack($subject);
+
+    return str_contains($name, 'কৃষি') || str_contains($name, 'agriculture');
+}
+
+function subjectIsHomeSciencePaper(array $subject): bool
+{
+    $name = subjectNameHaystack($subject);
+
+    return str_contains($name, 'গার্হস্থ্য')
+        || str_contains($name, 'home science')
+        || str_contains($name, 'home-science')
+        || str_contains($name, 'homescience');
+}
+
+/**
+ * Agriculture and home science in the same class are one choice, even when
+ * nobody typed a shared group name.
+ *
+ * @param list<array<string, mixed>> $subjects
+ * @return list<array<string, mixed>>
+ */
+function pairAgricultureHomeScienceSubjects(array $subjects): array
+{
+    $agriculture = [];
+    $home = [];
+    foreach ($subjects as $index => $subject) {
+        if (!is_array($subject)) {
+            continue;
+        }
+        $isAgriculture = subjectIsAgriculturePaper($subject);
+        $isHome = subjectIsHomeSciencePaper($subject);
+        if ($isAgriculture && !$isHome) {
+            $agriculture[] = $index;
+        } elseif ($isHome && !$isAgriculture) {
+            $home[] = $index;
+        }
+    }
+    if (count($agriculture) !== 1 || count($home) !== 1) {
+        return $subjects;
+    }
+    $groupA = subjectChoiceGroup($subjects[$agriculture[0]]['choice_group'] ?? '');
+    $groupH = subjectChoiceGroup($subjects[$home[0]]['choice_group'] ?? '');
+    if ($groupA !== '' && $groupH !== '' && $groupA !== $groupH) {
+        return $subjects;
+    }
+    $group = $groupA !== '' ? $groupA : ($groupH !== '' ? $groupH : 'কৃষি-গার্হস্থ্য');
+    $subjects[$agriculture[0]]['choice_group'] = $group;
+    $subjects[$home[0]]['choice_group'] = $group;
+
+    return $subjects;
+}
+
 /**
  * A paper with a religion is only for students of that religion.
  * A paper in a choice group is only for the student who picked that paper.

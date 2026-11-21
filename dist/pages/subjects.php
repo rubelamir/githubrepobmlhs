@@ -287,6 +287,14 @@ if ($editId > 0) {
 }
 
 $subjects = $selectedClassId > 0 ? classSubjects($db, $selectedClassId, $selectedSectionId, false) : [];
+if (is_array($editRow)) {
+    foreach ($subjects as $subject) {
+        if ((int) $subject['id'] === (int) $editRow['id']) {
+            $editRow['choice_group'] = $subject['choice_group'] ?? '';
+            break;
+        }
+    }
+}
 $targetOwnSubjectCount = 0;
 if ($selectedClassId > 0) {
     $targetCheck = $db->prepare(
@@ -452,7 +460,7 @@ include __DIR__ . '/../includes/layout-head.php';
                       <input class="form-control" name="choice_group" id="choiceGroup" maxlength="40"
                              value="<?= h(subjectChoiceGroup(is_array($editRow) ? ($editRow['choice_group'] ?? '') : '')) ?>"
                              placeholder="যেমন কৃষি-গার্হস্থ্য">
-                      <div class="form-text">একই নামের বিষয় থেকে শিক্ষার্থী একটি নেয়।</div>
+                      <div class="form-text">কৃষি শিক্ষা ও গার্হস্থ্য বিজ্ঞান নিজে থেকে এক জোড়া হয়। অন্য বিকল্প বিষয়ে দুটোতে একই নাম দিন।</div>
                     </div>
                     <div class="col-md-6 d-flex flex-wrap align-items-end gap-3 pb-1">
                       <div class="form-check">
