@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/subject-roster.php';
+
 /**
  * Gives every class a sort order once, so the academic sequence no longer has
  * to be hardcoded. `cls.id` cannot be trusted: class Five was added after the
@@ -805,13 +807,137 @@ function studentExamRemark(PDO $db, string $roll, int $classId, int $sectionId, 
     return (string) ($rows[0]['remarks'] ?? '');
 }
 
+function classSectionStudents(PDO $db, int $classId, int $sectionId, string $sessionYear): array
+{
+    if ($classId < 1 || $sessionYear === '' || !tableExists($db, 'students_info')) {
+        return [];
+    }
+    $religion = columnExists($db, 'students_info', 'religion') ? ', s.religion' : '';
+    $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll, s.student_pic, s.sections' . $religion . '
+            FROM students_info s' . studentsListJoinSql() . '
+            WHERE s.status = 1 AND s.cls = :cls AND s.session_year = :session_year';
+    $params = ['cls' => $classId, 'session_year' => $sessionYear];
+    if ($sectionId > 0) {
+        $sql .= ' AND s.sections = :sections';
+        $params['sections'] = (string) $sectionId;
+    }
+    $sql .= ' ORDER BY ' . studentsListOrderSql();
+
+    return fetchRows($db, $sql, $params);
+}
+
+/** @param list<int> $studentIds @return array<int, array<string, int>> */
+function studentSubjectChoiceMap(PDO $db, array $studentIds, string $sessionYear): array
+{
+    $studentIds = array_values(array_unique(array_filter(
+        array_map(static fn (int $id): int => $id, $studentIds),
+        static fn (int $id): bool => $id > 0
+    )));
+    if ($studentIds === [] || $sessionYear === '' || !tableExists($db, 'student_subject_choices')) {
+        return [];
+    }
+    $names = [];
+    $params = ['session_year' => $sessionYear];
+    foreach ($studentIds as $index => $studentId) {
+        $key = 'student_' . $index;
+        $names[] = ':' . $key;
+        $params[$key] = $studentId;
+    }
+    $rows = fetchRows(
+        $db,
+        'SELECT student_id, choice_group, class_subject_id
+         FROM student_subject_choices
+         WHERE session_year = :session_year AND student_id IN (' . implode(', ', $names) . ')',
+        $params
+    );
+    $map = [];
+    foreach ($rows as $row) {
+        $group = subjectChoiceGroup($row['choice_group'] ?? '');
+        if ($group === '') {
+            continue;
+        }
+        $map[(int) $row['student_id']][$group] = (int) $row['class_subject_id'];
+    }
+
+    return $map;
+}
+
+function ensureSubjectRosterSchema(PDO $db): void
+{
+    if (
+        columnExists($db, 'class_subjects', 'audience_religion')
+        && columnExists($db, 'class_subjects', 'choice_group')
+        && tableExists($db, 'student_subject_choices')
+    ) {
+        return;
+    }
+    if (function_exists('ensureSchoolSchema')) {
+        ensureSchoolSchema($db);
+    }
+}
+
+/** @param list<array<string, mixed>> $students */
+function studentsTakingSubject(PDO $db, array $students, array $subject, string $sessionYear): array
+{
+    $group = subjectChoiceGroup($subject['choice_group'] ?? '');
+    $choices = $group === ''
+        ? []
+        : studentSubjectChoiceMap(
+            $db,
+            array_map(static fn (array $student): int => (int) ($student['id'] ?? 0), $students),
+            $sessionYear
+        );
+    $matched = [];
+    foreach ($students as $student) {
+        $chosen = $group === '' ? null : ($choices[(int) ($student['id'] ?? 0)][$group] ?? null);
+        if (subjectAppliesToStudent($subject, (string) ($student['religion'] ?? ''), $chosen === null ? null : (int) $chosen)) {
+            $matched[] = $student;
+        }
+    }
+
+    return $matched;
+}
+
+function classSubjectRoster(PDO $db, int $classId, int $sectionId, string $sessionYear, array $subject): array
+{
+    ensureSubjectRosterSchema($db);
+
+    return studentsTakingSubject(
+        $db,
+        classSectionStudents($db, $classId, $sectionId, $sessionYear),
+        $subject,
+        $sessionYear
+    );
+}
+
 function studentResultRows(PDO $db, string $roll, int $classId, int $sectionId, string $sessionYear, int $examId): array
 {
     $subjects = classSubjects($db, $classId, $sectionId);
     $marks = studentMarksBySubject($db, $roll, $classId, $sectionId, $sessionYear, $examId);
+    $studentSql = 'SELECT id' . (columnExists($db, 'students_info', 'religion') ? ', religion' : '') . '
+                   FROM students_info
+                   WHERE status = 1 AND cls_roll = :roll AND cls = :cls AND session_year = :session_year';
+    $studentParams = ['roll' => $roll, 'cls' => $classId, 'session_year' => $sessionYear];
+    if ($sectionId > 0) {
+        $studentSql .= ' AND sections = :sections';
+        $studentParams['sections'] = (string) $sectionId;
+    }
+    $studentSql .= ' LIMIT 1';
+    $studentRows = fetchRows($db, $studentSql, $studentParams);
+    $student = $studentRows[0] ?? null;
+    $choices = is_array($student)
+        ? (studentSubjectChoiceMap($db, [(int) ($student['id'] ?? 0)], $sessionYear)[(int) ($student['id'] ?? 0)] ?? [])
+        : [];
     $rows = [];
     $grand = 0.0;
     foreach ($subjects as $subject) {
+        if (is_array($student)) {
+            $group = subjectChoiceGroup($subject['choice_group'] ?? '');
+            $chosen = $group === '' ? null : ($choices[$group] ?? null);
+            if (!subjectAppliesToStudent($subject, (string) ($student['religion'] ?? ''), $chosen === null ? null : (int) $chosen)) {
+                continue;
+            }
+        }
         $mark = $marks[(int) $subject['id']] ?? null;
         $mcq = $mark['mcq'] ?? null;
         $cq = $mark['cq'] ?? null;

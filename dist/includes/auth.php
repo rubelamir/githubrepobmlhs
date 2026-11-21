@@ -297,6 +297,12 @@ function canAccessModule(string $module, ?array $teacher = null): bool
         return canManageModule('admissions', $teacher) || isAssignedClassTeacher($teacher, (string) date('Y'));
     }
 
+    if ($module === 'subject-choices') {
+        return canManageModule('subjects', $teacher)
+            || canManageModule('results', $teacher)
+            || isAssignedClassTeacher($teacher);
+    }
+
     if ($module === 'admin-roles' || $module === 'class-teachers') {
         return isHeadAdmin($teacher);
     }

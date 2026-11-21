@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/mpdf-bangla.php';
+require_once __DIR__ . '/subject-roster.php';
 if (!function_exists('schoolPlainAddress')) {
     require_once dirname(__DIR__) . '/bmlhs/includes/site.php';
 }
@@ -54,13 +55,31 @@ function buildTabulationSheetRows(array $students, array $subjects, array $marks
         $complete = true;
         $failed = false;
         $hasAnyMarks = false;
+        $unresolvedGroups = [];
 
         foreach ($subjects as $subject) {
             $sourceIds = $subject['source_ids'] ?? [];
             $sourceId = $sourceIds[$sectionId] ?? $sourceIds[0] ?? 0;
             $subjectId = (int) $sourceId;
-            $applicable = $subjectId > 0;
             $subjectSourceSectionId = isset($sourceIds[$sectionId]) ? $sectionId : 0;
+            $resolved = $subject;
+            $resolved['id'] = $subjectId;
+            $resolved['audience_religion'] = (string) ($subject['audience_by_section'][$subjectSourceSectionId] ?? $subject['audience_religion'] ?? '');
+            $resolved['choice_group'] = (string) ($subject['choice_group_by_section'][$subjectSourceSectionId] ?? $subject['choice_group'] ?? '');
+            $group = subjectChoiceGroup($resolved['choice_group']);
+            $picked = $group === '' ? null : ($student['subject_choices'][$group] ?? null);
+            $picked = $picked === null || $picked === '' ? null : (int) $picked;
+            $audience = subjectAudienceReligion($resolved['audience_religion']);
+            $audienceMatches = $audience === '' || strcasecmp($audience, trim((string) ($student['religion'] ?? ''))) === 0;
+            if ($group !== '' && $audienceMatches && $picked === null) {
+                $unresolvedGroups[$group] = true;
+            }
+            $applicable = $subjectId > 0 && subjectAppliesToStudent(
+                $resolved,
+                (string) ($student['religion'] ?? ''),
+                $picked,
+                $subjectId
+            );
             $optional = (int) ($subject['optional_by_section'][$subjectSourceSectionId] ?? $subject['is_optional'] ?? 0) === 1;
             $rules = function_exists('subjectComponentRules') ? subjectComponentRules($subject) : ['mcq' => null, 'cq' => null, 'practical' => null];
             $passMcq = is_array($rules['mcq'] ?? null) ? (float) $rules['mcq']['pass'] : null;
@@ -105,6 +124,10 @@ function buildTabulationSheetRows(array $students, array $subjects, array $marks
                 'pass_cq' => $passCq,
                 'pass_practical' => $passPractical,
             ];
+        }
+
+        if ($unresolvedGroups !== []) {
+            $complete = false;
         }
 
         $result = !$complete || !$hasAnyMarks ? 'অসম্পূর্ণ' : ($failed ? 'অকৃতকার্য' : 'উত্তীর্ণ');

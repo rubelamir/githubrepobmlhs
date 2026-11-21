@@ -62,16 +62,7 @@ if ($classId > 0 && $sessionYear !== '' && $selectedSubject !== null && $examId 
     $submission = markSubmissionRow($db, $classId, $sectionId, $sessionYear, $examId, $subjectId);
     $isFinal = $submission !== null && (string) $submission['status'] === 'submitted';
 
-    $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll, s.student_pic FROM students_info s'
-        . studentsListJoinSql() . '
-            WHERE s.status = 1 AND s.cls = :cls AND s.session_year = :session_year';
-    $params = ['cls' => $classId, 'session_year' => $sessionYear];
-    if ($sectionId > 0) {
-        $sql .= ' AND s.sections = :sections';
-        $params['sections'] = (string) $sectionId;
-    }
-    $sql .= ' ORDER BY ' . studentsListOrderSql();
-    $students = fetchRows($db, $sql, $params);
+    $students = classSubjectRoster($db, $classId, $sectionId, $sessionYear, $selectedSubject);
     // The teacher who owns this subject can always see their own draft work;
     // everyone else (head/admin viewers) only sees marks after Final Submit.
     $markMap = marksByStudentForSubject($db, $classId, $sectionId, $sessionYear, $examId, $subjectId, !$isOwnerTeacher, true);
@@ -326,23 +317,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
         }
 
-        $sql = 'SELECT id, cls_roll FROM students_info
-                WHERE status = 1 AND cls = :cls AND session_year = :session_year';
-        $params = ['cls' => $classId, 'session_year' => $sessionYear];
-        if ($sectionId > 0) {
-            $sql .= ' AND sections = :sections';
-            $params['sections'] = (string) $sectionId;
-        }
-        $classStudents = fetchRows($db, $sql, $params);
+        $classStudents = classSectionStudents($db, $classId, $sectionId, $sessionYear);
         $studentRolls = [];
         $studentIdsByRoll = [];
+        $classRolls = [];
         foreach ($classStudents as $row) {
             $studentId = (int) $row['id'];
             $roll = (string) $row['cls_roll'];
-            $studentRolls[$studentId] = $roll;
-            if (isset($studentIdsByRoll[$roll])) {
+            if (isset($classRolls[$roll])) {
                 throw new RuntimeException('এই শ্রেণি/শাখায় একই roll একাধিক শিক্ষার্থীর আছে; আগে roll ঠিক করুন।');
             }
+            $classRolls[$roll] = $studentId;
+        }
+        foreach (studentsTakingSubject($db, $classStudents, $subject, $sessionYear) as $row) {
+            $studentId = (int) $row['id'];
+            $roll = (string) $row['cls_roll'];
+            $studentRolls[$studentId] = $roll;
             $studentIdsByRoll[$roll] = $studentId;
         }
 
@@ -378,8 +368,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rowNumber = (int) $csvRow['line'];
                 $values = $csvRow['values'];
                 $roll = (string) ($values['roll'] ?? '');
-                if ($roll === '' || !isset($studentIdsByRoll[$roll])) {
+                if ($roll === '' || !isset($classRolls[$roll])) {
                     throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এ roll এই শ্রেণি/শাখা/শিক্ষাবর্ষে পাওয়া যায়নি।');
+                }
+                if (!isset($studentIdsByRoll[$roll])) {
+                    throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এর শিক্ষার্থী এই বিষয়ের তালিকায় নেই।');
                 }
                 if (isset($seenRolls[$roll])) {
                     throw new RuntimeException('CSV-এর row ' . $rowNumber . '-এ duplicate roll আছে।');
@@ -723,6 +716,25 @@ include __DIR__ . '/../includes/layout-head.php';
             </form>
             <?php if ($filterNotice !== ''): ?>
               <div class="alert alert-warning results-filters"><i class="bi bi-exclamation-triangle me-1"></i><?= h($filterNotice) ?></div>
+            <?php endif; ?>
+            <?php
+              $rosterNotice = is_array($selectedSubject) ? subjectRosterNotice($selectedSubject) : '';
+              $choicePage = 'subject-choices.php?' . http_build_query([
+                  'cls' => $classId,
+                  'sections' => $sectionId,
+                  'session_year' => $sessionYear,
+              ]);
+            ?>
+            <?php if ($rosterNotice !== '' && $examId > 0): ?>
+              <div class="alert alert-info results-filters">
+                <?= h($rosterNotice) ?>
+                <?php if (subjectChoiceGroup($selectedSubject['choice_group'] ?? '') !== '' && canAccessModule('subject-choices')): ?>
+                  <a href="<?= h($choicePage) ?>">বিষয় পছন্দ দিন</a>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
+            <?php if ($selectedSubject && $examId > 0 && $students === [] && $filterNotice === ''): ?>
+              <div class="alert alert-warning results-filters">এই বিষয়ে নাম্বার দেওয়ার মতো কেউ এই তালিকায় নেই।</div>
             <?php endif; ?>
 
             <?php if ($selectedSubject && $examId > 0 && $students !== []): ?>

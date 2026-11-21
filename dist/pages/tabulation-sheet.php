@@ -46,6 +46,8 @@ if ($classId > 0) {
             $subject['source_ids'] = [(int) $subject['section_id'] => (int) $subject['id']];
             $subject['optional_by_section'] = [(int) $subject['section_id'] => (int) $subject['is_optional']];
             $subject['pass_marks_by_section'] = [(int) $subject['section_id'] => (int) $subject['pass_marks']];
+            $subject['audience_by_section'] = [(int) $subject['section_id'] => (string) ($subject['audience_religion'] ?? '')];
+            $subject['choice_group_by_section'] = [(int) $subject['section_id'] => (string) ($subject['choice_group'] ?? '')];
         }
         unset($subject);
     } else {
@@ -61,6 +63,8 @@ if ($classId > 0) {
                 $subject['source_ids'] = [0 => (int) $subject['id']];
                 $subject['optional_by_section'] = [0 => (int) $subject['is_optional']];
                 $subject['pass_marks_by_section'] = [0 => (int) $subject['pass_marks']];
+                $subject['audience_by_section'] = [0 => (string) ($subject['audience_religion'] ?? '')];
+                $subject['choice_group_by_section'] = [0 => (string) ($subject['choice_group'] ?? '')];
                 $subjects[] = $subject;
             }
         } else {
@@ -81,6 +85,8 @@ if ($classId > 0) {
                     $subjects[$key]['source_ids'][$sourceMapKey] = (int) $subject['id'];
                     $subjects[$key]['optional_by_section'][$sourceMapKey] = (int) $subject['is_optional'];
                     $subjects[$key]['pass_marks_by_section'][$sourceMapKey] = (int) $subject['pass_marks'];
+                    $subjects[$key]['audience_by_section'][$sourceMapKey] = (string) ($subject['audience_religion'] ?? '');
+                    $subjects[$key]['choice_group_by_section'][$sourceMapKey] = (string) ($subject['choice_group'] ?? '');
                     $subjects[$key]['has_mcq'] = max((int) $subjects[$key]['has_mcq'], (int) $subject['has_mcq']);
                     $subjects[$key]['has_cq'] = max((int) $subjects[$key]['has_cq'], (int) $subject['has_cq']);
                     $subjects[$key]['has_practical'] = max((int) $subjects[$key]['has_practical'], (int) $subject['has_practical']);
@@ -106,7 +112,8 @@ $pdfFile = 'tabulation-' . preg_replace('/[^A-Za-z0-9]+/', '', $sessionYear)
     . '-e' . $examId . '-c' . $classId . ($sectionId > 0 ? '-s' . $sectionId : '') . '.pdf';
 
 if ($loadSheet && $examName !== '' && $classId > 0 && $sessionYear !== '' && $subjects !== []) {
-    $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll, s.sections
+    $religionColumn = columnExists($db, 'students_info', 'religion') ? ', s.religion' : '';
+    $sql = 'SELECT s.id, s.name_ban, s.name_eng, s.cls_roll, s.sections' . $religionColumn . '
             FROM students_info s' . studentsListJoinSql() . '
             WHERE s.status = 1 AND s.cls = :cls AND s.session_year = :session_year';
     $params = ['cls' => $classId, 'session_year' => $sessionYear];
@@ -116,6 +123,15 @@ if ($loadSheet && $examName !== '' && $classId > 0 && $sessionYear !== '' && $su
     }
     $sql .= ' ORDER BY ' . studentsListOrderSql();
     $students = fetchRows($db, $sql, $params);
+    $choiceMap = studentSubjectChoiceMap(
+        $db,
+        array_map(static fn (array $student): int => (int) $student['id'], $students),
+        $sessionYear
+    );
+    foreach ($students as &$student) {
+        $student['subject_choices'] = $choiceMap[(int) $student['id']] ?? [];
+    }
+    unset($student);
 
     $subjectIds = [];
     foreach ($subjects as $subject) {

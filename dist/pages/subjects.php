@@ -75,10 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insert = $db->prepare(
                 'INSERT INTO class_subjects
                     (class_id, section_id, subject_name, subject_name_ban, subject_code, has_mcq, has_cq,
-                     has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile)
+                     has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile,
+                     audience_religion, choice_group)
                  VALUES
                     (:class_id, :section_id, :subject_name, :subject_name_ban, :subject_code, :has_mcq, :has_cq,
-                     :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile)'
+                     :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile,
+                     :audience_religion, :choice_group)'
             );
             $db->beginTransaction();
             try {
@@ -98,6 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'sort_order' => (int) $row['sort_order'],
                         'is_active' => (int) $row['is_active'],
                         'teacher_mobile' => $row['teacher_mobile'] ?: null,
+                        'audience_religion' => subjectAudienceReligion($row['audience_religion'] ?? '') ?: null,
+                        'choice_group' => subjectChoiceGroup($row['choice_group'] ?? '') ?: null,
                     ]);
                 }
                 $db->commit();
@@ -121,6 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hasPractical = isset($_POST['has_practical']) ? 1 : 0;
             $isOptional = isset($_POST['is_optional']) ? 1 : 0;
             $isActive = isset($_POST['is_active']) ? 1 : 0;
+            $audienceReligion = subjectAudienceReligion($_POST['audience_religion'] ?? '');
+            $choiceGroup = subjectChoiceGroup($_POST['choice_group'] ?? '');
 
             if ($nameEn === '' || $nameBn === '') {
                 throw new RuntimeException('Both the English and Bangla subject name are required.');
@@ -141,10 +147,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->prepare(
                     'INSERT INTO class_subjects
                         (class_id, section_id, subject_name, subject_name_ban, subject_code, has_mcq, has_cq,
-                         has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile)
+                         has_practical, full_marks, pass_marks, is_optional, sort_order, is_active, teacher_mobile,
+                         audience_religion, choice_group)
                      VALUES
                         (:class_id, :section_id, :subject_name, :subject_name_ban, :subject_code, :has_mcq, :has_cq,
-                         :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile)'
+                         :has_practical, :full_marks, :pass_marks, :is_optional, :sort_order, :is_active, :teacher_mobile,
+                         :audience_religion, :choice_group)'
                 )->execute([
                     'class_id' => $classId,
                     'section_id' => $sectionId,
@@ -160,6 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'sort_order' => $sortOrder,
                     'is_active' => $isActive,
                     'teacher_mobile' => $teacherMobile !== '' ? $teacherMobile : null,
+                    'audience_religion' => $audienceReligion !== '' ? $audienceReligion : null,
+                    'choice_group' => $choiceGroup !== '' ? $choiceGroup : null,
                 ]);
                 subjectsRedirect($classId, $sectionId, 'success', 'Subject added.');
             }
@@ -174,7 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      subject_name_ban = :subject_name_ban, subject_code = :subject_code, has_mcq = :has_mcq,
                      has_cq = :has_cq, has_practical = :has_practical, full_marks = :full_marks,
                      pass_marks = :pass_marks, is_optional = :is_optional, sort_order = :sort_order,
-                     is_active = :is_active, teacher_mobile = :teacher_mobile
+                     is_active = :is_active, teacher_mobile = :teacher_mobile,
+                     audience_religion = :audience_religion, choice_group = :choice_group
                  WHERE id = :id'
             )->execute([
                 'class_id' => $classId,
@@ -191,6 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'sort_order' => $sortOrder,
                 'is_active' => $isActive,
                 'teacher_mobile' => $teacherMobile !== '' ? $teacherMobile : null,
+                'audience_religion' => $audienceReligion !== '' ? $audienceReligion : null,
+                'choice_group' => $choiceGroup !== '' ? $choiceGroup : null,
                 'id' => $id,
             ]);
             subjectsRedirect($classId, $sectionId, 'success', 'Subject updated.');
@@ -424,6 +437,23 @@ include __DIR__ . '/../includes/layout-head.php';
                       <input class="form-control" type="number" name="sort_order"
                              value="<?= h((string) ($editRow['sort_order'] ?? '0')) ?>">
                     </div>
+                    <div class="col-md-3">
+                      <label class="form-label" for="audienceReligion">ধর্ম</label>
+                      <select class="form-select" name="audience_religion" id="audienceReligion">
+                        <option value="">সবাই</option>
+                        <?php foreach (subjectAudienceReligions() as $religionKey => $religionLabel): ?>
+                          <option value="<?= h($religionKey) ?>" <?= subjectAudienceReligion(is_array($editRow) ? ($editRow['audience_religion'] ?? '') : '') === $religionKey ? 'selected' : '' ?>><?= h($religionLabel) ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                      <div class="form-text">ইসলাম বা হিন্দু বিষয় হলে সেই ধর্মের শিক্ষার্থীই নাম্বার তালিকায় আসে।</div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label" for="choiceGroup">পছন্দের দল</label>
+                      <input class="form-control" name="choice_group" id="choiceGroup" maxlength="40"
+                             value="<?= h(subjectChoiceGroup(is_array($editRow) ? ($editRow['choice_group'] ?? '') : '')) ?>"
+                             placeholder="যেমন কৃষি-গার্হস্থ্য">
+                      <div class="form-text">একই নামের বিষয় থেকে শিক্ষার্থী একটি নেয়।</div>
+                    </div>
                     <div class="col-md-6 d-flex flex-wrap align-items-end gap-3 pb-1">
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="has_mcq" id="has_mcq"
@@ -553,6 +583,14 @@ include __DIR__ . '/../includes/layout-head.php';
                               <?php endif; ?>
                               <?php if ((int) $subject['is_optional'] === 1): ?>
                                 <span class="badge text-bg-light">চতুর্থ বিষয়</span>
+                              <?php endif; ?>
+                              <?php $audienceLabel = subjectAudienceLabel(subjectAudienceReligion($subject['audience_religion'] ?? '')); ?>
+                              <?php if ($audienceLabel !== ''): ?>
+                                <span class="badge text-bg-light"><?= h($audienceLabel) ?></span>
+                              <?php endif; ?>
+                              <?php $choiceLabel = subjectChoiceGroup($subject['choice_group'] ?? ''); ?>
+                              <?php if ($choiceLabel !== ''): ?>
+                                <span class="badge text-bg-light"><?= h($choiceLabel) ?></span>
                               <?php endif; ?>
                             </div>
                           </td>

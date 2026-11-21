@@ -149,15 +149,7 @@ try {
     $requireFinal = !$isOwnerTeacher;
     $markMap = marksByStudentForSubject($db, $classId, $sectionId, $sessionYear, $examId, $subjectId, $requireFinal);
 
-    $studentSql = 'SELECT id, name_ban, name_eng, cls_roll
-                   FROM students_info
-                   WHERE status = 1 AND cls = :class_id AND session_year = :session_year';
-    $studentParams = ['class_id' => $classId, 'session_year' => $sessionYear];
-    if ($sectionId > 0) {
-        $studentSql .= ' AND sections = :section_id';
-        $studentParams['section_id'] = (string) $sectionId;
-    }
-    $students = fetchRows($db, $studentSql . ' ORDER BY cls_roll ASC, id ASC LIMIT 401', $studentParams);
+    $students = classSubjectRoster($db, $classId, $sectionId, $sessionYear, $subject);
     if (count($students) > 400) {
         mobileAdminResultsError('roster_too_large', 'This class roster exceeds the 400-student response limit.');
     }

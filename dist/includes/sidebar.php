@@ -12,7 +12,7 @@ function navActive(string $name, string $active): string
 {
     return $active === $name ? ' active' : '';
 }
-$academicPages = ['students', 'student-form', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'student-attendance-report', 'promotions', 'results', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
+$academicPages = ['students', 'student-form', 'student-profile', 'student-profiles', 'student-details-list', 'admissions', 'admission-tokens', 'attendance', 'student-attendance-report', 'promotions', 'results', 'subject-choices', 'result-publication', 'tabulation-sheet', 'routine', 'exam-routine', 'admit-card', 'id-cards', 'seat-level', 'testimonials', 'ssc-batch-data', 'certificates'];
 $academicOpen = in_array($active, $academicPages, true);
 $structureOpen = in_array($active, ['classes', 'sections', 'subjects', 'exams', 'periods'], true);
 $can = static fn (string $module): bool => canAccessModule($module);
@@ -146,6 +146,7 @@ $showWebsite = $can('nav-menus') || $can('notices') || $can('headlines') || $can
                   <?php if ($can('student-attendance-report')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/student-attendance-report.php" class="nav-link<?= navActive('student-attendance-report', $active) ?>"><i class="nav-icon bi bi-file-earmark-bar-graph"></i><p>Attendance report</p></a></li><?php endif; ?>
                   <?php if ($can('promotions')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/promotions.php" class="nav-link<?= navActive('promotions', $active) ?>"><i class="nav-icon bi bi-arrow-up-right-circle"></i><p>Class promotion</p></a></li><?php endif; ?>
                   <?php if ($can('results')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/results.php" class="nav-link<?= navActive('results', $active) ?>"><i class="nav-icon bi bi-clipboard-data"></i><p>Mark Entry</p></a></li><?php endif; ?>
+                  <?php if ($can('subject-choices')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/subject-choices.php" class="nav-link<?= navActive('subject-choices', $active) ?>"><i class="nav-icon bi bi-ui-checks"></i><p>বিষয় পছন্দ</p></a></li><?php endif; ?>
                   <?php if ($can('result-publication')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/result-publication.php" class="nav-link<?= navActive('result-publication', $active) ?>"><i class="nav-icon bi bi-megaphone"></i><p>Public result publication</p></a></li><?php endif; ?>
                   <?php if ($can('tabulation-sheet')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/tabulation-sheet.php" class="nav-link<?= navActive('tabulation-sheet', $active) ?>"><i class="nav-icon bi bi-table"></i><p>Tabulation sheet</p></a></li><?php endif; ?>
                   <?php if ($can('routine')): ?><li class="nav-item"><a href="<?= $basePath ?>pages/routine.php" class="nav-link<?= navActive('routine', $active) ?>"><i class="nav-icon bi bi-calendar3"></i><p>Class routine</p></a></li><?php endif; ?>

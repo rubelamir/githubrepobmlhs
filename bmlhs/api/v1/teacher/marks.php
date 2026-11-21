@@ -3,16 +3,9 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/bootstrap.php';
 
-function mobileMarksRoster(PDO $db, int $classId, int $sectionId, string $sessionYear, bool $requireUniqueRolls = false): array
+function mobileMarksRoster(PDO $db, int $classId, int $sectionId, string $sessionYear, array $subject, bool $requireUniqueRolls = false): array
 {
-    $sql = 'SELECT id, name_ban, name_eng, cls_roll FROM students_info
-            WHERE status = 1 AND cls = :class_id AND session_year = :session_year';
-    $params = ['class_id' => $classId, 'session_year' => $sessionYear];
-    if ($sectionId > 0) {
-        $sql .= ' AND sections = :section_id';
-        $params['section_id'] = (string) $sectionId;
-    }
-    $students = fetchRows($db, $sql . ' ORDER BY cls_roll ASC, id ASC LIMIT 401', $params);
+    $students = classSubjectRoster($db, $classId, $sectionId, $sessionYear, $subject);
     if (count($students) > 400) {
         mobileApiJson(['error' => ['code' => 'roster_too_large', 'message' => 'This class roster exceeds the 400-student limit.']], 422);
     }
@@ -158,7 +151,7 @@ try {
         $db->rollBack();
         mobileApiJson(['error' => ['code' => 'marks_locked', 'message' => 'These marks have been finally submitted and cannot be changed.']], 409);
     }
-    $students = mobileMarksRoster($db, $classId, $sectionId, $sessionYear, $method === 'POST');
+    $students = mobileMarksRoster($db, $classId, $sectionId, $sessionYear, $subject, $method === 'POST');
 
     if ($method === 'POST' && $action === 'final_submit') {
         if ($students === []) {
