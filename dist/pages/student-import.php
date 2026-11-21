@@ -44,7 +44,8 @@ if ($serverLimit > 0) {
 }
 $photosPossible = class_exists(ZipArchive::class) && function_exists('imagecreatefromstring') && function_exists('imagejpeg');
 
-$loadPreview = static function () use ($db, $teacherId, $classes): array {
+$locations = studentImportLocationCatalog($db);
+$loadPreview = static function () use ($db, $teacherId, $classes, $locations): array {
     $token = (string) ($_SESSION['student_import_token'] ?? '');
     $directory = studentImportStagingDirectory($token);
     $manifest = studentImportReadManifest($directory);
@@ -87,7 +88,8 @@ $loadPreview = static function () use ($db, $teacherId, $classes): array {
             }
 
             return '';
-        }
+        },
+        $locations
     );
 
     return [
@@ -240,7 +242,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $photoList,
                 schoolSections($db, $classId),
                 studentImportExistingRegistrations($db),
-                studentImportExistingRolls($db, $classId, $chosenSession)
+                studentImportExistingRolls($db, $classId, $chosenSession),
+                null,
+                $locations
             );
         } catch (Throwable $exception) {
             studentImportDeleteTree($directory);
@@ -331,7 +335,11 @@ include __DIR__ . '/../includes/layout-head.php';
                         <tr class="<?= $row['errors'] !== [] ? 'table-danger' : ($row['warnings'] !== [] ? 'table-warning' : '') ?>">
                           <td><?= (int) $row['line'] ?></td>
                           <td><?= h((string) $row['reg_no']) ?></td>
-                          <td><?= h((string) $row['name_ban']) ?><div class="small text-secondary"><?= h((string) $row['name_eng']) ?></div></td>
+                          <td>
+                            <?= h((string) $row['name_ban']) ?><div class="small text-secondary"><?= h((string) $row['name_eng']) ?></div>
+                            <?php if (($row['fname_ban'] ?? '') !== '' || ($row['fname_eng'] ?? '') !== ''): ?><div class="small">পিতা: <?= h(trim((string) $row['fname_ban'] . ' / ' . (string) $row['fname_eng'], ' /')) ?></div><?php endif; ?>
+                            <?php if (($row['mname_ban'] ?? '') !== '' || ($row['mname_eng'] ?? '') !== ''): ?><div class="small">মাতা: <?= h(trim((string) $row['mname_ban'] . ' / ' . (string) $row['mname_eng'], ' /')) ?></div><?php endif; ?>
+                          </td>
                           <td><?= h((string) $row['section_label']) ?></td>
                           <td><?= h((string) $row['roll']) ?></td>
                           <td><?= h((string) $row['religion']) ?></td>
@@ -384,8 +392,8 @@ include __DIR__ . '/../includes/layout-head.php';
                     <div class="form-text">ফাইলের নাম রেজিস্ট্রেশন নম্বর, যেমন 2511861724.jpeg। জিপের ভিতরে ফোল্ডার থাকলেও চলবে।</div>
                   </div>
                   <div class="col-12">
-                    <p class="mb-2">কলাম: Registration no., নাম, ইংরেজি নাম, পিতা, মাতা, লিঙ্গ, ধর্ম, রোল, শাখা, মোবাইল, জন্মতারিখ।</p>
-                    <p class="mb-0 text-secondary">ধর্ম: Islam, Hindu, Buddhist, Christian অথবা ইসলাম, হিন্দু, বৌদ্ধ, খ্রিস্টান। নবম শ্রেণির শাখা: বিজ্ঞান, মানবিক, ব্যবসায় শিক্ষা। রোল আর রেজিস্ট্রেশন নম্বর আলাদা।</p>
+                    <p class="mb-2">নমুনা ফাইলে ভর্তি ফর্মের কলাম আছে: name_ban, name_eng, father_ban, father_eng, mother_ban, mother_eng, এনআইডি, জন্ম নিবন্ধন, ঠিকানা, জেলা, উপজেলা ও আগের বিদ্যালয়। খালি কলাম রাখলেও চলবে।</p>
+                    <p class="mb-0 text-secondary">অবশ্যই লাগবে রেজিস্ট্রেশন, নাম, লিঙ্গ, ধর্ম, রোল ও শাখা। ধর্ম: Islam, Hindu, Buddhist, Christian অথবা ইসলাম, হিন্দু, বৌদ্ধ, খ্রিস্টান। নবম শ্রেণির শাখা: বিজ্ঞান, মানবিক, ব্যবসায় শিক্ষা।</p>
                   </div>
                 </div>
               </div>

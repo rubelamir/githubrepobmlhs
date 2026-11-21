@@ -17,6 +17,9 @@ $sections = [
     ['id' => 12, 'section_name' => 'Business Studies', 'section_name_ban' => 'ব্যবসায় শিক্ষা'],
 ];
 
+$check(studentImportCanonicalHeader('father_eng') === 'fname_eng', 'father_eng is the English father name');
+$check(studentImportCanonicalHeader('mother_eng') === 'mname_eng', 'mother_eng is the English mother name');
+$check(str_contains(studentImportTemplateCsv(), 'father_eng') && str_contains(studentImportTemplateCsv(), 'mother_eng') && str_contains(studentImportTemplateCsv(), 'last_school_name'), 'the sample file includes the admission form columns');
 $check(studentImportCanonicalHeader('Registration No.') === 'reg_no', 'an English registration heading is recognized');
 $check(studentImportCanonicalHeader('রেজিঃ নং') === 'reg_no', 'a Bangla registration heading is recognized');
 $check(studentImportCanonicalHeader('নাম') === 'name_ban', 'a Bangla name heading is recognized');
@@ -79,6 +82,25 @@ $readyMatrix = [
 $ready = studentImportBuildPreview($readyMatrix, [
     ['stored' => '1_2511000001.jpeg', 'label' => '2511000001.jpeg'],
 ], $sections, [], []);
+$withParents = studentImportBuildPreview([
+    ['registration_no', 'name_ban', 'father_ban', 'father_eng', 'mother_ban', 'mother_eng', 'gender', 'religion', 'roll', 'section', 'district', 'village'],
+    ['2511000001', 'করিম', 'আব্দুল', 'Abdul Karim', 'ফাতেমা', 'Fatema', 'male', 'Islam', '1', 'Science', 'Natore', 'ধর্মপুর'],
+], [
+    ['stored' => '1_2511000001.jpeg', 'label' => '2511000001.jpeg'],
+], $sections, [], [], null, [
+    'divisions' => [['id' => 2, 'name' => 'Rajshahi', 'bn_name' => 'রাজশাহী']],
+    'districts' => [['id' => 7, 'division_id' => 2, 'name' => 'Natore', 'bn_name' => 'নাটোর']],
+    'upazilas' => [],
+]);
+$check(
+    $withParents['ready'] === 1
+    && $withParents['rows'][0]['fname_eng'] === 'Abdul Karim'
+    && $withParents['rows'][0]['mname_eng'] === 'Fatema'
+    && $withParents['rows'][0]['district_id'] === 7
+    && $withParents['rows'][0]['division_id'] === 2
+    && $withParents['rows'][0]['village'] === 'ধর্মপুর',
+    'father_eng, mother_eng, district, and village are kept from the spreadsheet'
+);
 $check($ready['ready'] === 1 && $ready['blocking'] === 0, 'a complete row with one photo is ready to save');
 $check($ready['rows'][0]['name_ban'] === 'Karim' && $ready['rows'][0]['section_id'] === 10, 'a single English name fills the Bangla name and science matches');
 

@@ -74,6 +74,8 @@ function studentImportCanonicalHeader(string $header): string
         'বাবারনাম' => 'fname_ban',
         'fatherenglish' => 'fname_eng',
         'fathernameenglish' => 'fname_eng',
+        'fathereng' => 'fname_eng',
+        'fatheren' => 'fname_eng',
         'fnameeng' => 'fname_eng',
         'পিতারনামইংরেজি' => 'fname_eng',
         'mother' => 'mname_ban',
@@ -86,6 +88,8 @@ function studentImportCanonicalHeader(string $header): string
         'মাতারনাম' => 'mname_ban',
         'motherenglish' => 'mname_eng',
         'mothernameenglish' => 'mname_eng',
+        'mothereng' => 'mname_eng',
+        'motheren' => 'mname_eng',
         'mnameeng' => 'mname_eng',
         'মাতারনামইংরেজি' => 'mname_eng',
         'fathernid' => 'father_nid_no',
@@ -138,6 +142,45 @@ function studentImportCanonicalHeader(string $header): string
         'জন্মনিবন্ধননং' => 'birth_reg_no',
         'জন্মসনদ' => 'birth_reg_no',
         'জন্মসনদনং' => 'birth_reg_no',
+        'postoffice' => 'post_office',
+        'postofficebn' => 'post_office',
+        'postofficeban' => 'post_office',
+        'ডাকঘর' => 'post_office',
+        'postofficeen' => 'post_office_en',
+        'postofficeeng' => 'post_office_en',
+        'postofficeenglish' => 'post_office_en',
+        'village' => 'village',
+        'villagebn' => 'village',
+        'villageban' => 'village',
+        'গ্রাম' => 'village',
+        'villageen' => 'village_en',
+        'villageeng' => 'village_en',
+        'villageenglish' => 'village_en',
+        'housename' => 'house_name',
+        'house' => 'house_name',
+        'বাড়িরনাম' => 'house_name',
+        'বাড়িরনাম' => 'house_name',
+        'lastclass' => 'last_class',
+        'previousclass' => 'last_class',
+        'পূর্বেরশ্রেণি' => 'last_class',
+        'শেষশ্রেণি' => 'last_class',
+        'passingyear' => 'passing_year',
+        'passyear' => 'passing_year',
+        'পাশেরবছর' => 'passing_year',
+        'lastschool' => 'last_school_name',
+        'lastschoolname' => 'last_school_name',
+        'previousschool' => 'last_school_name',
+        'পূর্বেরবিদ্যালয়' => 'last_school_name',
+        'পূর্বেরবিদ্যালয়' => 'last_school_name',
+        'division' => 'division',
+        'div' => 'division',
+        'addressdivision' => 'division',
+        'district' => 'district',
+        'জেলা' => 'district',
+        'upazila' => 'upazila',
+        'upazilla' => 'upazila',
+        'উপজেলা' => 'upazila',
+        'থানা' => 'upazila',
     ];
 
     return $map[studentImportMatchToken($header)] ?? '';
@@ -448,11 +491,100 @@ function studentImportResolveSection(string $label, array $index): array
 }
 
 /**
+ * @param array<string, list<array<string, mixed>>> $locations
+ * @return array{divisions: array<string, list<array{id: int, parent: int}>>, districts: array<string, list<array{id: int, parent: int}>>, upazilas: array<string, list<array{id: int, parent: int}>>, districtParent: array<int, int>}
+ */
+function studentImportPlaceIndex(array $locations): array
+{
+    $index = ['divisions' => [], 'districts' => [], 'upazilas' => [], 'districtParent' => []];
+    $add = static function (string $bucket, string $token, int $id, int $parent) use (&$index): void {
+        foreach ($index[$bucket][$token] ?? [] as $existing) {
+            if ((int) $existing['id'] === $id) {
+                return;
+            }
+        }
+        $index[$bucket][$token][] = ['id' => $id, 'parent' => $parent];
+    };
+    foreach ($locations['divisions'] ?? [] as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $id = (int) ($row['id'] ?? 0);
+        if ($id < 1) {
+            continue;
+        }
+        foreach (['name', 'bn_name'] as $field) {
+            $token = studentImportMatchToken((string) ($row[$field] ?? ''));
+            if ($token !== '') {
+                $add('divisions', $token, $id, 0);
+            }
+        }
+    }
+    foreach (['districts' => 'division_id', 'upazilas' => 'district_id'] as $bucket => $parentField) {
+        foreach ($locations[$bucket] ?? [] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            $parent = (int) ($row[$parentField] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            if ($bucket === 'districts') {
+                $index['districtParent'][$id] = $parent;
+            }
+            foreach (['name', 'bn_name'] as $field) {
+                $token = studentImportMatchToken((string) ($row[$field] ?? ''));
+                if ($token !== '') {
+                    $add($bucket, $token, $id, $parent);
+                }
+            }
+        }
+    }
+
+    return $index;
+}
+
+/**
+ * @param array<string, list<array{id: int, parent: int}>> $byToken
+ * @return array{id: int, parent: int, error: string}
+ */
+function studentImportMatchPlace(string $label, array $byToken, int $parentId, string $noun): array
+{
+    $token = studentImportMatchToken($label);
+    if ($token === '') {
+        return ['id' => 0, 'parent' => 0, 'error' => ''];
+    }
+    $hits = [];
+    foreach ($byToken[$token] ?? [] as $hit) {
+        if ($parentId > 0 && (int) $hit['parent'] !== $parentId) {
+            continue;
+        }
+        $hits[(int) $hit['id']] = $hit;
+    }
+    if (count($hits) === 1) {
+        $hit = array_values($hits)[0];
+
+        return ['id' => (int) $hit['id'], 'parent' => (int) $hit['parent'], 'error' => ''];
+    }
+    $shown = studentImportClip(trim($label), 40);
+    if (count($hits) > 1) {
+        return ['id' => 0, 'parent' => 0, 'error' => $noun . ' অস্পষ্ট: ' . $shown];
+    }
+    if ($parentId > 0 && isset($byToken[$token])) {
+        return ['id' => 0, 'parent' => 0, 'error' => $noun . ' এই নামের জায়গার মধ্যে নেই: ' . $shown];
+    }
+
+    return ['id' => 0, 'parent' => 0, 'error' => $noun . ' মেলেনি: ' . $shown];
+}
+
+/**
  * @param list<list<string>> $matrix
  * @param list<array{stored: string, label: string}> $photos
  * @param list<array<string, mixed>> $sections
  * @param array<string, string> $existingRegs
  * @param list<array{section_id: int, roll: string}> $existingRolls
+ * @param array<string, list<array<string, mixed>>> $locations
  * @return array{
  *   rows: list<array<string, mixed>>,
  *   unused_photos: list<string>,
@@ -467,7 +599,8 @@ function studentImportBuildPreview(
     array $sections,
     array $existingRegs,
     array $existingRolls,
-    ?callable $photoReady = null
+    ?callable $photoReady = null,
+    array $locations = []
 ): array {
     $header = studentImportHeader($matrix);
     $columns = $header['columns'];
@@ -485,6 +618,7 @@ function studentImportBuildPreview(
 
     $sectionIndex = studentImportSectionIndex($sections);
     $photoIndex = studentImportIndexPhotos($photos);
+    $placeIndex = studentImportPlaceIndex($locations);
     $rows = [];
     for ($index = $header['line']; $index < count($matrix); $index++) {
         $cells = $matrix[$index];
@@ -570,6 +704,48 @@ function studentImportBuildPreview(
         if ($mobile !== '' && preg_match('/^01\d{9}$/', $mobileDigits) !== 1) {
             $warnings[] = 'মোবাইল ১১ সংখ্যার নয়।';
         }
+        foreach (['father_nid_no' => 'পিতার এনআইডি', 'mother_nid_no' => 'মাতার এনআইডি', 'birth_reg_no' => 'জন্ম নিবন্ধন'] as $field => $label) {
+            if (isset($columns[$field]) && preg_match('/e\+/i', $read($field)) === 1) {
+                $errors[] = $label . ' বৈজ্ঞানিক সংখ্যায় আছে। এক্সেলে কলামটি Text করুন।';
+            }
+        }
+
+        $divisionId = 0;
+        $districtId = 0;
+        $upazilaId = 0;
+        if (isset($columns['division']) && $read('division') !== '') {
+            $found = studentImportMatchPlace($read('division'), $placeIndex['divisions'], 0, 'বিভাগ');
+            if ($found['error'] !== '') {
+                $errors[] = $found['error'];
+            } else {
+                $divisionId = $found['id'];
+            }
+        }
+        if (isset($columns['district']) && $read('district') !== '') {
+            $found = studentImportMatchPlace($read('district'), $placeIndex['districts'], $divisionId, 'জেলা');
+            if ($found['error'] !== '') {
+                $errors[] = $found['error'];
+            } else {
+                $districtId = $found['id'];
+                if ($divisionId === 0) {
+                    $divisionId = (int) ($placeIndex['districtParent'][$districtId] ?? 0);
+                }
+            }
+        }
+        if (isset($columns['upazila']) && $read('upazila') !== '') {
+            $found = studentImportMatchPlace($read('upazila'), $placeIndex['upazilas'], $districtId, 'উপজেলা');
+            if ($found['error'] !== '') {
+                $errors[] = $found['error'];
+            } else {
+                $upazilaId = $found['id'];
+                if ($districtId === 0) {
+                    $districtId = $found['parent'];
+                    if ($divisionId === 0) {
+                        $divisionId = (int) ($placeIndex['districtParent'][$districtId] ?? 0);
+                    }
+                }
+            }
+        }
 
         $photo = '';
         $photoLabel = '';
@@ -602,6 +778,17 @@ function studentImportBuildPreview(
             'mname_eng' => studentImportClip($read('mname_eng')),
             'father_nid_no' => studentImportClip($read('father_nid_no')),
             'mother_nid_no' => studentImportClip($read('mother_nid_no')),
+            'post_office' => studentImportClip($read('post_office')),
+            'post_office_en' => studentImportClip($read('post_office_en')),
+            'village' => studentImportClip($read('village')),
+            'village_en' => studentImportClip($read('village_en')),
+            'house_name' => studentImportClip($read('house_name')),
+            'last_class' => studentImportClip($read('last_class')),
+            'passing_year' => studentImportClip($read('passing_year'), 20),
+            'last_school_name' => studentImportClip($read('last_school_name')),
+            'division_id' => $divisionId,
+            'district_id' => $districtId,
+            'upazila_id' => $upazilaId,
             'gender' => $gender,
             'religion' => $religion,
             'roll' => $roll,
@@ -986,8 +1173,10 @@ function studentImportTemplateCsv(): string
     }
     fwrite($stream, "\xEF\xBB\xBF");
     fputcsv($stream, [
-        'registration_no', 'name_ban', 'name_eng', 'father_ban', 'mother_ban',
-        'gender', 'religion', 'roll', 'section', 'mobile', 'birth_date',
+        'registration_no', 'name_ban', 'name_eng', 'gender', 'religion', 'birth_date', 'birth_reg_no',
+        'roll', 'section', 'mobile', 'father_ban', 'father_eng', 'father_nid', 'mother_ban', 'mother_eng', 'mother_nid',
+        'division', 'district', 'upazila', 'post_office', 'post_office_en', 'village', 'village_en', 'house_name',
+        'last_class', 'passing_year', 'last_school_name',
     ], ',', '"', '\\');
     rewind($stream);
     $csv = stream_get_contents($stream);
@@ -1418,22 +1607,22 @@ function studentImportInsertPayload(PDO $db, array $row, int $classId, string $s
         'religion' => (string) $row['religion'],
         'birth_date' => (string) ($row['birth_date'] ?? ''),
         'birth_reg_no' => (string) ($row['birth_reg_no'] ?? ''),
-        'division' => 0,
-        'district' => 0,
-        'upazilla' => 0,
+        'division' => (int) ($row['division_id'] ?? 0),
+        'district' => (int) ($row['district_id'] ?? 0),
+        'upazilla' => (int) ($row['upazila_id'] ?? 0),
         'unions' => 0,
-        'post_office' => '',
-        'post_office_en' => '',
-        'village' => '',
-        'village_en' => '',
-        'house_name' => '',
+        'post_office' => (string) ($row['post_office'] ?? ''),
+        'post_office_en' => (string) ($row['post_office_en'] ?? ''),
+        'village' => (string) ($row['village'] ?? ''),
+        'village_en' => (string) ($row['village_en'] ?? ''),
+        'house_name' => (string) ($row['house_name'] ?? ''),
         'last_exam' => '',
-        'last_class' => '',
+        'last_class' => (string) ($row['last_class'] ?? ''),
         'exam_roll' => '',
         'exam_result' => '',
-        'passing_year' => '',
+        'passing_year' => (string) ($row['passing_year'] ?? ''),
         'scholarship_stipend_info' => 'not_applicable',
-        'last_school_name' => '',
+        'last_school_name' => (string) ($row['last_school_name'] ?? ''),
         'mobile' => (string) ($row['mobile'] ?? ''),
         'pass' => (string) $row['password_hash'],
         'student_pic' => $photoName,
@@ -1454,6 +1643,32 @@ function studentImportInsertPayload(PDO $db, array $row, int $classId, string $s
 /**
  * @return array<string, string>
  */
+/**
+ * @return array{divisions: list<array<string, mixed>>, districts: list<array<string, mixed>>, upazilas: list<array<string, mixed>>}
+ */
+function studentImportLocationCatalog(PDO $db): array
+{
+    $catalog = ['divisions' => [], 'districts' => [], 'upazilas' => []];
+    if (!function_exists('tableExists') || !function_exists('fetchRows')) {
+        return $catalog;
+    }
+    $tables = [
+        'divisions' => '',
+        'districts' => 'division_id',
+        'upazilas' => 'district_id',
+    ];
+    foreach ($tables as $table => $parent) {
+        if (!tableExists($db, $table)) {
+            continue;
+        }
+        $bangla = function_exists('columnExists') && columnExists($db, $table, 'bn_name') ? 'bn_name' : 'name AS bn_name';
+        $parentSql = $parent !== '' ? ', `' . $parent . '`' : '';
+        $catalog[$table] = fetchRows($db, 'SELECT id, name, ' . $bangla . $parentSql . ' FROM `' . $table . '`');
+    }
+
+    return $catalog;
+}
+
 function studentImportExistingRegistrations(PDO $db): array
 {
     if (!columnExists($db, 'students_info', 'reg_no')) {
