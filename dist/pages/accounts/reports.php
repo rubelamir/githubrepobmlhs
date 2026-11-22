@@ -27,7 +27,7 @@ $validDate = static fn (string $value): bool => preg_match('/^\d{4}-\d{2}-\d{2}$
     && DateTimeImmutable::createFromFormat('!Y-m-d', $value)?->format('Y-m-d') === $value;
 $type = (string) ($_GET['report'] ?? '');
 if (!$reports->allows($access, $type)) {
-    $type = $access->can(Capability::REPORTS_VIEW_ALL) ? ReportService::INCOME : ReportService::COLLECTION;
+    $type = $access->can(Capability::REPORTS_VIEW_ALL) ? ReportService::RECEIPTS_PAYMENTS : ReportService::COLLECTION;
 }
 $from = $validDate((string) ($_GET['from'] ?? '')) ? (string) $_GET['from'] : $today->modify('first day of this month')->format('Y-m-d');
 $to = $validDate((string) ($_GET['to'] ?? '')) ? (string) $_GET['to'] : $today->format('Y-m-d');
