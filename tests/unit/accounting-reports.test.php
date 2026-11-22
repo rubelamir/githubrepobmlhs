@@ -96,21 +96,49 @@ $check(!ReportService::allows($teacher, 'ledger'), 'unknown report types are ref
 
 $rp = ReportService::receiptsPaymentsTotals(
     [
-        ['date' => '2026-01-01', 'narration' => 'নগদ তহবিল (অফিস)', 'amount' => 50000],
+        ['date' => '2026-01-01', 'narration' => ReportService::rpBalanceNarration('নগদ তহবিল (অফিস)', true), 'amount' => 50000],
+        ['date' => '2026-01-01', 'narration' => ReportService::rpBalanceNarration('সোনালী ব্যাংক', true), 'amount' => 10000],
         ['date' => '2026-01-05', 'narration' => 'মাসিক বেতন', 'amount' => 12000],
     ],
     [
         ['date' => '2026-01-08', 'narration' => 'বিদ্যুৎ ও পানি', 'amount' => 3000],
-        ['date' => '2026-01-31', 'narration' => 'নগদ তহবিল (অফিস)', 'amount' => 59000],
+        ['date' => '2026-01-31', 'narration' => ReportService::rpBalanceNarration('নগদ তহবিল (অফিস)', false), 'amount' => 49000],
+        ['date' => '2026-01-31', 'narration' => ReportService::rpBalanceNarration('সোনালী ব্যাংক', false), 'amount' => 20000],
     ],
     '2026-01-01',
     '2026-01-31'
 );
-$check($rp['receipt_total'] === 62000 && $rp['payment_total'] === 62000, 'opening plus receipts equals payments plus closing');
+$check($rp['receipt_total'] === 72000 && $rp['payment_total'] === 72000, 'opening plus receipts equals payments plus closing');
 $table = ReportService::receiptsPaymentsTable($rp['receipts'], $rp['payments']);
-$check(count($table) === 2, 'receipts and payments share one row per line');
-$check($table[0]['receipt_narration'] === 'নগদ তহবিল (অফিস)' && $table[0]['payment_narration'] === 'বিদ্যুৎ ও পানি', 'left and right columns stay paired');
+$check(count($table) === 3, 'receipts and payments share one row per line');
+$check(
+    $table[0]['receipt_narration'] === 'শুরুর স্থিতি — নগদ তহবিল (অফিস)'
+    && $table[0]['payment_narration'] === 'বিদ্যুৎ ও পানি',
+    'left opens with cash balance; right starts with real expenses'
+);
+$check(
+    $table[2]['payment_narration'] === 'শেষ স্থিতি — সোনালী ব্যাংক',
+    'closing bank balance trails the payment column'
+);
 $check(ReportService::LABELS[ReportService::RECEIPTS_PAYMENTS] === 'মাসিক আয়-ব্যয়', 'the cashbook report keeps the school label');
+$check(
+    ReportService::rpIsPurseTransferOnly([], [], [['amount' => 5000, 'name' => 'ব্যাংক', 'memo' => '']], [['amount' => 5000, 'name' => 'নগদ', 'memo' => '']]),
+    'cash↔bank deposit is treated as a purse transfer'
+);
+$check(
+    !ReportService::rpIsPurseTransferOnly([], ['বেতন আয়'], [['amount' => 5000, 'name' => 'নগদ', 'memo' => '']], []),
+    'fee collection into cash stays on the receipts side'
+);
+$ordered = ReportService::rpMoneyAccounts([
+    ['id' => 3, 'code' => '1151', 'name_bn' => 'সোনালী', 'money_kind' => 'bank', 'is_group' => 0],
+    ['id' => 1, 'code' => '1110', 'name_bn' => 'নগদ', 'money_kind' => 'cash', 'is_group' => 0],
+    ['id' => 9, 'code' => '1150', 'name_bn' => 'ব্যাংক গ্রুপ', 'money_kind' => 'bank', 'is_group' => 1],
+    ['id' => 2, 'code' => '1130', 'name_bn' => 'bKash', 'money_kind' => 'bkash', 'is_group' => 0],
+]);
+$check(array_keys($ordered) === [1, 3, 2], 'cashbook order is cash, bank, then wallets');
+$check(ReportService::rpAlwaysShowBalance(['money_kind' => 'cash']), 'office cash always prints at open/close');
+$check(ReportService::rpAlwaysShowBalance(['money_kind' => 'bank']), 'bank leaves always print at open/close');
+$check(!ReportService::rpAlwaysShowBalance(['money_kind' => 'bkash']), 'empty wallets may stay off the zero-balance lines');
 $scoped = (new ReflectionClass(ReportService::class))->newInstanceWithoutConstructor();
 $visible = new ReflectionMethod(ReportService::class, 'inScope');
 $check($visible->invoke($scoped, $teacher, 3, 0), 'entire-class assignment sees that class');
