@@ -1290,6 +1290,9 @@ $admHero = [
                                 </div>
                             </div>
                         </div>
+                        <?php
+                        $addressDetailLocked = ((int) (isset($upazilla) ? $upazilla : ($row['upazilas_id'] ?? 0))) < 1;
+                        ?>
                         <div class="row mb-4">
                             <div class="col-md-3 mb-4 mb-md-0">
                                 <label for="post_office" class="form-label">ডাকঘর <span
@@ -1305,7 +1308,7 @@ $admHero = [
                                     echo hText((string) ($post_office ?? ''));
                                     }else if (isset($row['post_office'])) {
                                     echo hText((string) ($row['post_office'] ?? ''));
-                                    } ?>" placeholder="ডাকঘরের নাম লিখুন" readonly required>
+                                    } ?>" placeholder="ডাকঘরের নাম লিখুন"<?= $addressDetailLocked ? ' readonly' : '' ?> required>
                                 <div class="<?php if (isset($errors["post_office_error"])) {
                                     echo 'invalid-feedback';
                                     } ?>">
@@ -1329,7 +1332,7 @@ $admHero = [
                                     echo hText((string) ($village ?? ''));
                                     }else if (isset($row['village'])) {
                                     echo hText((string) ($row['village'] ?? ''));
-                                    } ?>" placeholder="গ্রামের নাম লিখুন" readonly required>
+                                    } ?>" placeholder="গ্রামের নাম লিখুন"<?= $addressDetailLocked ? ' readonly' : '' ?> required>
                                 <div class="<?php if (isset($errors["village_error"])) {
                                     echo 'invalid-feedback';
                                     } ?>">
@@ -1354,7 +1357,7 @@ $admHero = [
                                     echo hText((string) ($house_name ?? ''));
                                     }else if (isset($row['house_name'])) {
                                     echo hText((string) ($row['house_name'] ?? ''));
-                                    } ?>" placeholder="বাড়ী/বাসার নাম লিখুন" readonly required>
+                                    } ?>" placeholder="বাড়ী/বাসার নাম লিখুন"<?= $addressDetailLocked ? ' readonly' : '' ?> required>
                                 <div class="<?php if (isset($errors["house_name_error"])) {
                                     echo 'invalid-feedback';
                                     } ?>">
@@ -1410,6 +1413,9 @@ $(document).ready(function() {
         }
     }
     loadData();
+    if ($("#upazilla").val()) {
+        $("#village, #post_office, #house_name").removeAttr("readonly");
+    }
     $("#division").on("change", function() {
         var division = $("#division").val();
         if (division != "") {
