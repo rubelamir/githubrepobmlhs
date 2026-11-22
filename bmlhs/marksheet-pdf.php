@@ -83,7 +83,7 @@ $mpdf = createBanglaMpdf(
 $mpdf->SetMargins(12, 12, 12);
 $mpdf->SetAutoPageBreak(true, 12);
 $mpdf->WriteHTML(<<<'CSS'
-body { font-family: hindsiliguri, sans-serif; color: #17231c; font-size: 9pt; }
+body { font-family: notosansbengali, sans-serif; color: #17231c; font-size: 9pt; }
 .school-marksheet { width: auto; margin: 0; padding: 5mm; border: .25mm solid #9daea3; border-radius: 4mm; color: #17231c; background-color: #fff; }
 .marksheet-pdf-header { width: 100%; border-collapse: collapse; border-bottom: .5mm solid #1a4d3e; margin: 0 0 3mm; }
 .marksheet-pdf-header td { vertical-align: middle; padding: 0 0 3mm; }

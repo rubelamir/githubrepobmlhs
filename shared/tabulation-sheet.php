@@ -218,7 +218,7 @@ function outputTabulationSheetPdf(
 function tabulationSheetPdfCss(): string
 {
     return <<<'CSS'
-body { font-family: hindsiliguri, sans-serif; color: #16231e; font-size: 7pt; }
+body { font-family: notosansbengali, sans-serif; color: #16231e; font-size: 7pt; }
 .ts-head { width: 100%; border-collapse: collapse; border-bottom: .35mm solid #315849; margin-bottom: 2mm; }
 .ts-head td { vertical-align: middle; padding: 0 0 1.5mm; }
 .ts-logo-cell { width: 20mm; }

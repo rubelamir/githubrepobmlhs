@@ -13,7 +13,8 @@ function mpdfBanglaTtfDir(): string
 
 function mpdfBanglaFontFamily(): string
 {
-    return 'hindsiliguri';
+    // Noto Sans Bengali renders ০–৯ more clearly in mPDF than Hind Siliguri.
+    return 'notosansbengali';
 }
 
 function mpdfRequireLibrary(): void
@@ -120,7 +121,7 @@ function createBanglaMpdf(
                 'useOTL' => 0xFF,
             ],
         ],
-        'default_font' => 'hindsiliguri',
+        'default_font' => mpdfBanglaFontFamily(),
         'default_font_size' => 10,
         'autoScriptToLang' => true,
         'autoLangToFont' => false,
@@ -178,6 +179,63 @@ function mpdfSchoolLogoPath(array $settings): string
     $fallback = publicSitePath('image/school_logo.png');
 
     return is_file($fallback) ? $fallback : '';
+}
+
+/**
+ * School letterhead (logo + name + address + EIIN/mobile) for report PDFs.
+ *
+ * @param array<string, mixed> $settings
+ */
+function mpdfSchoolPadHtml(array $settings): string
+{
+    $logoPath = mpdfSchoolLogoPath($settings);
+    $logo = $logoPath !== '' && is_file($logoPath) ? str_replace('\\', '/', $logoPath) : '';
+    $schoolName = trim((string) ($settings['school_name_bn'] ?? ''));
+    $address = function_exists('schoolPlainAddress')
+        ? schoolPlainAddress((string) ($settings['address'] ?? ''))
+        : trim((string) ($settings['address'] ?? ''));
+    $eiin = trim((string) ($settings['eiin'] ?? ''));
+    $mobile = function_exists('publicStaffMobileDisplay')
+        ? publicStaffMobileDisplay((string) ($settings['mobile'] ?? ''))
+        : trim((string) ($settings['mobile'] ?? ''));
+    $meta = '';
+    if ($eiin !== '') {
+        $meta .= 'EIIN: ' . h(function_exists('bnDigits') ? bnDigits($eiin) : $eiin);
+    }
+    if ($eiin !== '' && $mobile !== '') {
+        $meta .= ' · ';
+    }
+    if ($mobile !== '') {
+        $meta .= 'মোবাইল: ' . h(function_exists('bnDigits') ? bnDigits($mobile) : $mobile);
+    }
+
+    return '<table class="school-pad"><tr>'
+        . '<td class="school-pad-logo">'
+        . ($logo !== '' ? '<img src="' . h($logo) . '" alt="">' : '')
+        . '</td>'
+        . '<td class="school-pad-brand">'
+        . '<div class="school-pad-name">' . h($schoolName) . '</div>'
+        . ($address !== '' ? '<div class="school-pad-meta">' . h($address) . '</div>' : '')
+        . ($meta !== '' ? '<div class="school-pad-meta">' . $meta . '</div>' : '')
+        . '</td>'
+        . '<td class="school-pad-logo"></td>'
+        . '</tr></table>';
+}
+
+function mpdfSchoolPadCss(): string
+{
+    $font = mpdfBanglaFontFamily();
+
+    return <<<CSS
+body { font-family: {$font}, sans-serif; color: #16231e; }
+.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 8px; border-bottom: 2px solid #1a3a30; }
+.school-pad td { border: 0; padding: 0 4px 8px; vertical-align: middle; }
+.school-pad-logo { width: 18%; text-align: center; }
+.school-pad-logo img { width: 52px; height: 52px; }
+.school-pad-brand { width: 64%; text-align: center; }
+.school-pad-name { font-size: 18px; font-weight: bold; line-height: 1.25; }
+.school-pad-meta { font-size: 11px; color: #334; margin-top: 2px; }
+CSS;
 }
 
 function mpdfStudentPhotoPath(?string $file): string

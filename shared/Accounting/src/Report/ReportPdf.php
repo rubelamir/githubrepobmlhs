@@ -16,6 +16,9 @@ final class ReportPdf
     public static function download(string $filename, string $title, string $subtitle, array $headers, array $rows): void
     {
         require_once dirname(__DIR__, 3) . '/mpdf-bangla.php';
+        $settings = function_exists('schoolSettings') && function_exists('getDatabaseConnection')
+            ? \schoolSettings(\getDatabaseConnection())
+            : [];
         $mpdf = \createBanglaMpdf($title, $title, 'A4', 'L');
         $mpdf->SetMargins(10, 10, 12);
         $mpdf->SetAutoPageBreak(true, 12);
@@ -31,9 +34,19 @@ final class ReportPdf
             }
             $body .= '</tr>';
         }
-        $html = '<h1>' . \h($title) . '</h1><p class="sub">' . \h($subtitle) . '</p>'
-            . '<table><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
-        $css = 'body{font-size:11px} h1{font-size:16px;margin:0 0 4px} .sub{color:#444;margin:0 0 10px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #bbb;padding:4px 6px;vertical-align:top} th{background:#eef4f1}';
+        $pad = $settings !== [] ? \mpdfSchoolPadHtml($settings) : '';
+        $html = $pad
+            . '<h1>' . \h($title) . '</h1><p class="sub">' . \h($subtitle) . '</p>'
+            . '<table class="report"><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
+        $font = \mpdfBanglaFontFamily();
+        $css = \mpdfSchoolPadCss()
+            . "body{font-family:{$font},sans-serif;font-size:12px}"
+            . 'h1{font-size:16px;margin:0 0 4px;text-align:center}'
+            . '.sub{color:#444;margin:0 0 10px;text-align:center}'
+            . 'table.report{width:100%;border-collapse:collapse}'
+            . 'table.report th,table.report td{border:1px solid #bbb;padding:4px 6px;vertical-align:top;font-family:'
+            . $font . ',sans-serif}'
+            . 'table.report th{background:#eef4f1}';
         $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $safe = preg_replace('/[^A-Za-z0-9._-]/', '-', $filename) ?: 'report.pdf';

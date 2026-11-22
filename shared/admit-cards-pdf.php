@@ -140,7 +140,7 @@ function admitCardPdfCss(): string
 {
     return <<<'CSS'
 body {
-  font-family: hindsiliguri, sans-serif;
+  font-family: notosansbengali, sans-serif;
   color: #0f2f26;
 }
 .admit-card {

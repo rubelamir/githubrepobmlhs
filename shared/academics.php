@@ -2814,7 +2814,7 @@ function certificateBodyHtml(string $body): string
     return str_replace(
         ["\x1E", "\x1F"],
         [
-            '<span class="cert-em" style="font-family:hindsiliguri;font-weight:bold;font-style:italic;">',
+            '<span class="cert-em" style="font-family:notosansbengali;font-weight:bold;font-style:italic;">',
             '</span>',
         ],
         h($body)

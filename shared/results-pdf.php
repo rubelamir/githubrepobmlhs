@@ -47,7 +47,7 @@ function outputResultsPdf(
 function resultsPdfCss(): string
 {
     return <<<'CSS'
-body { font-family: hindsiliguri, sans-serif; color: #111; font-size: 10pt; }
+body { font-family: notosansbengali, sans-serif; color: #111; font-size: 10pt; }
 .results-head { width: 100%; border-collapse: collapse; border-bottom: .35mm solid #444; }
 .results-head td { vertical-align: middle; padding: 0 0 2mm; }
 .results-logo-cell { width: 25mm; }
