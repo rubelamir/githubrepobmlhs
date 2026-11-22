@@ -201,6 +201,29 @@
   vertical-align: top;
 }
 
+.acc-petty-income-head {
+  background: #e8f5ee;
+}
+
+.acc-petty-expense-head {
+  background: #fdecea;
+}
+
+.acc-petty-table th,
+.acc-petty-table td {
+  vertical-align: middle;
+}
+
+.acc-petty-balanced {
+  color: #0a7a3e;
+  font-weight: 700;
+}
+
+.acc-petty-diff {
+  color: #c62828;
+  font-weight: 700;
+}
+
 @media print {
   .app-sidebar,
   .app-header,
@@ -226,5 +249,14 @@
 
   .acc-inner-books summary {
     display: none;
+  }
+
+  .acc-petty-sheet {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .acc-petty-table .d-print-none {
+    display: none !important;
   }
 }
