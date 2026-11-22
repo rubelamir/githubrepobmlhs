@@ -55,7 +55,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $type,
                 (string) ($_POST['entry_date'] ?? ''),
                 (string) ($_POST['description'] ?? ''),
-                Money::parse((string) ($_POST['amount'] ?? ''), 'টাকার অংক'),
+                pettyCashParseAmount((string) ($_POST['amount'] ?? '')),
                 $actorId,
                 $postMonth['key']
             );
@@ -76,7 +76,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $id,
                 (string) ($_POST['entry_date'] ?? ''),
                 (string) ($_POST['description'] ?? ''),
-                Money::parse((string) ($_POST['amount'] ?? ''), 'টাকার অংক'),
+                pettyCashParseAmount((string) ($_POST['amount'] ?? '')),
                 $actorId,
                 $postMonth['key']
             );
@@ -101,8 +101,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'এন্ট্রি মুছে ফেলা হয়েছে।'
             );
         }
+        if ($action === 'reorder') {
+            $type = (string) ($_POST['entry_type'] ?? '');
+            $idsRaw = (string) ($_POST['ordered_ids'] ?? '');
+            $ids = array_filter(array_map('intval', preg_split('/\s*,\s*/', $idsRaw) ?: []));
+            pettyCashReorder($db, $type, $postMonth['from'], $postMonth['to'], array_values($ids));
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            redirectWithMessage(
+                'petty-cash.php?month=' . rawurlencode($postMonth['key']),
+                'success',
+                'সাজানো সংরক্ষিত হয়েছে।'
+            );
+        }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
+        if ($action === 'reorder'
+            && !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            http_response_code(400);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => false, 'message' => userFacingError($exception)], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $editId = (int) ($_POST['id'] ?? 0);
         $back = 'petty-cash.php?month=' . rawurlencode($postMonth['key']);
         if ($editId > 0 && (string) ($_POST['action'] ?? '') === 'update') {
@@ -118,7 +143,6 @@ $expense = pettyCashEntries($db, PETTY_CASH_EXPENSE, $month['from'], $month['to'
 $incomeTotal = pettyCashTotalPaisa($income);
 $expenseTotal = pettyCashTotalPaisa($expense);
 $diff = $incomeTotal - $expenseTotal;
-$tableRows = pettyCashTableRows($income, $expense);
 $searchHits = $searchQuery !== '' ? pettyCashSearch($db, $searchQuery, 100) : [];
 
 if ((string) ($_GET['format'] ?? '') === 'pdf') {
@@ -142,18 +166,12 @@ $pdfUrl = 'petty-cash.php?month=' . rawurlencode($monthKey) . '&format=pdf';
 $defaultDate = $isCurrentMonth ? $today->format('Y-m-d') : $month['from'];
 $monthMin = $month['from'];
 $monthMax = $month['to'];
-$editConfirmMsg = $isCurrentMonth
-    ? 'এই এন্ট্রি সম্পাদনা করতে চান?'
-    : 'পুরনো মাস (' . $monthLabel . ') এর এন্ট্রি সম্পাদনা করতে যাচ্ছেন। আপনি কি নিশ্চিত?';
-$deleteConfirmMsg = $isCurrentMonth
-    ? 'এই এন্ট্রি মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।'
-    : 'পুরনো মাস (' . $monthLabel . ') এর এন্ট্রি মুছে ফেলতে যাচ্ছেন। এটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত?';
+$editConfirmMsg = 'এই এন্ট্রি সম্পাদনা করতে চান?';
+$deleteConfirmMsg = 'এই এন্ট্রি মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।';
 $createConfirmMsg = $isCurrentMonth
     ? ''
     : 'পুরনো মাস (' . $monthLabel . ') এ নতুন আয়/ব্যয় এন্ট্রি যোগ করতে যাচ্ছেন। আপনি কি নিশ্চিত?';
-$updateConfirmMsg = $isCurrentMonth
-    ? 'এন্ট্রি আপডেট নিশ্চিত করবেন?'
-    : 'পুরনো মাস (' . $monthLabel . ') এর এন্ট্রি আপডেট করতে যাচ্ছেন। আপনি কি নিশ্চিত?';
+$updateConfirmMsg = 'এন্ট্রি আপডেট নিশ্চিত করবেন?';
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
@@ -225,28 +243,22 @@ include __DIR__ . '/../../includes/layout-head.php';
                           $hitMonth = pettyCashParseMonth(substr((string) $hit['entry_date'], 0, 7), $today);
                           $hitMonthUrl = 'petty-cash.php?month=' . rawurlencode($hitMonth['key']);
                           $isIncome = (string) $hit['entry_type'] === PETTY_CASH_INCOME;
-                          $hitEditConfirm = $hitMonth['key'] === $today->format('Y-m')
-                              ? 'এই এন্ট্রি সম্পাদনা করতে চান?'
-                              : 'পুরনো মাস (' . $hitMonth['label'] . ') এর এন্ট্রি সম্পাদনা করতে যাচ্ছেন। আপনি কি নিশ্চিত?';
-                          $hitDeleteConfirm = $hitMonth['key'] === $today->format('Y-m')
-                              ? 'এই এন্ট্রি মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।'
-                              : 'পুরনো মাস (' . $hitMonth['label'] . ') এর এন্ট্রি মুছে ফেলতে যাচ্ছেন। এটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত?';
                           ?>
                           <tr>
                             <td class="text-nowrap"><?= h(accFormatDate((string) $hit['entry_date'])) ?></td>
                             <td><?= $isIncome ? 'আয়' : 'ব্যয়' ?></td>
                             <td><?= h((string) $hit['description']) ?></td>
-                            <td class="text-end text-nowrap"><?= h(Money::format(Money::fromDb($hit['amount']))) ?></td>
+                            <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($hit['amount']))) ?></td>
                             <td class="text-center"><a href="<?= h($hitMonthUrl) ?>"><?= h($hitMonth['label']) ?></a></td>
                             <?php if ($canWrite): ?>
                               <td class="text-center text-nowrap">
                                 <a class="btn btn-link btn-sm p-0 text-primary"
                                    href="<?= h($hitMonthUrl . '&edit=' . (int) $hit['id'] . '&q=' . rawurlencode($searchQuery)) ?>"
                                    title="এডিট" aria-label="এডিট"
-                                   onclick="return confirm(<?= json_encode($hitEditConfirm, JSON_UNESCAPED_UNICODE) ?>);">
+                                   onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
                                   <i class="bi bi-pencil" aria-hidden="true"></i>
                                 </a>
-                                <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($hitDeleteConfirm, JSON_UNESCAPED_UNICODE) ?>);">
+                                <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
                                   <input type="hidden" name="action" value="delete">
                                   <input type="hidden" name="id" value="<?= (int) $hit['id'] ?>">
                                   <input type="hidden" name="month" value="<?= h($hitMonth['key']) ?>">
@@ -269,9 +281,6 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="card mb-3 border-primary d-print-none">
                 <div class="card-header"><h3 class="card-title mb-0">এন্ট্রি সম্পাদনা — <?= h($editRow['entry_type'] === PETTY_CASH_INCOME ? 'আয়' : 'ব্যয়') ?></h3></div>
                 <div class="card-body">
-                  <?php if (!$isCurrentMonth): ?>
-                    <div class="alert alert-warning py-2" role="alert">পুরনো মাস (<?= h($monthLabel) ?>) এর এন্ট্রি সম্পাদনা করছেন — সংরক্ষণের আগে তথ্য যাচাই করুন।</div>
-                  <?php endif; ?>
                   <form method="post" class="row g-2 align-items-end js-petty-entry-form"
                         data-selected-month="<?= h($monthKey) ?>"
                         data-selected-label="<?= h($monthLabel) ?>"
@@ -289,7 +298,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                     </div>
                     <div class="col-md-2">
                       <label class="form-label" for="edit-amount">টাকার অংক</label>
-                      <input class="form-control" type="text" id="edit-amount" name="amount" inputmode="decimal" required value="<?= h(Money::toInput(Money::fromDb($editRow['amount']))) ?>">
+                      <input class="form-control" type="text" id="edit-amount" name="amount" inputmode="numeric" required value="<?= h((string) intdiv(Money::fromDb($editRow['amount']), 100)) ?>">
                     </div>
                     <div class="col-md-3 d-flex flex-wrap gap-1">
                       <button class="btn btn-primary" type="submit">আপডেট</button>
@@ -299,12 +308,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
               </div>
             <?php elseif ($canWrite): ?>
-              <?php if (!$isCurrentMonth): ?>
-                <div class="alert alert-warning d-print-none" role="alert">
-                  আপনি পুরনো মাস (<strong><?= h($monthLabel) ?></strong>) এ এন্ট্রি করছেন।
-                  তারিখ শুধু এই মাসের মধ্যেই রাখুন; সাবমিটের আগে Confirm Alert আসবে।
-                </div>
-              <?php endif; ?>
               <div class="row g-3 mb-3 d-print-none">
                 <div class="col-lg-6">
                   <div class="card h-100">
@@ -327,7 +330,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </div>
                         <div class="col-md-4">
                           <label class="form-label" for="income-amount">টাকার অংক</label>
-                          <input class="form-control" type="text" id="income-amount" name="amount" inputmode="decimal" required placeholder="০.০০">
+                          <input class="form-control" type="text" id="income-amount" name="amount" inputmode="numeric" required placeholder="১২৫০">
                         </div>
                         <div class="col-md-8 d-flex align-items-end">
                           <button class="btn btn-success" type="submit">সাবমিট</button>
@@ -357,7 +360,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </div>
                         <div class="col-md-4">
                           <label class="form-label" for="expense-amount">টাকার অংক</label>
-                          <input class="form-control" type="text" id="expense-amount" name="amount" inputmode="decimal" required placeholder="০.০০">
+                          <input class="form-control" type="text" id="expense-amount" name="amount" inputmode="numeric" required placeholder="১২৫০">
                         </div>
                         <div class="col-md-8 d-flex align-items-end">
                           <button class="btn btn-danger" type="submit">সাবমিট</button>
@@ -372,95 +375,129 @@ include __DIR__ . '/../../includes/layout-head.php';
             <div class="card acc-petty-sheet">
               <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h3 class="card-title mb-0">মাসিক খাতা · <?= h($monthLabel) ?></h3>
-                <span class="small text-secondary d-print-none"><?= h(accFormatDate($month['from'])) ?> — <?= h(accFormatDate($month['to'])) ?></span>
+                <span class="small text-secondary d-print-none">
+                  <?= h(accFormatDate($month['from'])) ?> — <?= h(accFormatDate($month['to'])) ?>
+                  <?php if ($canWrite): ?> · সারিতে ধরে টেনে সাজাতে পারবেন<?php endif; ?>
+                </span>
               </div>
               <div class="card-body p-0">
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
-                    <thead>
-                      <tr>
-                        <th colspan="4" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th>
-                        <th colspan="4" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th>
-                      </tr>
-                      <tr>
-                        <th class="text-center">তারিখ</th>
-                        <th>বিবরণ</th>
-                        <th class="text-end">টাকা</th>
-                        <th class="text-center d-print-none">কর্ম</th>
-                        <th class="text-center">তারিখ</th>
-                        <th>বিবরণ</th>
-                        <th class="text-end">টাকা</th>
-                        <th class="text-center d-print-none">কর্ম</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if ($tableRows === []): ?>
-                        <tr><td colspan="8" class="text-secondary p-3">এই মাসে কোনো এন্ট্রি নেই।</td></tr>
-                      <?php endif; ?>
-                      <?php foreach ($tableRows as $row): ?>
-                        <?php
-                        $left = $row['income'];
-                        $right = $row['expense'];
-                        ?>
-                        <tr>
-                          <td class="text-nowrap text-center"><?= $left ? h(accFormatDate((string) $left['entry_date'])) : '' ?></td>
-                          <td><?= $left ? h((string) $left['description']) : '' ?></td>
-                          <td class="text-end text-nowrap"><?= $left ? h(Money::format(Money::fromDb($left['amount']))) : '' ?></td>
-                          <td class="text-center d-print-none text-nowrap">
-                            <?php if ($left && $canWrite): ?>
-                              <a class="btn btn-link btn-sm p-0 text-primary"
-                                 href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
-                                 title="এডিট"
-                                 aria-label="এডিট"
-                                 onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
-                                <i class="bi bi-pencil" aria-hidden="true"></i>
-                              </a>
-                              <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
-                                <input type="hidden" name="month" value="<?= h($monthKey) ?>">
-                                <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
-                                  <i class="bi bi-trash" aria-hidden="true"></i>
-                                </button>
-                              </form>
-                            <?php endif; ?>
-                          </td>
-                          <td class="text-nowrap text-center"><?= $right ? h(accFormatDate((string) $right['entry_date'])) : '' ?></td>
-                          <td><?= $right ? h((string) $right['description']) : '' ?></td>
-                          <td class="text-end text-nowrap"><?= $right ? h(Money::format(Money::fromDb($right['amount']))) : '' ?></td>
-                          <td class="text-center d-print-none text-nowrap">
-                            <?php if ($right && $canWrite): ?>
-                              <a class="btn btn-link btn-sm p-0 text-primary"
-                                 href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
-                                 title="এডিট"
-                                 aria-label="এডিট"
-                                 onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
-                                <i class="bi bi-pencil" aria-hidden="true"></i>
-                              </a>
-                              <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
-                                <input type="hidden" name="month" value="<?= h($monthKey) ?>">
-                                <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
-                                  <i class="bi bi-trash" aria-hidden="true"></i>
-                                </button>
-                              </form>
-                            <?php endif; ?>
-                          </td>
-                        </tr>
-                      <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                      <tr class="fw-semibold">
-                        <td colspan="2">মোট আয়</td>
-                        <td class="text-end text-nowrap"><?= h(Money::format($incomeTotal)) ?></td>
-                        <td class="d-print-none"></td>
-                        <td colspan="2">মোট ব্যয়</td>
-                        <td class="text-end text-nowrap"><?= h(Money::format($expenseTotal)) ?></td>
-                        <td class="d-print-none"></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                <div class="row g-0 acc-petty-split">
+                  <div class="col-md-6 border-end">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
+                        <thead>
+                          <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
+                          <tr>
+                            <?php if ($canWrite): ?><th class="text-center d-print-none" style="width:2rem"></th><?php endif; ?>
+                            <th class="text-center">তারিখ</th>
+                            <th>বিবরণ</th>
+                            <th class="text-end">টাকা</th>
+                            <?php if ($canWrite): ?><th class="text-center d-print-none">কর্ম</th><?php endif; ?>
+                          </tr>
+                        </thead>
+                        <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
+                               data-type="<?= h(PETTY_CASH_INCOME) ?>"
+                               data-month="<?= h($monthKey) ?>">
+                          <?php if ($income === []): ?>
+                            <tr class="js-petty-empty"><td colspan="<?= $canWrite ? 5 : 3 ?>" class="text-secondary p-3">এই মাসে কোনো আয় নেই।</td></tr>
+                          <?php endif; ?>
+                          <?php foreach ($income as $left): ?>
+                            <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $left['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
+                              <?php if ($canWrite): ?>
+                                <td class="text-center d-print-none acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                              <?php endif; ?>
+                              <td class="text-nowrap text-center"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
+                              <td><?= h((string) $left['description']) ?></td>
+                              <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
+                              <?php if ($canWrite): ?>
+                                <td class="text-center d-print-none text-nowrap">
+                                  <a class="btn btn-link btn-sm p-0 text-primary"
+                                     href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
+                                     title="এডিট" aria-label="এডিট"
+                                     onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                  </a>
+                                  <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
+                                    <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                    <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                      <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                  </form>
+                                </td>
+                              <?php endif; ?>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                          <tr class="fw-semibold">
+                            <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট আয়</td>
+                            <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
+                            <?php if ($canWrite): ?><td class="d-print-none"></td><?php endif; ?>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
+                        <thead>
+                          <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
+                          <tr>
+                            <?php if ($canWrite): ?><th class="text-center d-print-none" style="width:2rem"></th><?php endif; ?>
+                            <th class="text-center">তারিখ</th>
+                            <th>বিবরণ</th>
+                            <th class="text-end">টাকা</th>
+                            <?php if ($canWrite): ?><th class="text-center d-print-none">কর্ম</th><?php endif; ?>
+                          </tr>
+                        </thead>
+                        <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
+                               data-type="<?= h(PETTY_CASH_EXPENSE) ?>"
+                               data-month="<?= h($monthKey) ?>">
+                          <?php if ($expense === []): ?>
+                            <tr class="js-petty-empty"><td colspan="<?= $canWrite ? 5 : 3 ?>" class="text-secondary p-3">এই মাসে কোনো ব্যয় নেই।</td></tr>
+                          <?php endif; ?>
+                          <?php foreach ($expense as $right): ?>
+                            <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $right['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
+                              <?php if ($canWrite): ?>
+                                <td class="text-center d-print-none acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                              <?php endif; ?>
+                              <td class="text-nowrap text-center"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
+                              <td><?= h((string) $right['description']) ?></td>
+                              <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
+                              <?php if ($canWrite): ?>
+                                <td class="text-center d-print-none text-nowrap">
+                                  <a class="btn btn-link btn-sm p-0 text-primary"
+                                     href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
+                                     title="এডিট" aria-label="এডিট"
+                                     onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                  </a>
+                                  <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
+                                    <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                    <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                      <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                  </form>
+                                </td>
+                              <?php endif; ?>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                          <tr class="fw-semibold">
+                            <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট ব্যয়</td>
+                            <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
+                            <?php if ($canWrite): ?><td class="d-print-none"></td><?php endif; ?>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="card-footer">
@@ -468,7 +505,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="acc-petty-balanced">আয়-ব্যয়ের দুই পাশ মিলেছে।</div>
                 <?php else: ?>
                   <div class="acc-petty-diff">
-                    পার্থক্য: <?= h(Money::format(abs($diff))) ?>
+                    পার্থক্য: <?= h(pettyCashFormatAmount(abs($diff))) ?>
                     <?= $diff > 0 ? '(আয় বেশি)' : '(ব্যয় বেশি)' ?>
                   </div>
                 <?php endif; ?>
@@ -496,6 +533,87 @@ include __DIR__ . '/../../includes/layout-head.php';
       if (confirmMsg !== '' && !window.confirm(confirmMsg)) {
         event.preventDefault();
       }
+    });
+  });
+
+  var dragRow = null;
+  document.querySelectorAll('.js-petty-sortable').forEach(function (tbody) {
+    tbody.addEventListener('dragstart', function (event) {
+      var row = event.target.closest('tr[data-id]');
+      if (!row || !tbody.contains(row)) {
+        return;
+      }
+      dragRow = row;
+      row.classList.add('acc-petty-dragging');
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', row.getAttribute('data-id') || '');
+      }
+    });
+    tbody.addEventListener('dragend', function () {
+      if (dragRow) {
+        dragRow.classList.remove('acc-petty-dragging');
+      }
+      dragRow = null;
+      tbody.querySelectorAll('.acc-petty-drag-over').forEach(function (el) {
+        el.classList.remove('acc-petty-drag-over');
+      });
+    });
+    tbody.addEventListener('dragover', function (event) {
+      event.preventDefault();
+      if (!dragRow || dragRow.parentElement !== tbody) {
+        return;
+      }
+      var target = event.target.closest('tr[data-id]');
+      if (!target || target === dragRow) {
+        return;
+      }
+      tbody.querySelectorAll('.acc-petty-drag-over').forEach(function (el) {
+        el.classList.remove('acc-petty-drag-over');
+      });
+      target.classList.add('acc-petty-drag-over');
+      var rect = target.getBoundingClientRect();
+      var before = (event.clientY - rect.top) < rect.height / 2;
+      tbody.insertBefore(dragRow, before ? target : target.nextSibling);
+    });
+    tbody.addEventListener('drop', function (event) {
+      event.preventDefault();
+      if (!dragRow || dragRow.parentElement !== tbody) {
+        return;
+      }
+      tbody.querySelectorAll('.acc-petty-drag-over').forEach(function (el) {
+        el.classList.remove('acc-petty-drag-over');
+      });
+      var empty = tbody.querySelector('.js-petty-empty');
+      if (empty) {
+        empty.remove();
+      }
+      var ids = Array.prototype.map.call(tbody.querySelectorAll('tr[data-id]'), function (row) {
+        return row.getAttribute('data-id');
+      });
+      var body = new URLSearchParams();
+      body.set('action', 'reorder');
+      body.set('entry_type', tbody.getAttribute('data-type') || '');
+      body.set('month', tbody.getAttribute('data-month') || '');
+      body.set('ordered_ids', ids.join(','));
+      fetch('petty-cash.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: body.toString(),
+        credentials: 'same-origin'
+      }).then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || !data.ok) {
+            throw new Error((data && data.message) || 'সাজানো সংরক্ষণ হয়নি।');
+          }
+        });
+      }).catch(function (error) {
+        window.alert(error.message || 'সাজানো সংরক্ষণ হয়নি।');
+        window.location.reload();
+      });
     });
   });
 })();

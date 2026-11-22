@@ -24,18 +24,39 @@ function pettyCashEnsureSchema(PDO $db): void
             entry_date DATE NOT NULL,
             description VARCHAR(255) NOT NULL,
             amount DECIMAL(14,2) NOT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
             created_by INT NULL DEFAULT NULL,
             updated_by INT NULL DEFAULT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             KEY idx_petty_cash_month (entry_date, entry_type),
-            KEY idx_petty_cash_type (entry_type, entry_date, id)
+            KEY idx_petty_cash_type (entry_type, entry_date, id),
+            KEY idx_petty_cash_sort (entry_type, entry_date, sort_order, id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
 
     if (function_exists('schemaMigrationApplied') && function_exists('recordSchemaMigration')
         && !schemaMigrationApplied($db, 'petty_cash_book_v1')) {
         recordSchemaMigration($db, 'petty_cash_book_v1');
+    }
+
+    if (function_exists('ensureColumn')) {
+        ensureColumn($db, 'petty_cash_book', 'sort_order', 'INT NOT NULL DEFAULT 0');
+    }
+
+    if (function_exists('schemaMigrationApplied') && function_exists('recordSchemaMigration')
+        && !schemaMigrationApplied($db, 'petty_cash_sort_order_v1')) {
+        $rows = $db->query(
+            'SELECT id FROM petty_cash_book ORDER BY entry_date ASC, id ASC'
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $update = $db->prepare('UPDATE petty_cash_book SET sort_order = :sort WHERE id = :id');
+        foreach ($rows as $index => $row) {
+            $update->execute([
+                'sort' => ((int) $index + 1) * 10,
+                'id' => (int) $row['id'],
+            ]);
+        }
+        recordSchemaMigration($db, 'petty_cash_sort_order_v1');
     }
 }
 
@@ -92,12 +113,13 @@ function pettyCashImportFromBundledJson(PDO $db, ?int $actorId = null, bool $for
 
         $insert = $db->prepare(
             'INSERT INTO petty_cash_book
-                (entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at)
+                (entry_type, entry_date, description, amount, sort_order, created_by, updated_by, created_at, updated_at)
              VALUES
-                (:type, :date, :description, :amount, :created_by, :updated_by, :created_at, :updated_at)'
+                (:type, :date, :description, :amount, :sort_order, :created_by, :updated_by, :created_at, :updated_at)'
         );
         $income = 0;
         $expense = 0;
+        $sort = 0;
         foreach ($payload['entries'] as $entry) {
             if (!is_array($entry)) {
                 continue;
@@ -112,10 +134,12 @@ function pettyCashImportFromBundledJson(PDO $db, ?int $actorId = null, bool $for
             if ($paisa <= 0) {
                 continue;
             }
+            $sort += 10;
             $insert->execute([
                 'type' => $type,
                 'date' => $date,
                 'description' => $description,
+                'sort_order' => $sort,
                 'amount' => \School\Accounting\Support\Money::toDb($paisa),
                 'created_by' => $actorId,
                 'updated_by' => $actorId,
@@ -274,10 +298,10 @@ function pettyCashEntries(PDO $db, string $type, string $from, string $to): arra
         return [];
     }
     $statement = $db->prepare(
-        'SELECT id, entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at
+        'SELECT id, entry_type, entry_date, description, amount, sort_order, created_by, updated_by, created_at, updated_at
          FROM petty_cash_book
          WHERE entry_type = :type AND entry_date >= :from AND entry_date <= :to
-         ORDER BY entry_date ASC, id ASC'
+         ORDER BY sort_order ASC, entry_date ASC, id ASC'
     );
     $statement->execute(['type' => $type, 'from' => $from, 'to' => $to]);
 
@@ -293,7 +317,7 @@ function pettyCashFind(PDO $db, int $id): ?array
         return null;
     }
     $statement = $db->prepare(
-        'SELECT id, entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at
+        'SELECT id, entry_type, entry_date, description, amount, sort_order, created_by, updated_by, created_at, updated_at
          FROM petty_cash_book WHERE id = :id LIMIT 1'
     );
     $statement->execute(['id' => $id]);
@@ -352,6 +376,91 @@ function pettyCashValidateDescription(string $value): string
     return $text;
 }
 
+/** Whole taka only — rejects paisa fractions. */
+function pettyCashParseAmount(string $input): int
+{
+    $paisa = \School\Accounting\Support\Money::parse($input, 'টাকার অংক');
+    if ($paisa % 100 !== 0) {
+        throw new RuntimeException('টাকার অংক পূর্ণ সংখ্যায় লিখুন (যেমন ১২৫০)।');
+    }
+
+    return $paisa;
+}
+
+/** "৳ ১,২৫০" — whole taka, no .00 fraction. */
+function pettyCashFormatAmount(int $paisa, bool $symbol = true): string
+{
+    $sign = $paisa < 0 ? '-' : '';
+    $taka = (string) intdiv(abs($paisa), 100);
+    if (strlen($taka) > 3) {
+        $head = substr($taka, 0, -3);
+        $head = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $head) ?? $head;
+        $taka = $head . ',' . substr($taka, -3);
+    }
+    $text = $sign . $taka;
+    if (function_exists('bnDigits')) {
+        $text = bnDigits($text);
+    }
+
+    return ($symbol ? '৳ ' : '') . $text;
+}
+
+function pettyCashNextSortOrder(PDO $db, string $type, string $from, string $to): int
+{
+    $statement = $db->prepare(
+        'SELECT COALESCE(MAX(sort_order), 0) FROM petty_cash_book
+         WHERE entry_type = :type AND entry_date >= :from AND entry_date <= :to'
+    );
+    $statement->execute(['type' => $type, 'from' => $from, 'to' => $to]);
+
+    return ((int) $statement->fetchColumn()) + 10;
+}
+
+/**
+ * @param list<int|string> $orderedIds
+ */
+function pettyCashReorder(PDO $db, string $type, string $from, string $to, array $orderedIds): void
+{
+    if (!in_array($type, [PETTY_CASH_INCOME, PETTY_CASH_EXPENSE], true)) {
+        throw new RuntimeException('অজানা এন্ট্রি ধরন।');
+    }
+    $ids = [];
+    foreach ($orderedIds as $value) {
+        $id = (int) $value;
+        if ($id > 0) {
+            $ids[] = $id;
+        }
+    }
+    if ($ids === []) {
+        throw new RuntimeException('সাজানোর তালিকা খালি।');
+    }
+
+    $existing = pettyCashEntries($db, $type, $from, $to);
+    $allowed = [];
+    foreach ($existing as $row) {
+        $allowed[(int) $row['id']] = true;
+    }
+    if (count($ids) !== count($allowed)) {
+        throw new RuntimeException('সাজানোর তালিকা মিলেনি।');
+    }
+    foreach ($ids as $id) {
+        if (!isset($allowed[$id])) {
+            throw new RuntimeException('সাজানোর তালিকায় অজানা এন্ট্রি আছে।');
+        }
+    }
+
+    $statement = $db->prepare(
+        'UPDATE petty_cash_book SET sort_order = :sort WHERE id = :id AND entry_type = :type'
+    );
+    foreach ($ids as $index => $id) {
+        $statement->execute([
+            'sort' => ($index + 1) * 10,
+            'id' => $id,
+            'type' => $type,
+        ]);
+    }
+}
+
 function pettyCashInsert(
     PDO $db,
     string $type,
@@ -367,18 +476,24 @@ function pettyCashInsert(
     if ($paisa <= 0) {
         throw new RuntimeException('টাকার অংক শূন্যের বেশি হতে হবে।');
     }
+    if ($paisa % 100 !== 0) {
+        throw new RuntimeException('টাকার অংক পূর্ণ সংখ্যায় লিখুন (যেমন ১২৫০)।');
+    }
+    $validatedDate = pettyCashAssertSelectedMonthDate($date, $monthKey);
+    $month = pettyCashParseMonth($monthKey);
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
     $statement = $db->prepare(
         'INSERT INTO petty_cash_book
-            (entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at)
+            (entry_type, entry_date, description, amount, sort_order, created_by, updated_by, created_at, updated_at)
          VALUES
-            (:type, :date, :description, :amount, :created_by, :updated_by, :created_at, :updated_at)'
+            (:type, :date, :description, :amount, :sort_order, :created_by, :updated_by, :created_at, :updated_at)'
     );
     $statement->execute([
         'type' => $type,
-        'date' => pettyCashAssertSelectedMonthDate($date, $monthKey),
+        'date' => $validatedDate,
         'description' => pettyCashValidateDescription($description),
         'amount' => \School\Accounting\Support\Money::toDb($paisa),
+        'sort_order' => pettyCashNextSortOrder($db, $type, $month['from'], $month['to']),
         'created_by' => $actorId,
         'updated_by' => $actorId,
         'created_at' => $now,
@@ -403,6 +518,9 @@ function pettyCashUpdate(
     }
     if ($paisa <= 0) {
         throw new RuntimeException('টাকার অংক শূন্যের বেশি হতে হবে।');
+    }
+    if ($paisa % 100 !== 0) {
+        throw new RuntimeException('টাকার অংক পূর্ণ সংখ্যায় লিখুন (যেমন ১২৫০)।');
     }
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
     $statement = $db->prepare(
@@ -467,10 +585,10 @@ function pettyCashDownloadPdf(
         $body .= '<tr>'
             . '<td class="center">' . ($left ? h(function_exists('accFormatDate') ? accFormatDate((string) $left['entry_date']) : (string) $left['entry_date']) : '') . '</td>'
             . '<td>' . ($left ? h((string) $left['description']) : '') . '</td>'
-            . '<td class="num">' . ($left ? h(\School\Accounting\Support\Money::format(\School\Accounting\Support\Money::fromDb($left['amount']))) : '') . '</td>'
+            . '<td class="num">' . ($left ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($left['amount']))) : '') . '</td>'
             . '<td class="center">' . ($right ? h(function_exists('accFormatDate') ? accFormatDate((string) $right['entry_date']) : (string) $right['entry_date']) : '') . '</td>'
             . '<td>' . ($right ? h((string) $right['description']) : '') . '</td>'
-            . '<td class="num">' . ($right ? h(\School\Accounting\Support\Money::format(\School\Accounting\Support\Money::fromDb($right['amount']))) : '') . '</td>'
+            . '<td class="num">' . ($right ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($right['amount']))) : '') . '</td>'
             . '</tr>';
     }
     if ($body === '') {
@@ -480,7 +598,7 @@ function pettyCashDownloadPdf(
     $diff = $incomeTotal - $expenseTotal;
     $balanceHtml = $diff === 0
         ? '<p class="ok">আয়-ব্যয়ের দুই পাশ মিলেছে।</p>'
-        : '<p class="diff">পার্থক্য: ' . h(\School\Accounting\Support\Money::format(abs($diff)))
+        : '<p class="diff">পার্থক্য: ' . h(pettyCashFormatAmount(abs($diff)))
             . ($diff > 0 ? ' (আয় বেশি)' : ' (ব্যয় বেশি)') . '</p>';
 
     $pad = $settings !== [] ? mpdfSchoolPadHtml($settings) : '';
@@ -495,9 +613,9 @@ function pettyCashDownloadPdf(
         . '</thead><tbody>' . $body . '</tbody>'
         . '<tfoot><tr>'
         . '<td colspan="2"><strong>মোট আয়</strong></td><td class="num"><strong>'
-        . h(\School\Accounting\Support\Money::format($incomeTotal)) . '</strong></td>'
+        . h(pettyCashFormatAmount($incomeTotal)) . '</strong></td>'
         . '<td colspan="2"><strong>মোট ব্যয়</strong></td><td class="num"><strong>'
-        . h(\School\Accounting\Support\Money::format($expenseTotal)) . '</strong></td>'
+        . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
         . '</tr></tfoot></table>'
         . $balanceHtml;
 
