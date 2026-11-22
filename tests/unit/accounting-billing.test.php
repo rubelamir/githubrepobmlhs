@@ -215,10 +215,11 @@ $check(is_string($updateAllowlist) && preg_match("/function preparedUpdateById.*
 $categoryService = file_get_contents(__DIR__ . '/../../shared/Accounting/src/Billing/StudentCategoryService.php');
 $check(is_string($categoryService) && str_contains($categoryService, 'mirrorStudentStipendFlag'), 'approving a fee category copies stipend onto the student record');
 
-$check(accFormatDateTime('2026-11-08 02:05:00') === bnDigits('08/11/2026, 02:05') . ' A.M', 'morning time uses A.M');
-$check(accFormatDateTime('2026-11-08 14:05:00') === bnDigits('08/11/2026, 02:05') . ' P.M', 'afternoon time uses P.M');
-$check(accFormatDateTime('2026-11-08 00:00:00') === bnDigits('08/11/2026, 12:00') . ' A.M', 'midnight uses A.M');
-$check(accFormatDateTime('2026-11-08 12:00:00') === bnDigits('08/11/2026, 12:00') . ' P.M', 'noon uses P.M');
+$check(accFormatDate('2026-11-08') === bnDigits('08-11-2026'), 'date uses DD-MM-YYYY');
+$check(accFormatDateTime('2026-11-08 02:05:00') === bnDigits('08-11-2026, 02:05') . ' A.M', 'morning time uses A.M');
+$check(accFormatDateTime('2026-11-08 14:05:00') === bnDigits('08-11-2026, 02:05') . ' P.M', 'afternoon time uses P.M');
+$check(accFormatDateTime('2026-11-08 00:00:00') === bnDigits('08-11-2026, 12:00') . ' A.M', 'midnight uses A.M');
+$check(accFormatDateTime('2026-11-08 12:00:00') === bnDigits('08-11-2026, 12:00') . ' P.M', 'noon uses P.M');
 $morning = schoolBengaliDate('2026-11-08 09:30:00');
 $afternoon = schoolBengaliDate('2026-11-08 15:45:00');
 $check($morning['time'] === bnDigits('9:30') . ' A.M', 'event time uses A.M');

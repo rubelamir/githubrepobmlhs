@@ -19,10 +19,7 @@ if (!$access->can(Capability::REPORTS_VIEW_ALL) && !$access->can(Capability::REP
 $reports = accReports();
 $basePath = '../../';
 $pageTitle = 'রিপোর্ট | School Admin';
-$pageCssFiles = [
-    'https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap',
-    accAssetUrl($basePath, 'css/accounts.css'),
-];
+$pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
 $today = accToday();
@@ -70,7 +67,7 @@ $built = $rangeError === '';
 if ($built) {
     if ($type === ReportService::TRIAL) {
         $trial = $reports->trial($to);
-        $subtitle = 'তারিখ পর্যন্ত ' . bnDigits($to);
+        $subtitle = 'তারিখ পর্যন্ত ' . accFormatDate($to);
         $headers = ['কোড', 'হিসাব', 'সম্পদ ও খরচ', 'আয় ও দায়'];
         $balanced = $trial['debit'] === $trial['credit'];
         foreach ($trial['rows'] as $row) {
@@ -81,7 +78,7 @@ if ($built) {
         $excelRows[] = ['', 'মোট', Money::toDb($trial['debit']), Money::toDb($trial['credit'])];
     } elseif ($type === ReportService::INCOME) {
         $income = $reports->income($from, $to);
-        $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to);
+        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to);
         $headers = ['ধরন', 'কোড', 'হিসাব', 'টাকা'];
         foreach ($income['income'] as $row) {
             $htmlRows[] = ['আয়', h($row['code']), h($row['name']), h(Money::format($row['amount']))];
@@ -100,7 +97,7 @@ if ($built) {
         $excelRows[] = ['', '', $surplusLabel, Money::toDb($income['surplus'])];
     } elseif ($type === ReportService::CASH) {
         $cash = $reports->cash($from, $to);
-        $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to);
+        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to);
         $headers = ['কোড', 'হিসাব', 'শুরুর স্থিতি', 'টাকা এসেছে', 'টাকা গেছে', 'শেষ স্থিতি'];
         foreach ($cash['rows'] as $row) {
             $htmlRows[] = [h($row['code']), h($row['name']), h(Money::format($row['opening'])), h(Money::format($row['debit'])), h(Money::format($row['credit'])), h(Money::format($row['closing']))];
@@ -110,23 +107,25 @@ if ($built) {
         $excelRows[] = ['', 'মোট', Money::toDb($cash['opening']), Money::toDb($cash['debit']), Money::toDb($cash['credit']), Money::toDb($cash['closing'])];
     } elseif ($type === ReportService::RECEIPTS_PAYMENTS) {
         $rp = $reports->receiptsPayments($from, $to);
-        $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to) . ' — পুরনো খাতার মতো বামে আয়, ডানে ব্যয়';
+        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to) . ' — পুরনো খাতার মতো বামে আয়, ডানে ব্যয়';
         $headers = ['তারিখ', 'আয়', 'টাকা', 'তারিখ', 'ব্যয়', 'টাকা'];
         $balanced = $rp['receipt_total'] === $rp['payment_total'];
         foreach (ReportService::receiptsPaymentsTable($rp['receipts'], $rp['payments']) as $row) {
+            $receiptDate = $row['receipt_date'] !== '' ? accFormatDate($row['receipt_date']) : '';
+            $paymentDate = $row['payment_date'] !== '' ? accFormatDate($row['payment_date']) : '';
             $htmlRows[] = [
-                $row['receipt_date'] !== '' ? h(bnDigits($row['receipt_date'])) : '',
+                $receiptDate !== '' ? h($receiptDate) : '',
                 h($row['receipt_narration']),
                 $row['receipt_amount'] === null ? '' : h(Money::format($row['receipt_amount'])),
-                $row['payment_date'] !== '' ? h(bnDigits($row['payment_date'])) : '',
+                $paymentDate !== '' ? h($paymentDate) : '',
                 h($row['payment_narration']),
                 $row['payment_amount'] === null ? '' : h(Money::format($row['payment_amount'])),
             ];
             $excelRows[] = [
-                $row['receipt_date'],
+                $receiptDate,
                 $row['receipt_narration'],
                 $row['receipt_amount'] === null ? '' : Money::toDb($row['receipt_amount']),
-                $row['payment_date'],
+                $paymentDate,
                 $row['payment_narration'],
                 $row['payment_amount'] === null ? '' : Money::toDb($row['payment_amount']),
             ];
@@ -134,7 +133,7 @@ if ($built) {
         $htmlRows[] = ['', 'মোট আয়', h(Money::format($rp['receipt_total'])), '', 'মোট ব্যয়', h(Money::format($rp['payment_total']))];
         $excelRows[] = ['', 'মোট আয়', Money::toDb($rp['receipt_total']), '', 'মোট ব্যয়', Money::toDb($rp['payment_total'])];
     } elseif ($type === ReportService::COLLECTION) {
-        $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to);
+        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to);
         $headers = ['শ্রেণী / শাখা', 'মাধ্যম', 'রসিদ', 'টাকা'];
         $total = 0;
         $count = 0;
@@ -194,13 +193,6 @@ unset($query['format']);
 $pdfUrl = 'reports.php?' . http_build_query($query + ['format' => 'pdf']);
 $xlsUrl = 'reports.php?' . http_build_query($query + ['format' => 'xls']);
 
-$settings = schoolSettings($db);
-$padLogo = !empty($settings['logo']) ? publicSiteUrl((string) $settings['logo']) : publicSiteUrl('image/school_logo.png');
-$padSchool = trim((string) ($settings['school_name_bn'] ?? ''));
-$padAddress = trim((string) ($settings['address'] ?? ''));
-$padEiin = trim((string) ($settings['eiin'] ?? ''));
-$padMobile = trim((string) ($settings['mobile'] ?? ''));
-
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
@@ -248,26 +240,11 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php if ($rangeError !== ''): ?>
               <div class="alert alert-warning"><?= h($rangeError) ?></div>
             <?php else: ?>
-              <div class="card acc-report-sheet">
-                <div class="card-body">
-                  <header class="acc-report-pad">
-                    <?php if ($padLogo !== ''): ?><img class="acc-report-pad-logo" src="<?= h($padLogo) ?>" alt=""><?php endif; ?>
-                    <div class="acc-report-pad-brand">
-                      <div class="acc-report-pad-name"><?= h($padSchool) ?></div>
-                      <?php if ($padAddress !== ''): ?><div class="acc-report-pad-meta"><?= h($padAddress) ?></div><?php endif; ?>
-                      <?php if ($padEiin !== '' || $padMobile !== ''): ?>
-                        <div class="acc-report-pad-meta">
-                          <?php if ($padEiin !== ''): ?>EIIN: <?= h(bnDigits($padEiin)) ?><?php endif; ?>
-                          <?php if ($padEiin !== '' && $padMobile !== ''): ?> · <?php endif; ?>
-                          <?php if ($padMobile !== ''): ?>মোবাইল: <?= h(bnDigits($padMobile)) ?><?php endif; ?>
-                        </div>
-                      <?php endif; ?>
-                    </div>
-                  </header>
-                  <h3 class="acc-report-title"><?= h(ReportService::LABELS[$type]) ?></h3>
-                  <?php if ($subtitle !== ''): ?><p class="acc-report-sub"><?= h($subtitle) ?></p><?php endif; ?>
+              <div class="card">
+                <div class="card-header"><h3 class="card-title mb-0"><?= h(ReportService::LABELS[$type]) ?> <span class="small text-secondary"><?= h($subtitle) ?></span></h3></div>
+                <div class="card-body p-0">
                   <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0 acc-report-table">
+                    <table class="table table-sm align-middle mb-0">
                       <thead><tr><?php foreach ($headers as $header): ?><th><?= h($header) ?></th><?php endforeach; ?></tr></thead>
                       <tbody>
                         <?php if (count($htmlRows) <= 1): ?><tr><td colspan="<?= count($headers) ?>" class="text-secondary p-3">এই পরিসরে কিছু নেই।</td></tr><?php endif; ?>
@@ -277,10 +254,10 @@ include __DIR__ . '/../../includes/layout-head.php';
                       </tbody>
                     </table>
                   </div>
-                  <?php if ($balanced !== null): ?>
-                    <p class="acc-report-balance small mb-0 mt-2"><?= $balanced ? 'দুই পাশ মিলেছে।' : 'দুই পাশ মিলছে না। হিসাব রক্ষককে জানান।' ?></p>
-                  <?php endif; ?>
                 </div>
+                <?php if ($balanced !== null): ?>
+                  <div class="card-footer small"><?= $balanced ? 'দুই পাশ মিলেছে।' : 'দুই পাশ মিলছে না। হিসাব রক্ষককে জানান।' ?></div>
+                <?php endif; ?>
               </div>
             <?php endif; ?>
           </div>
