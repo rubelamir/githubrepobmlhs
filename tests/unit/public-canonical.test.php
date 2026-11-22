@@ -12,33 +12,42 @@ $check = static function (bool $condition, string $label) use (&$failures): void
 };
 
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/index.php') === 'https://bmlhs.site/bmlhs/',
+    publicCanonicalUrl('https://bmlhs.site/index.php') === 'https://bmlhs.site/',
     'homepage index.php is the directory'
 );
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/index.php?search=empty') === 'https://bmlhs.site/bmlhs/?search=empty',
+    publicCanonicalUrl('https://bmlhs.site/index.php?search=empty') === 'https://bmlhs.site/?search=empty',
     'homepage query stays on the directory'
 );
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/') === 'https://bmlhs.site/bmlhs/',
+    publicCanonicalUrl('https://bmlhs.site/') === 'https://bmlhs.site/',
     'clean homepage stays unchanged'
 );
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/about.php') === 'https://bmlhs.site/bmlhs/about',
+    publicCanonicalUrl('https://bmlhs.site/about.php') === 'https://bmlhs.site/about',
     'page suffix is dropped'
 );
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/about.php?x=1') === 'https://bmlhs.site/bmlhs/about?x=1',
+    publicCanonicalUrl('https://bmlhs.site/about.php?x=1') === 'https://bmlhs.site/about?x=1',
     'page query stays after the suffix'
 );
 $check(
-    publicCanonicalUrl('https://bmlhs.site/bmlhs/notice_single?id=4') === 'https://bmlhs.site/bmlhs/notice_single?id=4',
+    publicCanonicalUrl('https://bmlhs.site/notice_single?id=4') === 'https://bmlhs.site/notice_single?id=4',
     'signed page address stays unchanged'
 );
 $check(
-    publicCanonicalUrl('https://example.test:8080/AdminLTE-4.9.1/bmlhs/index.php') === 'https://example.test:8080/AdminLTE-4.9.1/bmlhs/',
+    publicCanonicalUrl('https://example.test:8080/AdminLTE-4.9.1/index.php') === 'https://example.test:8080/AdminLTE-4.9.1/',
     'local subdirectory homepage is the directory'
 );
+$check(
+    publicCanonicalUrl('https://bmlhs.site/bmlhs/index.php') === 'https://bmlhs.site/bmlhs/',
+    'legacy /bmlhs/ index.php still cleans to its directory'
+);
+
+$_SERVER['DOCUMENT_ROOT'] = projectRootPath();
+$check(publicSiteUrl() === '/', 'public site root URL has no /bmlhs prefix');
+$check(publicSiteUrl('about') === '/about', 'public page URL has no /bmlhs prefix');
+$check(adminUrl('index.php') === '/dist/index.php', 'admin URL still uses /dist');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . " canonical checks failed\n");

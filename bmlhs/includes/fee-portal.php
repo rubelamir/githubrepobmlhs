@@ -49,7 +49,7 @@ function feePortalFlash(): ?array
 
 /**
  * Absolute URL for gateway callbacks. Set payment_callback_base in the private
- * config (e.g. "https://bmlhs.site/bmlhs") so it never depends on the Host header.
+ * config (e.g. "https://bmlhs.site") so it never depends on the Host header.
  */
 function feePortalAbsoluteUrl(string $page): string
 {

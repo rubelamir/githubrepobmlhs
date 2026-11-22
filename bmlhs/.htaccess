@@ -21,7 +21,8 @@ RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 
-ErrorDocument 404 /AdminLTE-4.9.1/bmlhs/404.php
+# Root .htaccess maps /404.php → bmlhs/404.php on the live domain.
+ErrorDocument 404 /404.php
 
 # Compress text responses
 <IfModule mod_deflate.c>

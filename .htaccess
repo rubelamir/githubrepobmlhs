@@ -1,0 +1,17 @@
+# Public school site is stored under bmlhs/, but served at the domain root.
+# /dist/ remains the admin panel. Old /bmlhs/... bookmarks redirect to /.
+
+RewriteEngine On
+
+# Admin panel, shared PHP, caches, and tooling stay on their own paths.
+RewriteRule ^(dist|shared|cache|android|docs|\.well-known)(/|$) - [L]
+
+# Only redirect when the browser actually requested /bmlhs/... (not after an internal rewrite).
+RewriteCond %{THE_REQUEST} \s/+(?:[^?\s]*/)?bmlhs/?[\s?] [NC]
+RewriteRule ^bmlhs/?$ ./ [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/+(?:[^?\s]*/)?bmlhs/ [NC]
+RewriteRule ^bmlhs/(.*)$ $1 [R=301,L]
+
+# Map every other public request into the bmlhs/ folder without changing the URL.
+RewriteRule ^(.*)$ bmlhs/$1 [L]

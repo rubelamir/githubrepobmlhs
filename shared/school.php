@@ -22,7 +22,13 @@ function projectBaseUrl(): string
 
 function publicSiteUrl(string $path = ''): string
 {
-    return projectBaseUrl() . '/bmlhs/' . ltrim($path, '/');
+    $base = rtrim(projectBaseUrl(), '/');
+    $path = ltrim($path, '/');
+    if ($path === '') {
+        return $base . '/';
+    }
+
+    return $base . '/' . $path;
 }
 
 function adminUrl(string $path = ''): string
@@ -2125,7 +2131,7 @@ function currentAbsoluteUrl(): string
 
 /**
  * The address search engines should keep. Drops a visible index.php or .php
- * suffix so /bmlhs/ and /bmlhs/index.php are one page.
+ * suffix so / and /index.php (or /about and /about.php) are one page.
  */
 function publicCanonicalUrl(string $url): string
 {

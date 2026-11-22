@@ -14,7 +14,7 @@
         'password' => '',
     ],
 ],
-'payment_callback_base' => 'https://bmlhs.site/bmlhs',
+'payment_callback_base' => 'https://bmlhs.site',
 ```
 
 এনভ্যারনমেন্ট ব্যবহার করলে নাম: `BMLHS_BKASH_BASE_URL`, `BMLHS_BKASH_APP_KEY`, `BMLHS_BKASH_APP_SECRET`, `BMLHS_BKASH_USERNAME`, `BMLHS_BKASH_PASSWORD`।
@@ -27,7 +27,7 @@
 2. প্রধান শিক্ষক হিসেবে **অনলাইন পেমেন্ট** খুলুন। ব্যাজ `sandbox`। "প্রাইভেট কনফিগে যা নেই" খালি। মান পাতায় আসে না।
 3. চার্জের হার (১০%-এর বেশি নয়) সেভ করুন। চার্জ অভিভাবক দেন। তারপর "অভিভাবক পোর্টালে চালু"।
 4. একই পাতার cron কমান্ড cPanel-এ প্রতি ৫ মিনিটে দিন। CLI পথটি পছন্দনীয়। HTTP পথের `key` পাসওয়ার্ডের মতো; কাউকে পাঠাবেন না।
-5. পাবলিক মেনুতে `https://bmlhs.site/bmlhs/fee-payment` যোগ করুন।
+5. পাবলিক মেনুতে `https://bmlhs.site/fee-payment` যোগ করুন।
 6. স্যান্ডবক্স ওয়ালেট দিয়ে একটি ছোট পেমেন্ট:
    - সফল: রসিদ হয়, bKash হিসাবে (১১৩০) টাকা ওঠে, চার্জ আলাদা।
    - বাতিল: রসিদ হয় না, অবস্থা বাতিল বা ব্যর্থ।
