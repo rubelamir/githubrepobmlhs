@@ -17,10 +17,6 @@ function pettyCashEnsureSchema(PDO $db): void
     }
     $done = true;
 
-    if (function_exists('schemaMigrationApplied') && schemaMigrationApplied($db, 'petty_cash_book_v1')) {
-        return;
-    }
-
     $db->exec(
         "CREATE TABLE IF NOT EXISTS petty_cash_book (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -37,9 +33,122 @@ function pettyCashEnsureSchema(PDO $db): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
 
-    if (function_exists('recordSchemaMigration')) {
+    if (function_exists('schemaMigrationApplied') && function_exists('recordSchemaMigration')
+        && !schemaMigrationApplied($db, 'petty_cash_book_v1')) {
         recordSchemaMigration($db, 'petty_cash_book_v1');
     }
+}
+
+function pettyCashImportJsonPath(): string
+{
+    return __DIR__ . '/data/petty-cash-jan21-may26.json';
+}
+
+function pettyCashImportMigrationName(): string
+{
+    return 'petty_cash_import_jan21_may26';
+}
+
+/**
+ * Loads Jan-21…May-26 cashbook rows from the bundled JSON into petty_cash_book.
+ * Replaces any existing rows in that date range. Idempotent via schema_migrations.
+ *
+ * @return array{skipped: bool, inserted: int, income: int, expense: int, deleted: int, message: string}
+ */
+function pettyCashImportFromBundledJson(PDO $db, ?int $actorId = null, bool $force = false): array
+{
+    pettyCashEnsureSchema($db);
+    $migration = pettyCashImportMigrationName();
+    if (!$force && function_exists('schemaMigrationApplied') && schemaMigrationApplied($db, $migration)) {
+        $count = (int) $db->query('SELECT COUNT(*) FROM petty_cash_book')->fetchColumn();
+
+        return [
+            'skipped' => true,
+            'inserted' => 0,
+            'income' => 0,
+            'expense' => 0,
+            'deleted' => 0,
+            'message' => 'Jan-21 থেকে May-26 ইমপোর্ট আগেই সম্পন্ন (মোট ' . $count . 'টি এন্ট্রি)।',
+        ];
+    }
+
+    $path = pettyCashImportJsonPath();
+    if (!is_file($path)) {
+        throw new RuntimeException('ইমপোর্ট ফাইল পাওয়া যায়নি।');
+    }
+    $payload = json_decode((string) file_get_contents($path), true);
+    if (!is_array($payload) || !isset($payload['entries']) || !is_array($payload['entries'])) {
+        throw new RuntimeException('ইমপোর্ট ফাইলটি সঠিক নয়।');
+    }
+
+    $from = '2021-01-01';
+    $to = '2026-05-31';
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Dhaka')))->format('Y-m-d H:i:s');
+    $db->beginTransaction();
+    try {
+        $delete = $db->prepare('DELETE FROM petty_cash_book WHERE entry_date >= :from AND entry_date <= :to');
+        $delete->execute(['from' => $from, 'to' => $to]);
+        $deleted = $delete->rowCount();
+
+        $insert = $db->prepare(
+            'INSERT INTO petty_cash_book
+                (entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at)
+             VALUES
+                (:type, :date, :description, :amount, :created_by, :updated_by, :created_at, :updated_at)'
+        );
+        $income = 0;
+        $expense = 0;
+        foreach ($payload['entries'] as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $type = (string) ($entry['type'] ?? '');
+            if (!in_array($type, [PETTY_CASH_INCOME, PETTY_CASH_EXPENSE], true)) {
+                continue;
+            }
+            $date = pettyCashValidateDate((string) ($entry['date'] ?? ''));
+            $description = pettyCashValidateDescription((string) ($entry['description'] ?? ''));
+            $paisa = \School\Accounting\Support\Money::fromDb($entry['amount'] ?? '0');
+            if ($paisa <= 0) {
+                continue;
+            }
+            $insert->execute([
+                'type' => $type,
+                'date' => $date,
+                'description' => $description,
+                'amount' => \School\Accounting\Support\Money::toDb($paisa),
+                'created_by' => $actorId,
+                'updated_by' => $actorId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            if ($type === PETTY_CASH_INCOME) {
+                $income++;
+            } else {
+                $expense++;
+            }
+        }
+        if (function_exists('recordSchemaMigration') && !schemaMigrationApplied($db, $migration)) {
+            recordSchemaMigration($db, $migration);
+        }
+        $db->commit();
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $exception;
+    }
+
+    $inserted = $income + $expense;
+
+    return [
+        'skipped' => false,
+        'inserted' => $inserted,
+        'income' => $income,
+        'expense' => $expense,
+        'deleted' => $deleted,
+        'message' => 'Jan-21 থেকে May-26 পর্যন্ত ' . $inserted . 'টি এন্ট্রি তোলা হয়েছে (আয় ' . $income . ', ব্যয় ' . $expense . ').',
+    ];
 }
 
 /** @return array{year: int, month: int, key: string, from: string, to: string, label: string} */
