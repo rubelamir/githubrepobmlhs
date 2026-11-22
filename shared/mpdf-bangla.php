@@ -28,6 +28,29 @@ function mpdfEnsureBanglaFont(): string
     return mpdfBanglaFontFamily();
 }
 
+/** Font family for clear Bengali digits (no OTL — digits do not need conjunct shaping). */
+function mpdfBanglaDigitsFontFamily(): string
+{
+    return 'notosansbengali';
+}
+
+/**
+ * Wrap Bengali numeral runs in a clearer digit font without breaking Bengali letters.
+ */
+function mpdfClearBnDigitsHtml(string $html): string
+{
+    $digitFont = mpdfBanglaDigitsFontFamily();
+    $wrapped = preg_replace_callback(
+        '/(?:৳\s*)?[০-৯][০-৯,.\-\/]*/u',
+        static function (array $match) use ($digitFont): string {
+            return '<span class="bn-num" style="font-family:' . $digitFont . ';">' . $match[0] . '</span>';
+        },
+        $html
+    );
+
+    return is_string($wrapped) ? $wrapped : $html;
+}
+
 function banglaQrPngDataUri(string $text, int $scale = 4): string
 {
     $text = trim($text);
@@ -202,18 +225,18 @@ function mpdfSchoolPadHtml(array $settings): string
         : trim((string) ($settings['mobile'] ?? ''));
     $meta = '';
     if ($eiin !== '') {
-        $meta .= 'EIIN: ' . h(function_exists('bnDigits') ? bnDigits($eiin) : $eiin);
+        $meta .= 'EIIN: ' . mpdfClearBnDigitsHtml(h(function_exists('bnDigits') ? bnDigits($eiin) : $eiin));
     }
     if ($eiin !== '' && $mobile !== '') {
         $meta .= ' · ';
     }
     if ($mobile !== '') {
-        $meta .= 'মোবাইল: ' . h(function_exists('bnDigits') ? bnDigits($mobile) : $mobile);
+        $meta .= 'মোবাইল: ' . mpdfClearBnDigitsHtml(h(function_exists('bnDigits') ? bnDigits($mobile) : $mobile));
     }
 
     return '<table class="school-pad"><tr>'
         . '<td class="school-pad-logo">'
-        . ($logo !== '' ? '<img src="' . h($logo) . '" alt="">' : '')
+        . ($logo !== '' ? '<img class="school-pad-logo-img" src="' . h($logo) . '" width="40" height="40" alt="">' : '')
         . '</td>'
         . '<td class="school-pad-brand">'
         . '<div class="school-pad-name">' . h($schoolName) . '</div>'
@@ -227,16 +250,18 @@ function mpdfSchoolPadHtml(array $settings): string
 function mpdfSchoolPadCss(): string
 {
     $font = mpdfBanglaFontFamily();
+    $digitFont = mpdfBanglaDigitsFontFamily();
 
     return <<<CSS
 body { font-family: {$font}, sans-serif; color: #16231e; }
-.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 3mm; border-bottom: 0.35mm solid #1a3a30; }
-.school-pad td { border: 0 !important; padding: 0 0 2mm; vertical-align: middle; background: transparent; }
-.school-pad-logo { width: 22mm; text-align: center; }
-.school-pad-logo img { width: 18mm; height: 18mm; }
+.bn-num { font-family: {$digitFont}, {$font}, sans-serif; }
+.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 2.5mm; border-bottom: 0.35mm solid #1a3a30; }
+.school-pad td { border: 0 !important; padding: 0 0 1.5mm; vertical-align: middle; background: transparent; }
+.school-pad-logo { width: 14mm; text-align: center; }
+.school-pad-logo-img, .school-pad-logo img { width: 11mm; height: 11mm; max-width: 11mm; max-height: 11mm; }
 .school-pad-brand { text-align: center; }
-.school-pad-name { font-size: 16pt; font-weight: bold; line-height: 1.3; color: #174936; }
-.school-pad-meta { font-size: 9pt; color: #374b43; margin-top: 0.5mm; }
+.school-pad-name { font-size: 15pt; font-weight: bold; line-height: 1.3; color: #174936; }
+.school-pad-meta { font-size: 9pt; color: #374b43; margin-top: 0.4mm; }
 CSS;
 }
 
