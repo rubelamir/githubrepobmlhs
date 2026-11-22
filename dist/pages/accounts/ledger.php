@@ -78,7 +78,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php else: ?>
               <div class="card">
                 <div class="card-header d-flex flex-wrap gap-2 align-items-center">
-                  <h3 class="card-title mb-0 me-auto"><code><?= h((string) $account['code']) ?></code> <?= h((string) $account['name_bn']) ?> <span class="small text-secondary">(<?= h(bnDigits($from)) ?> — <?= h(bnDigits($to)) ?>)</span></h3>
+                  <h3 class="card-title mb-0 me-auto"><code><?= h((string) $account['code']) ?></code> <?= h((string) $account['name_bn']) ?> <span class="small text-secondary">(<?= h(accFormatDate($from)) ?> — <?= h(accFormatDate($to)) ?>)</span></h3>
                   <span class="small text-secondary">শুরুর স্থিতি: <strong><?= h(Money::format($ledger['opening'])) ?></strong></span>
                   <span class="small text-secondary">শেষ স্থিতি: <strong class="<?= $ledger['closing'] < 0 ? 'text-danger' : '' ?>"><?= h(Money::format($ledger['closing'])) ?></strong></span>
                 </div>

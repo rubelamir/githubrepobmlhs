@@ -13,7 +13,7 @@ function mpdfBanglaTtfDir(): string
 
 function mpdfBanglaFontFamily(): string
 {
-    // Noto Sans Bengali renders ০–৯ more clearly in mPDF than Hind Siliguri.
+    // Noto digits stay clearer than Hind Siliguri; OTL must stay off (mPDF rejects Noto GPOS).
     return 'notosansbengali';
 }
 
@@ -118,7 +118,8 @@ function createBanglaMpdf(
             'notosansbengali' => [
                 'R' => 'NotoSansBengali-Regular.ttf',
                 'B' => 'NotoSansBengali-Bold.ttf',
-                'useOTL' => 0xFF,
+                // useOTL 0xFF trips "GPOS Lookup Type 5, Format 3 not supported" on this TTF.
+                'useOTL' => 0,
             ],
         ],
         'default_font' => mpdfBanglaFontFamily(),

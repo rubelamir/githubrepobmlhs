@@ -51,5 +51,6 @@ final class ReportPdf
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $safe = preg_replace('/[^A-Za-z0-9._-]/', '-', $filename) ?: 'report.pdf';
         $mpdf->Output(str_ends_with($safe, '.pdf') ? $safe : $safe . '.pdf', \Mpdf\Output\Destination::DOWNLOAD);
+        exit;
     }
 }
