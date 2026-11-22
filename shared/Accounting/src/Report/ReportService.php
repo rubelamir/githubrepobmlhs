@@ -186,9 +186,10 @@ final class ReportService
     }
 
     /**
-     * Classic school cashbook: left আয় / right ব্যয়. Opening money balances and
-     * money-account debits sit on the left; money-account credits and closing
-     * balances sit on the right, so both totals match.
+     * Classic school cashbook: left আয় / right ব্যয়.
+     * Opening cash/bank balances lead the left column; closing balances trail the right.
+     * Mid-period bank deposits/withdrawals (money↔money only) are omitted — they only
+     * move purse balances, which opening and closing already capture.
      *
      * @return array{
      *   receipts: list<array{date: string, narration: string, amount: int}>,
@@ -202,28 +203,20 @@ final class ReportService
     public function receiptsPayments(string $from, string $to): array
     {
         $openingDate = (new \DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d');
-        $moneyAccounts = [];
-        foreach ($this->chart->all() as $account) {
-            if ((int) ($account['is_group'] ?? 0) === 1) {
-                continue;
-            }
-            if (!in_array((string) ($account['money_kind'] ?? 'none'), self::RP_MONEY_KINDS, true)) {
-                continue;
-            }
-            $moneyAccounts[(int) $account['id']] = $account;
-        }
+        $moneyAccounts = self::rpMoneyAccounts($this->chart->all());
 
         $receipts = [];
         $payments = [];
         foreach ($moneyAccounts as $id => $account) {
             $open = $this->chart->balance($id, $openingDate);
-            if ($open !== 0) {
-                $receipts[] = [
-                    'date' => $from,
-                    'narration' => (string) $account['name_bn'],
-                    'amount' => $open,
-                ];
+            if ($open === 0 && !self::rpAlwaysShowBalance($account)) {
+                continue;
             }
+            $receipts[] = [
+                'date' => $from,
+                'narration' => self::rpBalanceNarration((string) $account['name_bn'], true),
+                'amount' => $open,
+            ];
         }
 
         $voucherRows = \fetchRows(
@@ -269,6 +262,10 @@ final class ReportService
                     }
                 }
             }
+            // Cash↔bank (and other purse-only) moves are not আয়/ব্যয় lines.
+            if (self::rpIsPurseTransferOnly($debitNames, $creditNames, $moneyDebits, $moneyCredits)) {
+                continue;
+            }
             foreach ($moneyDebits as $entry) {
                 $label = self::rpLineLabel($narration, $entry['memo'], $creditNames !== [] ? $creditNames : array_column($moneyCredits, 'name'), $entry['name']);
                 $receipts[] = ['date' => $date, 'narration' => $label, 'amount' => $entry['amount']];
@@ -281,16 +278,92 @@ final class ReportService
 
         foreach ($moneyAccounts as $id => $account) {
             $close = $this->chart->balance($id, $to);
-            if ($close !== 0) {
-                $payments[] = [
-                    'date' => $to,
-                    'narration' => (string) $account['name_bn'],
-                    'amount' => $close,
-                ];
+            if ($close === 0 && !self::rpAlwaysShowBalance($account)) {
+                continue;
             }
+            $payments[] = [
+                'date' => $to,
+                'narration' => self::rpBalanceNarration((string) $account['name_bn'], false),
+                'amount' => $close,
+            ];
         }
 
         return self::receiptsPaymentsTotals($receipts, $payments, $from, $to);
+    }
+
+    /**
+     * Leaf purse accounts in cashbook order: office cash, then banks, then mobile wallets.
+     *
+     * @param list<array<string, mixed>> $accounts
+     * @return array<int, array<string, mixed>> keyed by account id
+     */
+    public static function rpMoneyAccounts(array $accounts): array
+    {
+        $rank = static function (array $account): array {
+            $kind = (string) ($account['money_kind'] ?? 'none');
+            $kindOrder = match ($kind) {
+                'cash' => 0,
+                'bank' => 1,
+                'bkash' => 2,
+                'nagad' => 3,
+                default => 9,
+            };
+
+            return [$kindOrder, (string) ($account['code'] ?? ''), (string) ($account['name_bn'] ?? '')];
+        };
+        $money = [];
+        foreach ($accounts as $account) {
+            if ((int) ($account['is_group'] ?? 0) === 1) {
+                continue;
+            }
+            if (!in_array((string) ($account['money_kind'] ?? 'none'), self::RP_MONEY_KINDS, true)) {
+                continue;
+            }
+            $money[(int) $account['id']] = $account;
+        }
+        uasort($money, static fn (array $a, array $b): int => $rank($a) <=> $rank($b));
+
+        return $money;
+    }
+
+    /** Office cash and every bank leaf always print at open/close, even at ৳0. */
+    public static function rpAlwaysShowBalance(array $account): bool
+    {
+        $kind = (string) ($account['money_kind'] ?? 'none');
+
+        return $kind === 'cash' || $kind === 'bank';
+    }
+
+    public static function rpBalanceNarration(string $accountName, bool $opening): string
+    {
+        $name = trim($accountName);
+        if ($name === '') {
+            $name = 'তহবিল';
+        }
+
+        return ($opening ? 'শুরুর স্থিতি — ' : 'শেষ স্থিতি — ') . $name;
+    }
+
+    /**
+     * True when every debit/credit is a purse account (cash/bank/bKash/Nagad):
+     * bank deposit, withdrawal, or wallet transfer — not school income/expense.
+     *
+     * @param list<string> $debitNames
+     * @param list<string> $creditNames
+     * @param list<array{amount: int, name: string, memo: string}> $moneyDebits
+     * @param list<array{amount: int, name: string, memo: string}> $moneyCredits
+     */
+    public static function rpIsPurseTransferOnly(
+        array $debitNames,
+        array $creditNames,
+        array $moneyDebits,
+        array $moneyCredits
+    ): bool {
+        if ($debitNames !== [] || $creditNames !== []) {
+            return false;
+        }
+
+        return $moneyDebits !== [] || $moneyCredits !== [];
     }
 
     /**

@@ -107,7 +107,7 @@ if ($built) {
         $excelRows[] = ['', 'মোট', Money::toDb($cash['opening']), Money::toDb($cash['debit']), Money::toDb($cash['credit']), Money::toDb($cash['closing'])];
     } elseif ($type === ReportService::RECEIPTS_PAYMENTS) {
         $rp = $reports->receiptsPayments($from, $to);
-        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to) . ' — পুরনো খাতার মতো বামে আয়, ডানে ব্যয়';
+        $subtitle = accFormatDate($from) . ' থেকে ' . accFormatDate($to) . ' — বামে শুরুর নগদ/ব্যাংক স্থিতি ও আয়, ডানে ব্যয় ও শেষ স্থিতি; ব্যাংক জমা/উত্তোলন আলাদা লাইনে আসে না';
         $headers = ['তারিখ', 'আয়', 'টাকা', 'তারিখ', 'ব্যয়', 'টাকা'];
         $balanced = $rp['receipt_total'] === $rp['payment_total'];
         foreach (ReportService::receiptsPaymentsTable($rp['receipts'], $rp['payments']) as $row) {
