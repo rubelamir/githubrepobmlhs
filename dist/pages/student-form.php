@@ -253,7 +253,12 @@ include __DIR__ . '/../includes/layout-head.php';
               <h3 class="mb-0"><?= $id > 0 ? 'Edit student / ভর্তি তথ্য সংশোধন' : 'Office admission / অফিস ভর্তি' ?></h3>
               <p class="text-secondary mb-0">Use Cropper.js for photographs. Required fields are marked.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="students.php">Back to list</a>
+            <div class="d-flex gap-2 flex-wrap">
+              <?php if ($fullAdmission): ?>
+                <a class="btn btn-outline-primary" href="student-import.php">এক্সেল ও ছবি</a>
+              <?php endif; ?>
+              <a class="btn btn-outline-secondary" href="students.php">Back to list</a>
+            </div>
           </div>
         </div>
         <div class="app-content">
