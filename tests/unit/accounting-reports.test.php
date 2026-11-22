@@ -88,11 +88,29 @@ $head = new AccessContext(1, 'প্রধান', [Role::HEAD], ['entire' => []
 foreach ([ReportService::COLLECTION, ReportService::DUES, ReportService::CONCESSION] as $classReport) {
     $check(ReportService::allows($teacher, $classReport), 'class teacher may open ' . $classReport);
 }
-foreach ([ReportService::TRIAL, ReportService::INCOME, ReportService::CASH] as $ledgerReport) {
+foreach ([ReportService::TRIAL, ReportService::INCOME, ReportService::CASH, ReportService::RECEIPTS_PAYMENTS] as $ledgerReport) {
     $check(!ReportService::allows($teacher, $ledgerReport), 'class teacher may not open ' . $ledgerReport);
     $check(ReportService::allows($head, $ledgerReport), 'head may open ' . $ledgerReport);
 }
 $check(!ReportService::allows($teacher, 'ledger'), 'unknown report types are refused');
+
+$rp = ReportService::receiptsPaymentsTotals(
+    [
+        ['date' => '2026-01-01', 'narration' => 'নগদ তহবিল (অফিস)', 'amount' => 50000],
+        ['date' => '2026-01-05', 'narration' => 'মাসিক বেতন', 'amount' => 12000],
+    ],
+    [
+        ['date' => '2026-01-08', 'narration' => 'বিদ্যুৎ ও পানি', 'amount' => 3000],
+        ['date' => '2026-01-31', 'narration' => 'নগদ তহবিল (অফিস)', 'amount' => 59000],
+    ],
+    '2026-01-01',
+    '2026-01-31'
+);
+$check($rp['receipt_total'] === 62000 && $rp['payment_total'] === 62000, 'opening plus receipts equals payments plus closing');
+$table = ReportService::receiptsPaymentsTable($rp['receipts'], $rp['payments']);
+$check(count($table) === 2, 'receipts and payments share one row per line');
+$check($table[0]['receipt_narration'] === 'নগদ তহবিল (অফিস)' && $table[0]['payment_narration'] === 'বিদ্যুৎ ও পানি', 'left and right columns stay paired');
+$check(ReportService::LABELS[ReportService::RECEIPTS_PAYMENTS] === 'মাসিক আয়-ব্যয়', 'the cashbook report keeps the school label');
 $scoped = (new ReflectionClass(ReportService::class))->newInstanceWithoutConstructor();
 $visible = new ReflectionMethod(ReportService::class, 'inScope');
 $check($visible->invoke($scoped, $teacher, 3, 0), 'entire-class assignment sees that class');

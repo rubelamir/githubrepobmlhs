@@ -20,6 +20,7 @@ final class ReportService
     public const TRIAL = 'trial';
     public const INCOME = 'income';
     public const CASH = 'cash';
+    public const RECEIPTS_PAYMENTS = 'rp';
     public const COLLECTION = 'collection';
     public const DUES = 'dues';
     public const CONCESSION = 'concession';
@@ -28,10 +29,14 @@ final class ReportService
         self::TRIAL => 'উদ্বৃত্ত',
         self::INCOME => 'আয়-ব্যয় বিবরণী',
         self::CASH => 'নগদ ও ব্যাংক',
+        self::RECEIPTS_PAYMENTS => 'মাসিক আয়-ব্যয়',
         self::COLLECTION => 'ফি আদায়',
         self::DUES => 'শ্রেণীভিত্তিক বকেয়া',
         self::CONCESSION => 'বৃত্তি ও ছাড়',
     ];
+
+    /** Purse accounts that open and close the classic school cashbook. */
+    private const RP_MONEY_KINDS = ['cash', 'bank', 'bkash', 'nagad'];
 
     public function __construct(private PDO $db, private ChartOfAccounts $chart)
     {
@@ -178,6 +183,193 @@ final class ReportService
         }
 
         return ['rows' => $rows, 'opening' => $opening, 'debit' => $debit, 'credit' => $credit, 'closing' => $closing];
+    }
+
+    /**
+     * Classic school cashbook: left আয় / right ব্যয়. Opening money balances and
+     * money-account debits sit on the left; money-account credits and closing
+     * balances sit on the right, so both totals match.
+     *
+     * @return array{
+     *   receipts: list<array{date: string, narration: string, amount: int}>,
+     *   payments: list<array{date: string, narration: string, amount: int}>,
+     *   receipt_total: int,
+     *   payment_total: int,
+     *   from: string,
+     *   to: string
+     * }
+     */
+    public function receiptsPayments(string $from, string $to): array
+    {
+        $openingDate = (new \DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d');
+        $moneyAccounts = [];
+        foreach ($this->chart->all() as $account) {
+            if ((int) ($account['is_group'] ?? 0) === 1) {
+                continue;
+            }
+            if (!in_array((string) ($account['money_kind'] ?? 'none'), self::RP_MONEY_KINDS, true)) {
+                continue;
+            }
+            $moneyAccounts[(int) $account['id']] = $account;
+        }
+
+        $receipts = [];
+        $payments = [];
+        foreach ($moneyAccounts as $id => $account) {
+            $open = $this->chart->balance($id, $openingDate);
+            if ($open !== 0) {
+                $receipts[] = [
+                    'date' => $from,
+                    'narration' => (string) $account['name_bn'],
+                    'amount' => $open,
+                ];
+            }
+        }
+
+        $voucherRows = \fetchRows(
+            $this->db,
+            "SELECT v.id AS voucher_id, v.voucher_date, v.narration, v.voucher_no,
+                    l.account_id, l.debit, l.credit, l.memo,
+                    a.name_bn, a.money_kind
+             FROM acc_voucher_lines l
+             JOIN acc_vouchers v ON v.id = l.voucher_id
+             JOIN acc_accounts a ON a.id = l.account_id
+             WHERE v.status = 'approved' AND v.voucher_date >= :from AND v.voucher_date <= :to
+             ORDER BY v.voucher_date, v.id, l.line_no",
+            ['from' => $from, 'to' => $to]
+        );
+        $byVoucher = [];
+        foreach ($voucherRows as $row) {
+            $byVoucher[(int) $row['voucher_id']][] = $row;
+        }
+        foreach ($byVoucher as $lines) {
+            $date = (string) ($lines[0]['voucher_date'] ?? '');
+            $narration = trim((string) ($lines[0]['narration'] ?? ''));
+            $debitNames = [];
+            $creditNames = [];
+            $moneyDebits = [];
+            $moneyCredits = [];
+            foreach ($lines as $line) {
+                $name = trim((string) ($line['name_bn'] ?? ''));
+                $debit = Money::fromDb($line['debit']);
+                $credit = Money::fromDb($line['credit']);
+                $isMoney = in_array((string) ($line['money_kind'] ?? 'none'), self::RP_MONEY_KINDS, true);
+                if ($debit > 0) {
+                    if ($isMoney) {
+                        $moneyDebits[] = ['amount' => $debit, 'name' => $name, 'memo' => trim((string) ($line['memo'] ?? ''))];
+                    } else {
+                        $debitNames[] = $name;
+                    }
+                }
+                if ($credit > 0) {
+                    if ($isMoney) {
+                        $moneyCredits[] = ['amount' => $credit, 'name' => $name, 'memo' => trim((string) ($line['memo'] ?? ''))];
+                    } else {
+                        $creditNames[] = $name;
+                    }
+                }
+            }
+            foreach ($moneyDebits as $entry) {
+                $label = self::rpLineLabel($narration, $entry['memo'], $creditNames !== [] ? $creditNames : array_column($moneyCredits, 'name'), $entry['name']);
+                $receipts[] = ['date' => $date, 'narration' => $label, 'amount' => $entry['amount']];
+            }
+            foreach ($moneyCredits as $entry) {
+                $label = self::rpLineLabel($narration, $entry['memo'], $debitNames !== [] ? $debitNames : array_column($moneyDebits, 'name'), $entry['name']);
+                $payments[] = ['date' => $date, 'narration' => $label, 'amount' => $entry['amount']];
+            }
+        }
+
+        foreach ($moneyAccounts as $id => $account) {
+            $close = $this->chart->balance($id, $to);
+            if ($close !== 0) {
+                $payments[] = [
+                    'date' => $to,
+                    'narration' => (string) $account['name_bn'],
+                    'amount' => $close,
+                ];
+            }
+        }
+
+        return self::receiptsPaymentsTotals($receipts, $payments, $from, $to);
+    }
+
+    /**
+     * @param list<array{date: string, narration: string, amount: int}> $receipts
+     * @param list<array{date: string, narration: string, amount: int}> $payments
+     * @return array{
+     *   receipts: list<array{date: string, narration: string, amount: int}>,
+     *   payments: list<array{date: string, narration: string, amount: int}>,
+     *   receipt_total: int,
+     *   payment_total: int,
+     *   from: string,
+     *   to: string
+     * }
+     */
+    public static function receiptsPaymentsTotals(array $receipts, array $payments, string $from, string $to): array
+    {
+        $receiptTotal = 0;
+        $paymentTotal = 0;
+        foreach ($receipts as $row) {
+            $receiptTotal += (int) $row['amount'];
+        }
+        foreach ($payments as $row) {
+            $paymentTotal += (int) $row['amount'];
+        }
+
+        return [
+            'receipts' => $receipts,
+            'payments' => $payments,
+            'receipt_total' => $receiptTotal,
+            'payment_total' => $paymentTotal,
+            'from' => $from,
+            'to' => $to,
+        ];
+    }
+
+    /**
+     * Pad the shorter side so the statement prints as two parallel columns.
+     *
+     * @param list<array{date: string, narration: string, amount: int}> $receipts
+     * @param list<array{date: string, narration: string, amount: int}> $payments
+     * @return list<array{receipt_date: string, receipt_narration: string, receipt_amount: ?int, payment_date: string, payment_narration: string, payment_amount: ?int}>
+     */
+    public static function receiptsPaymentsTable(array $receipts, array $payments): array
+    {
+        $rows = [];
+        $count = max(count($receipts), count($payments));
+        for ($i = 0; $i < $count; $i++) {
+            $left = $receipts[$i] ?? null;
+            $right = $payments[$i] ?? null;
+            $rows[] = [
+                'receipt_date' => $left['date'] ?? '',
+                'receipt_narration' => $left['narration'] ?? '',
+                'receipt_amount' => $left === null ? null : (int) $left['amount'],
+                'payment_date' => $right['date'] ?? '',
+                'payment_narration' => $right['narration'] ?? '',
+                'payment_amount' => $right === null ? null : (int) $right['amount'],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param list<string> $counterparts
+     */
+    private static function rpLineLabel(string $narration, string $memo, array $counterparts, string $moneyName): string
+    {
+        $counterparts = array_values(array_filter(array_map('trim', $counterparts), static fn (string $name): bool => $name !== ''));
+        if ($narration !== '') {
+            return $narration;
+        }
+        if ($memo !== '') {
+            return $memo;
+        }
+        if ($counterparts !== []) {
+            return implode(', ', array_unique($counterparts));
+        }
+
+        return $moneyName !== '' ? $moneyName : 'লেনদেন';
     }
 
     /**
