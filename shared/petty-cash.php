@@ -374,13 +374,23 @@ function pettyCashUpdate(
          WHERE id = :id'
     );
     $statement->execute([
-        'date' => pettyCashAssertCurrentMonthDate($date),
+        'date' => pettyCashValidateDate($date),
         'description' => pettyCashValidateDescription($description),
         'amount' => \School\Accounting\Support\Money::toDb($paisa),
         'updated_by' => $actorId,
         'updated_at' => $now,
         'id' => $id,
     ]);
+}
+
+function pettyCashDelete(PDO $db, int $id): void
+{
+    $existing = pettyCashFind($db, $id);
+    if ($existing === null) {
+        throw new RuntimeException('এন্ট্রিটি পাওয়া যায়নি।');
+    }
+    $statement = $db->prepare('DELETE FROM petty_cash_book WHERE id = :id');
+    $statement->execute(['id' => $id]);
 }
 
 /**

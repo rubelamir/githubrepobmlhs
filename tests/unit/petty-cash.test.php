@@ -25,13 +25,15 @@ $check($fallback['key'] === '2026-03' && $fallback['from'] === '2026-03-01', 'in
 $check($fallback['label'] === 'মার্চ-' . bnDigits('2026'), 'fallback month uses Bangla label');
 
 $today = new DateTimeImmutable('2026-11-22', new DateTimeZone('Asia/Dhaka'));
-$check(pettyCashAssertCurrentMonthDate('2026-11-05', $today) === '2026-11-05', 'current-month date is allowed');
+$check(pettyCashAssertCurrentMonthDate('2026-11-05', $today) === '2026-11-05', 'current-month date is allowed for create');
 try {
     pettyCashAssertCurrentMonthDate('2026-10-31', $today);
-    $check(false, 'other-month date must fail');
+    $check(false, 'other-month date must fail for create');
 } catch (Throwable $exception) {
-    $check(str_contains($exception->getMessage(), 'চলতি মাস'), 'other-month date shows warning text');
+    $check(str_contains($exception->getMessage(), 'চলতি মাস'), 'other-month create shows warning text');
 }
+$check(pettyCashValidateDate('2021-01-15') === '2021-01-15', 'old-month dates remain valid for update/delete');
+$check(function_exists('pettyCashDelete'), 'delete helper is available');
 
 $income = [
     ['id' => 1, 'entry_date' => '2026-11-01', 'description' => 'চা তহবিল', 'amount' => '100.00'],

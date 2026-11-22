@@ -83,10 +83,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'এন্ট্রি আপডেট হয়েছে।'
             );
         }
+        if ($action === 'delete') {
+            $id = (int) ($_POST['id'] ?? 0);
+            $existing = pettyCashFind($db, $id);
+            if ($existing === null) {
+                throw new RuntimeException('এন্ট্রিটি পাওয়া যায়নি।');
+            }
+            $savedMonth = pettyCashParseMonth(substr((string) $existing['entry_date'], 0, 7), $today);
+            pettyCashDelete($db, $id);
+            redirectWithMessage(
+                'petty-cash.php?month=' . rawurlencode($savedMonth['key']),
+                'success',
+                'এন্ট্রি মুছে ফেলা হয়েছে।'
+            );
+        }
         throw new RuntimeException('অজানা অনুরোধ।');
     } catch (Throwable $exception) {
         $editId = (int) ($_POST['id'] ?? 0);
-        $back = $redirectBase . ($editId > 0 ? '&edit=' . $editId : '');
+        $back = $redirectBase . ($editId > 0 && (string) ($_POST['action'] ?? '') === 'update' ? '&edit=' . $editId : '');
         $flashType = str_contains($exception->getMessage(), 'চলতি মাস') ? 'warning' : 'danger';
         redirectWithMessage($back, $flashType, userFacingError($exception));
     }
@@ -110,13 +124,6 @@ if ($editRow !== null) {
     if ($editMonth['key'] !== $monthKey) {
         redirectWithMessage('petty-cash.php?month=' . rawurlencode($editMonth['key']) . '&edit=' . $editId, 'info', 'এন্ট্রির মাসে নিয়ে যাওয়া হলো।');
     }
-    if ($editMonth['key'] !== $currentMonthKey) {
-        redirectWithMessage(
-            'petty-cash.php?month=' . rawurlencode($editMonth['key']),
-            'warning',
-            'চলতি মাস (' . $currentMonthLabel . ') ব্যতীত অন্য মাসের এন্ট্রি সম্পাদনা করা যাবে না।'
-        );
-    }
 }
 
 $basePath = '../../';
@@ -127,6 +134,12 @@ $pdfUrl = 'petty-cash.php?month=' . rawurlencode($monthKey) . '&format=pdf';
 $defaultDate = $isCurrentMonth ? $today->format('Y-m-d') : $month['from'];
 $monthMin = $today->format('Y-m-01');
 $monthMax = $today->format('Y-m-t');
+$editConfirmMsg = $isCurrentMonth
+    ? 'এই এন্ট্রি সম্পাদনা করতে চান?'
+    : 'পুরনো মাসের এন্ট্রি সম্পাদনা করতে যাচ্ছেন। আপনি কি নিশ্চিত?';
+$deleteConfirmMsg = $isCurrentMonth
+    ? 'এই এন্ট্রি মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।'
+    : 'পুরনো মাসের এন্ট্রি মুছে ফেলতে যাচ্ছেন। এটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত?';
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
@@ -163,25 +176,28 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
             </form>
 
-            <?php if ($canWrite && !$isCurrentMonth): ?>
+            <?php if ($canWrite && !$isCurrentMonth && $editRow === null): ?>
               <div class="alert alert-warning d-print-none" role="alert">
-                চলতি মাস (<strong><?= h($currentMonthLabel) ?></strong>) ব্যতীত অন্য মাসের তারিখে আয়-ব্যয় এন্ট্রি করা যাবে না।
-                পুরনো মাস শুধু দেখা ও প্রিন্ট/PDF করা যাবে।
+                নতুন আয়-ব্যয় এন্ট্রি শুধু চলতি মাস (<strong><?= h($currentMonthLabel) ?></strong>) এ করা যায়।
+                পুরনো মাসের এন্ট্রি প্রয়োজনে সম্পাদনা বা মুছে ফেলা যাবে।
                 <a class="alert-link" href="petty-cash.php">চলতি মাসে যান</a>
               </div>
             <?php endif; ?>
 
-            <?php if ($editRow !== null && $canWrite && $isCurrentMonth): ?>
+            <?php if ($editRow !== null && $canWrite): ?>
               <div class="card mb-3 border-primary d-print-none">
                 <div class="card-header"><h3 class="card-title mb-0">এন্ট্রি সম্পাদনা — <?= h($editRow['entry_type'] === PETTY_CASH_INCOME ? 'আয়' : 'ব্যয়') ?></h3></div>
                 <div class="card-body">
-                  <form method="post" class="row g-2 align-items-end js-petty-entry-form" data-current-month="<?= h($currentMonthKey) ?>" data-current-label="<?= h($currentMonthLabel) ?>">
+                  <?php if (!$isCurrentMonth): ?>
+                    <div class="alert alert-warning py-2" role="alert">পুরনো মাসের এন্ট্রি সম্পাদনা করছেন — সংরক্ষণের আগে তথ্য যাচাই করুন।</div>
+                  <?php endif; ?>
+                  <form method="post" class="row g-2 align-items-end">
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="id" value="<?= (int) $editRow['id'] ?>">
                     <input type="hidden" name="month" value="<?= h($monthKey) ?>">
                     <div class="col-md-2">
                       <label class="form-label" for="edit-date">তারিখ</label>
-                      <input class="form-control" type="date" id="edit-date" name="entry_date" required min="<?= h($monthMin) ?>" max="<?= h($monthMax) ?>" value="<?= h((string) $editRow['entry_date']) ?>">
+                      <input class="form-control" type="date" id="edit-date" name="entry_date" required value="<?= h((string) $editRow['entry_date']) ?>">
                     </div>
                     <div class="col-md-5">
                       <label class="form-label" for="edit-description"><?= $editRow['entry_type'] === PETTY_CASH_INCOME ? 'আয়ের খাত / বিবরণ' : 'ব্যয়ের খাত / বিবরণ' ?></label>
@@ -192,7 +208,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <input class="form-control" type="text" id="edit-amount" name="amount" inputmode="decimal" required value="<?= h(Money::toInput(Money::fromDb($editRow['amount']))) ?>">
                     </div>
                     <div class="col-md-3 d-flex flex-wrap gap-1">
-                      <button class="btn btn-primary" type="submit">আপডেট</button>
+                      <button class="btn btn-primary" type="submit" onclick="return confirm('এন্ট্রি আপডেট নিশ্চিত করবেন?');">আপডেট</button>
                       <a class="btn btn-outline-secondary" href="<?= h($redirectBase) ?>">বাতিল</a>
                     </div>
                   </form>
@@ -204,7 +220,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="card h-100">
                     <div class="card-header"><h3 class="card-title mb-0">আয় এন্ট্রি</h3></div>
                     <div class="card-body">
-                      <form method="post" class="row g-2 js-petty-entry-form" data-current-month="<?= h($currentMonthKey) ?>" data-current-label="<?= h($currentMonthLabel) ?>">
+                      <form method="post" class="row g-2 js-petty-create-form" data-current-month="<?= h($currentMonthKey) ?>" data-current-label="<?= h($currentMonthLabel) ?>">
                         <input type="hidden" name="action" value="create">
                         <input type="hidden" name="entry_type" value="<?= h(PETTY_CASH_INCOME) ?>">
                         <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -231,7 +247,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="card h-100">
                     <div class="card-header"><h3 class="card-title mb-0">ব্যয় এন্ট্রি</h3></div>
                     <div class="card-body">
-                      <form method="post" class="row g-2 js-petty-entry-form" data-current-month="<?= h($currentMonthKey) ?>" data-current-label="<?= h($currentMonthLabel) ?>">
+                      <form method="post" class="row g-2 js-petty-create-form" data-current-month="<?= h($currentMonthKey) ?>" data-current-label="<?= h($currentMonthLabel) ?>">
                         <input type="hidden" name="action" value="create">
                         <input type="hidden" name="entry_type" value="<?= h(PETTY_CASH_EXPENSE) ?>">
                         <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -274,11 +290,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <th class="text-center">তারিখ</th>
                         <th>বিবরণ</th>
                         <th class="text-end">টাকা</th>
-                        <th class="text-center d-print-none">সম্পাদনা</th>
+                        <th class="text-center d-print-none">কর্ম</th>
                         <th class="text-center">তারিখ</th>
                         <th>বিবরণ</th>
                         <th class="text-end">টাকা</th>
-                        <th class="text-center d-print-none">সম্পাদনা</th>
+                        <th class="text-center d-print-none">কর্ম</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -294,17 +310,45 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <td class="text-nowrap text-center"><?= $left ? h(accFormatDate((string) $left['entry_date'])) : '' ?></td>
                           <td><?= $left ? h((string) $left['description']) : '' ?></td>
                           <td class="text-end text-nowrap"><?= $left ? h(Money::format(Money::fromDb($left['amount']))) : '' ?></td>
-                          <td class="text-center d-print-none">
-                            <?php if ($left && $canWrite && $isCurrentMonth): ?>
-                              <a class="btn btn-link btn-sm p-0" href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>">সম্পাদনা</a>
+                          <td class="text-center d-print-none text-nowrap">
+                            <?php if ($left && $canWrite): ?>
+                              <a class="btn btn-link btn-sm p-0 text-primary"
+                                 href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
+                                 title="এডিট"
+                                 aria-label="এডিট"
+                                 onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                              </a>
+                              <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
+                                <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                  <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                              </form>
                             <?php endif; ?>
                           </td>
                           <td class="text-nowrap text-center"><?= $right ? h(accFormatDate((string) $right['entry_date'])) : '' ?></td>
                           <td><?= $right ? h((string) $right['description']) : '' ?></td>
                           <td class="text-end text-nowrap"><?= $right ? h(Money::format(Money::fromDb($right['amount']))) : '' ?></td>
-                          <td class="text-center d-print-none">
-                            <?php if ($right && $canWrite && $isCurrentMonth): ?>
-                              <a class="btn btn-link btn-sm p-0" href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>">সম্পাদনা</a>
+                          <td class="text-center d-print-none text-nowrap">
+                            <?php if ($right && $canWrite): ?>
+                              <a class="btn btn-link btn-sm p-0 text-primary"
+                                 href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
+                                 title="এডিট"
+                                 aria-label="এডিট"
+                                 onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                              </a>
+                              <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
+                                <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                  <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                              </form>
                             <?php endif; ?>
                           </td>
                         </tr>
@@ -338,7 +382,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         </div>
 <script>
 (function () {
-  document.querySelectorAll('.js-petty-entry-form').forEach(function (form) {
+  document.querySelectorAll('.js-petty-create-form').forEach(function (form) {
     form.addEventListener('submit', function (event) {
       var dateInput = form.querySelector('input[name="entry_date"]');
       if (!dateInput || !dateInput.value) {
@@ -348,7 +392,7 @@ include __DIR__ . '/../../includes/layout-head.php';
       var currentLabel = form.getAttribute('data-current-label') || 'চলতি মাস';
       if (dateInput.value.slice(0, 7) !== currentMonth) {
         event.preventDefault();
-        window.alert('চলতি মাস (' + currentLabel + ') ব্যতীত অন্য মাসের তারিখে আয়-ব্যয় এন্ট্রি করা যাবে না।');
+        window.alert('চলতি মাস (' + currentLabel + ') ব্যতীত অন্য মাসের তারিখে নতুন আয়-ব্যয় এন্ট্রি করা যাবে না।');
         dateInput.focus();
       }
     });
