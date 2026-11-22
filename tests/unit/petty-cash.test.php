@@ -55,6 +55,16 @@ try {
 $check(pettyCashValidateDate('2026-11-22') === '2026-11-22', 'valid date passes');
 $check(pettyCashValidateDescription('  চা   নাস্তা  ') === 'চা নাস্তা', 'description is trimmed and collapsed');
 
+$jsonPath = pettyCashImportJsonPath();
+$check(is_file($jsonPath), 'bundled Jan-21…May-26 JSON is present');
+$payload = json_decode((string) file_get_contents($jsonPath), true);
+$check(is_array($payload) && isset($payload['entries']) && is_array($payload['entries']), 'import JSON has entries');
+$check(count($payload['entries']) >= 1900, 'import JSON covers the Excel history rows');
+$first = $payload['entries'][0] ?? [];
+$last = $payload['entries'][count($payload['entries']) - 1] ?? [];
+$check(($first['date'] ?? '') === '2021-01-01', 'import starts at 2021-01-01');
+$check(($last['date'] ?? '') >= '2026-05-01', 'import reaches May-26');
+
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);
     exit(1);

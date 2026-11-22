@@ -14,6 +14,21 @@ $canWrite = $access->can(Capability::VOUCHER_CREATE) || $access->can(Capability:
 $db = getDatabaseConnection();
 pettyCashEnsureSchema($db);
 
+// First visit after deploy: pull Jan-21…May-26 Excel history once.
+if ($canWrite && function_exists('schemaMigrationApplied')
+    && !schemaMigrationApplied($db, pettyCashImportMigrationName())
+    && is_file(pettyCashImportJsonPath())) {
+    try {
+        set_time_limit(180);
+        $import = pettyCashImportFromBundledJson($db, $access->teacherId(), false);
+        if (!$import['skipped']) {
+            redirectWithMessage('petty-cash.php?month=2021-01', 'success', $import['message']);
+        }
+    } catch (Throwable $exception) {
+        redirectWithMessage('petty-cash-import.php', 'danger', userFacingError($exception));
+    }
+}
+
 $month = pettyCashParseMonth((string) ($_GET['month'] ?? $_POST['month'] ?? ''), accToday());
 $monthKey = $month['key'];
 $redirectBase = 'petty-cash.php?month=' . rawurlencode($monthKey);
@@ -109,6 +124,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <div class="d-flex flex-wrap gap-1">
                 <a class="btn btn-outline-secondary btn-sm" href="dashboard.php">← ড্যাশবোর্ড</a>
+                <a class="btn btn-outline-secondary btn-sm" href="petty-cash-import.php">এক্সেল ইমপোর্ট</a>
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">প্রিন্ট</button>
                 <a class="btn btn-outline-secondary btn-sm" href="<?= h($pdfUrl) ?>">PDF</a>
               </div>
