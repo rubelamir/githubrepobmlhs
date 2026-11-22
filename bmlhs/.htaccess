@@ -1,6 +1,10 @@
 #php extention remove
 RewriteEngine On
 
+# Legacy /bmlhs/... bookmarks: this physical folder must redirect to the domain root.
+RewriteCond %{THE_REQUEST} \s/+bmlhs(?:/|\s|\?) [NC]
+RewriteRule ^(.*)$ /$1 [R=301,L]
+
 # The homepage is the directory. A direct index.php request is the same page.
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
 RewriteCond %{THE_REQUEST} \s/+(.+/)?index\.php[\s?] [NC]
