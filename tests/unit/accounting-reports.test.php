@@ -121,6 +121,7 @@ $check(
     'closing bank balance trails the payment column'
 );
 $check(ReportService::LABELS[ReportService::RECEIPTS_PAYMENTS] === 'মাসিক আয়-ব্যয়', 'the cashbook report keeps the school label');
+$check(array_key_first(ReportService::LABELS) === ReportService::RECEIPTS_PAYMENTS, 'monthly cashbook leads the report filter');
 $check(
     ReportService::rpIsPurseTransferOnly([], [], [['amount' => 5000, 'name' => 'ব্যাংক', 'memo' => '']], [['amount' => 5000, 'name' => 'নগদ', 'memo' => '']]),
     'cash↔bank deposit is treated as a purse transfer'

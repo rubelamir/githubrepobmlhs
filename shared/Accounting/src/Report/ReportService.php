@@ -26,10 +26,10 @@ final class ReportService
     public const CONCESSION = 'concession';
 
     public const LABELS = [
-        self::TRIAL => 'উদ্বৃত্ত',
+        self::RECEIPTS_PAYMENTS => 'মাসিক আয়-ব্যয়',
         self::INCOME => 'আয়-ব্যয় বিবরণী',
         self::CASH => 'নগদ ও ব্যাংক',
-        self::RECEIPTS_PAYMENTS => 'মাসিক আয়-ব্যয়',
+        self::TRIAL => 'উদ্বৃত্ত',
         self::COLLECTION => 'ফি আদায়',
         self::DUES => 'শ্রেণীভিত্তিক বকেয়া',
         self::CONCESSION => 'বৃত্তি ও ছাড়',
