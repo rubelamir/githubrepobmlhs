@@ -48,6 +48,12 @@ $_SERVER['DOCUMENT_ROOT'] = projectRootPath();
 $check(publicSiteUrl() === '/', 'public site root URL has no /bmlhs prefix');
 $check(publicSiteUrl('about') === '/about', 'public page URL has no /bmlhs prefix');
 $check(adminUrl('index.php') === '/dist/index.php', 'admin URL still uses /dist');
+$check(publicHomeUrl() === '/', 'home URL is the public site root');
+$check(publicNavHref('index') === '/', 'nav index points at the public root');
+$check(publicNavHref('index.php') === '/', 'nav index.php points at the public root');
+$check(publicNavIsActive('index', 'index'), 'index nav stays active on the homepage');
+$check(publicNavIsActive('/', 'index'), 'root nav stays active on the homepage');
+$check(!publicNavIsActive('index', 'about'), 'index nav is inactive on other pages');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . " canonical checks failed\n");

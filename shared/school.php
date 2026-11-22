@@ -1227,6 +1227,26 @@ function ensureRoutineNavMenu(PDO $db): void
     ]);
 }
 
+function publicHomeUrl(): string
+{
+    return publicSiteUrl();
+}
+
+function isPublicHomeNavUrl(string $url): bool
+{
+    $url = trim($url);
+    if ($url === '' || $url === '#' || $url === '/' || $url === './') {
+        return true;
+    }
+    $path = parse_url($url, PHP_URL_PATH);
+    if (!is_string($path) || $path === '') {
+        $path = $url;
+    }
+    $slug = pathinfo(basename($path), PATHINFO_FILENAME);
+
+    return $slug === 'index' || $slug === 'home';
+}
+
 function publicNavHref(string $url): string
 {
     $url = trim($url);
@@ -1235,6 +1255,9 @@ function publicNavHref(string $url): string
     }
     if (preg_match('#^(https?:)?//#i', $url) === 1 || str_starts_with($url, 'mailto:') || str_starts_with($url, 'tel:')) {
         return $url;
+    }
+    if (isPublicHomeNavUrl($url)) {
+        return publicHomeUrl();
     }
     if (str_starts_with($url, '/')) {
         return $url;
@@ -1248,6 +1271,9 @@ function publicNavIsActive(string $url, string $curPageName): bool
     $url = trim($url);
     if ($url === '' || $url === '#') {
         return false;
+    }
+    if (isPublicHomeNavUrl($url)) {
+        return $curPageName === 'index';
     }
     if (preg_match('#^(https?:)?//#i', $url) === 1 || str_starts_with($url, '/')) {
         return false;

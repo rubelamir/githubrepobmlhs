@@ -12,7 +12,7 @@ try {
 ?>
 <nav class="navbar navbar-expand-lg school-navbar sticky-top" aria-label="প্রধান মেনু">
     <div class="container-fluid px-3 px-lg-4">
-        <a class="navbar-brand school-nav-home" href="index" aria-label="হোম">
+        <a class="navbar-brand school-nav-home" href="<?= h(publicHomeUrl()) ?>" aria-label="হোম">
             <i class="fas fa-home" aria-hidden="true"></i>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
@@ -24,7 +24,7 @@ try {
             <ul class="navbar-nav mx-auto flex-wrap justify-content-center school-nav-list">
                 <?php if ($navTree === []): ?>
                     <li class="nav-item">
-                        <a class="nav-link<?= $curPageName === 'index' ? ' nav_link_active' : '' ?>" href="index">হোম</a>
+                        <a class="nav-link<?= $curPageName === 'index' ? ' nav_link_active' : '' ?>" href="<?= h(publicHomeUrl()) ?>">হোম</a>
                     </li>
                 <?php endif; ?>
                 <?php foreach ($navTree as $node): ?>

@@ -22,7 +22,7 @@ include 'navbar&marqueetag.php';
         <p class="school-error-code">৪০৪</p>
         <h3>এই পাতাটি খুঁজে পাওয়া যায়নি</h3>
         <p>লিংকটি ভুল হতে পারে, অথবা পাতাটি সরানো হয়েছে। হোমপেজে ফিরে আবার চেষ্টা করুন।</p>
-        <a class="school-error-home" href="index">হোমে ফিরুন</a>
+        <a class="school-error-home" href="<?= h(publicHomeUrl()) ?>">হোমে ফিরুন</a>
     </div>
 </div>
 <?php include 'footer.php'; ?>
