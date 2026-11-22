@@ -13,8 +13,9 @@ function mpdfBanglaTtfDir(): string
 
 function mpdfBanglaFontFamily(): string
 {
-    // Noto digits stay clearer than Hind Siliguri; OTL must stay off (mPDF rejects Noto GPOS).
-    return 'notosansbengali';
+    // Hind Siliguri + OTL keeps Bengali conjuncts intact in mPDF.
+    // Noto Sans Bengali with OTL crashes; without OTL the script breaks apart.
+    return 'hindsiliguri';
 }
 
 function mpdfRequireLibrary(): void
@@ -229,13 +230,13 @@ function mpdfSchoolPadCss(): string
 
     return <<<CSS
 body { font-family: {$font}, sans-serif; color: #16231e; }
-.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 8px; border-bottom: 2px solid #1a3a30; }
-.school-pad td { border: 0; padding: 0 4px 8px; vertical-align: middle; }
-.school-pad-logo { width: 18%; text-align: center; }
-.school-pad-logo img { width: 52px; height: 52px; }
-.school-pad-brand { width: 64%; text-align: center; }
-.school-pad-name { font-size: 18px; font-weight: bold; line-height: 1.25; }
-.school-pad-meta { font-size: 11px; color: #334; margin-top: 2px; }
+.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 3mm; border-bottom: 0.35mm solid #1a3a30; }
+.school-pad td { border: 0 !important; padding: 0 0 2mm; vertical-align: middle; background: transparent; }
+.school-pad-logo { width: 22mm; text-align: center; }
+.school-pad-logo img { width: 18mm; height: 18mm; }
+.school-pad-brand { text-align: center; }
+.school-pad-name { font-size: 16pt; font-weight: bold; line-height: 1.3; color: #174936; }
+.school-pad-meta { font-size: 9pt; color: #374b43; margin-top: 0.5mm; }
 CSS;
 }
 

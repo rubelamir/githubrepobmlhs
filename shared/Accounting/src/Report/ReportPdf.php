@@ -16,11 +16,14 @@ final class ReportPdf
     public static function download(string $filename, string $title, string $subtitle, array $headers, array $rows): void
     {
         require_once dirname(__DIR__, 3) . '/mpdf-bangla.php';
-        $settings = function_exists('schoolSettings') && function_exists('getDatabaseConnection')
+        if (!\function_exists('schoolPlainAddress')) {
+            require_once dirname(__DIR__, 4) . '/bmlhs/includes/site.php';
+        }
+        $settings = \function_exists('schoolSettings') && \function_exists('getDatabaseConnection')
             ? \schoolSettings(\getDatabaseConnection())
             : [];
         $mpdf = \createBanglaMpdf($title, $title, 'A4', 'L');
-        $mpdf->SetMargins(10, 10, 12);
+        $mpdf->SetMargins(12, 12, 12);
         $mpdf->SetAutoPageBreak(true, 12);
         $head = '';
         foreach ($headers as $header) {
@@ -40,13 +43,12 @@ final class ReportPdf
             . '<table class="report"><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
         $font = \mpdfBanglaFontFamily();
         $css = \mpdfSchoolPadCss()
-            . "body{font-family:{$font},sans-serif;font-size:12px}"
-            . 'h1{font-size:16px;margin:0 0 4px;text-align:center}'
-            . '.sub{color:#444;margin:0 0 10px;text-align:center}'
-            . 'table.report{width:100%;border-collapse:collapse}'
-            . 'table.report th,table.report td{border:1px solid #bbb;padding:4px 6px;vertical-align:top;font-family:'
-            . $font . ',sans-serif}'
-            . 'table.report th{background:#eef4f1}';
+            . "body{font-family:{$font},sans-serif;font-size:11pt}"
+            . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
+            . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
+            . 'table.report{width:100%;border-collapse:collapse;font-size:10pt}'
+            . 'table.report th,table.report td{border:0.25mm solid #687b72;padding:1.5mm 1.5mm;vertical-align:top}'
+            . 'table.report th{background:#e5ede9;font-weight:bold}';
         $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $safe = preg_replace('/[^A-Za-z0-9._-]/', '-', $filename) ?: 'report.pdf';

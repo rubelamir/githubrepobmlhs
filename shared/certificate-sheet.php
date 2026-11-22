@@ -44,7 +44,7 @@ function certificateTestimonialContentInset(): array
 function certificateTestimonialSheetCss(string $mode = 'html'): string
 {
     $fontFamily = $mode === 'pdf'
-        ? 'notosansbengali, sans-serif'
+        ? 'hindsiliguri, sans-serif'
         : '"Hind Siliguri", "Noto Sans Bengali", "Segoe UI", sans-serif';
     $outer = certificateOuterMarginMm();
 

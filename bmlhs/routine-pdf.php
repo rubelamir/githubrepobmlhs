@@ -127,7 +127,7 @@ $mpdf = createBanglaMpdf(
 $mpdf->SetMargins(8, 8, 8);
 $mpdf->SetAutoPageBreak(false);
 $mpdf->WriteHTML(<<<'CSS'
-body { font-family: notosansbengali, sans-serif; color: #1a2a24; font-size: 8pt; }
+body { font-family: hindsiliguri, sans-serif; color: #1a2a24; font-size: 8pt; }
 .routine-sheet { border: .3mm solid #9daea3; border-radius: 3mm; padding: 4mm; }
 .routine-head { width: 100%; border-collapse: collapse; border-bottom: .5mm solid #1a4d3e; margin-bottom: 3mm; }
 .routine-head td { padding: 0 0 2mm; vertical-align: middle; text-align: center; }
