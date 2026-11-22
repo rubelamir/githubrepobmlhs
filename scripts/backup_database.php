@@ -6,7 +6,7 @@ declare(strict_types=1);
  *
  * Usage:
  *   php scripts/backup_database.php
- *   php scripts/backup_database.php --keep-days=30 --dir="C:\xampp\bmlhs-db-backups"
+ *   php scripts/backup_database.php --keep-days=100 --dir="C:\xampp\bmlhs-db-backups"
  */
 
 if (PHP_SAPI !== 'cli') {

@@ -4,7 +4,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup_database.ps1 -KeepDays 21
 param(
     [string]$BackupDir = '',
-    [int]$KeepDays = 30,
+    [int]$KeepDays = 100,
     [switch]$NoGzip,
     [switch]$RegisterSchedule
 )
