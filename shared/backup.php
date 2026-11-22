@@ -6,7 +6,7 @@ require_once __DIR__ . '/deployment-config.php';
 function databaseBackupKeepDays(): int
 {
     $env = getenv('ADMINLTE_BACKUP_KEEP_DAYS');
-    $days = is_string($env) && ctype_digit($env) ? (int) $env : 30;
+    $days = is_string($env) && ctype_digit($env) ? (int) $env : 100;
 
     return max(1, $days);
 }
