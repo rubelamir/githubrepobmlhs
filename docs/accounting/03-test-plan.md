@@ -50,7 +50,7 @@ php tests/unit/accounting-reports.test.php
 
 ## হাতে যাচাই — অভিভাবক পোর্টাল
 
-ঠিকানা: `https://bmlhs.site/bmlhs/fee-payment` (মেনুতে যোগ করার পর)।
+ঠিকানা: `https://bmlhs.site/fee-payment` (মেনুতে যোগ করার পর)।
 
 1. ভুল মোবাইল ও ঠিক মোবাইল — একই ধরনের উত্তর, যাতে কেউ বুঝতে না পারে নম্বরটি আছে কি না।
 2. OTP ৫ মিনিট পর এবং ৫ বার ভুলের পর বাতিল।

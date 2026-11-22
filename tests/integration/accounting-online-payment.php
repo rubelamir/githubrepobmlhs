@@ -179,7 +179,7 @@ try {
     $itemId = (int) $db->lastInsertId();
 
     $start = static function () use ($online, $studentId, $invoiceId): array {
-        return $online->start('bkash', $studentId, [$invoiceId], bin2hex(random_bytes(16)), '127.0.0.1', 'https://bmlhs.site/bmlhs/fee-payment-callback.php');
+        return $online->start('bkash', $studentId, [$invoiceId], bin2hex(random_bytes(16)), '127.0.0.1', 'https://bmlhs.site/fee-payment-callback.php');
     };
 
     $mode(['execute' => 'mismatch', 'query' => 'initiated', 'refund' => 'completed', 'query_verified' => false]);

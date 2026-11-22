@@ -203,7 +203,7 @@ $useAsset['jquery'] = $useAsset['jquery'] || $useAsset['owl'] || $useAsset['data
                     <div class="school-brand-atmosphere" aria-hidden="true"></div>
                     <div class="row align-items-center m-0 school-brand-inner">
                     <div class="col-sm-2 d-flex justify-content-center">
-                        <a href="index" class="school-logo-link">
+                        <a href="<?= h(publicHomeUrl()) ?>" class="school-logo-link">
                             <img class="img-fluid school-logo" src="<?= h($logo) ?>" alt="<?= h($school['school_name_en']) ?>">
                         </a>
                     </div>

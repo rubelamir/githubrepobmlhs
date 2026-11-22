@@ -19,7 +19,7 @@ $footerHasLinks = $footerLinks !== [];
   <div class="container school-footer-inner">
     <div class="school-footer-grid<?= $footerHasLinks ? '' : ' is-compact' ?>">
       <section class="school-footer-brand-block" aria-label="বিদ্যালয়ের পরিচিতি">
-        <a class="school-footer-logo-link" href="index">
+        <a class="school-footer-logo-link" href="<?= h(publicHomeUrl()) ?>">
           <img class="school-footer-logo" src="<?= h($footerLogo) ?>" alt="<?= h((string) $footerSchool['school_name_en']) ?>" width="72" height="72">
         </a>
         <div class="school-footer-brand"><?= h((string) $footerSchool['school_name_bn']) ?></div>

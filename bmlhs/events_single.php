@@ -60,7 +60,7 @@ $facebookShare = facebookSharerUrl($shareUrl);
 
     <div class="container school-news-wrap py-4 py-lg-5">
         <nav class="school-news-breadcrumb" aria-label="breadcrumb">
-            <a href="index">হোম</a>
+            <a href="<?= h(publicHomeUrl()) ?>">হোম</a>
             <span aria-hidden="true">/</span>
             <a href="events">ইভেন্টস</a>
             <?php if (is_array($event)): ?>
