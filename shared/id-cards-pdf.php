@@ -210,7 +210,7 @@ function studentIdCardWatermarkPngPath(string $logoPath): string
 function studentIdCardPdfCss(): string
 {
     return <<<'CSS'
-body { font-family: notosansbengali; color: #0f2f26; }
+body { font-family: hindsiliguri; color: #0f2f26; }
 .sheet { width: 100%; border-collapse: collapse; }
 .slot { width: 50%; vertical-align: top; padding: 0 2.5mm 5mm 0; }
 .card { width: 85.6mm; height: 54mm; border: 0.3mm solid #0f2f26; border-collapse: collapse; color: #0f2f26; background: transparent; }
@@ -494,7 +494,7 @@ function seatLevelCardPdfCss(): string
     // Font sizes slightly larger than screen px→pt, still within 86×44mm card.
     return <<<'CSS'
 body, .sl-card, .sl-school, .sl-meta, .sl-title, .sl-name, .sl-k, .sl-v {
-  font-family: notosansbengali;
+  font-family: hindsiliguri;
   color: #0f2f26;
 }
 .sl-card {

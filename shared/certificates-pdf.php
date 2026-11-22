@@ -89,7 +89,7 @@ function certificatePdfCss(): string
 
     return $borderCss . <<<'CSS'
 body {
-  font-family: notosansbengali, sans-serif;
+  font-family: hindsiliguri, sans-serif;
   color: #000;
 }
 .head {
