@@ -151,6 +151,47 @@ function pettyCashImportFromBundledJson(PDO $db, ?int $actorId = null, bool $for
     ];
 }
 
+/** @return array<int, string> */
+function pettyCashBanglaMonths(): array
+{
+    return [
+        1 => 'জানুয়ারি', 2 => 'ফেব্রুয়ারি', 3 => 'মার্চ', 4 => 'এপ্রিল',
+        5 => 'মে', 6 => 'জুন', 7 => 'জুলাই', 8 => 'আগস্ট',
+        9 => 'সেপ্টেম্বর', 10 => 'অক্টোবর', 11 => 'নভেম্বর', 12 => 'ডিসেম্বর',
+    ];
+}
+
+/** Display label like নভেম্বর-২০২৬ */
+function pettyCashMonthLabel(int $year, int $month): string
+{
+    $names = pettyCashBanglaMonths();
+    $name = $names[$month] ?? sprintf('%02d', $month);
+    $yearText = function_exists('bnDigits') ? bnDigits((string) $year) : (string) $year;
+
+    return $name . '-' . $yearText;
+}
+
+/**
+ * Only the current calendar month (Asia/Dhaka) may receive new or edited entries.
+ *
+ * @throws RuntimeException
+ */
+function pettyCashAssertCurrentMonthDate(string $date, ?DateTimeImmutable $today = null): string
+{
+    $validated = pettyCashValidateDate($date);
+    $today ??= new DateTimeImmutable('today', new DateTimeZone('Asia/Dhaka'));
+    $entryMonth = substr($validated, 0, 7);
+    $currentMonth = $today->format('Y-m');
+    if ($entryMonth !== $currentMonth) {
+        $currentLabel = pettyCashMonthLabel((int) $today->format('Y'), (int) $today->format('n'));
+        throw new RuntimeException(
+            'চলতি মাস (' . $currentLabel . ') ব্যতীত অন্য মাসের তারিখে আয়-ব্যয় এন্ট্রি করা যাবে না।'
+        );
+    }
+
+    return $validated;
+}
+
 /** @return array{year: int, month: int, key: string, from: string, to: string, label: string} */
 function pettyCashParseMonth(?string $value, ?DateTimeImmutable $today = null): array
 {
@@ -168,21 +209,23 @@ function pettyCashParseMonth(?string $value, ?DateTimeImmutable $today = null): 
                     'key' => $start->format('Y-m'),
                     'from' => $start->format('Y-m-d'),
                     'to' => $start->format('Y-m-t'),
-                    'label' => $start->format('Y-m'),
+                    'label' => pettyCashMonthLabel($year, $month),
                 ];
             }
         }
     }
 
     $start = $today->modify('first day of this month');
+    $year = (int) $start->format('Y');
+    $month = (int) $start->format('n');
 
     return [
-        'year' => (int) $start->format('Y'),
-        'month' => (int) $start->format('n'),
+        'year' => $year,
+        'month' => $month,
         'key' => $start->format('Y-m'),
         'from' => $start->format('Y-m-d'),
         'to' => $start->format('Y-m-t'),
-        'label' => $start->format('Y-m'),
+        'label' => pettyCashMonthLabel($year, $month),
     ];
 }
 
@@ -296,7 +339,7 @@ function pettyCashInsert(
     );
     $statement->execute([
         'type' => $type,
-        'date' => pettyCashValidateDate($date),
+        'date' => pettyCashAssertCurrentMonthDate($date),
         'description' => pettyCashValidateDescription($description),
         'amount' => \School\Accounting\Support\Money::toDb($paisa),
         'created_by' => $actorId,
@@ -340,11 +383,22 @@ function pettyCashUpdate(
     ]);
 }
 
+function pettyCashDelete(PDO $db, int $id): void
+{
+    $existing = pettyCashFind($db, $id);
+    if ($existing === null) {
+        throw new RuntimeException('এন্ট্রিটি পাওয়া যায়নি।');
+    }
+    $statement = $db->prepare('DELETE FROM petty_cash_book WHERE id = :id');
+    $statement->execute(['id' => $id]);
+}
+
 /**
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
  */
 function pettyCashDownloadPdf(
+    string $monthKey,
     string $monthLabel,
     string $from,
     string $to,
@@ -365,7 +419,7 @@ function pettyCashDownloadPdf(
     $subtitle = (function_exists('accFormatDate') ? accFormatDate($from) : $from)
         . ' থেকে '
         . (function_exists('accFormatDate') ? accFormatDate($to) : $to)
-        . ' · মাস ' . (function_exists('bnDigits') ? bnDigits($monthLabel) : $monthLabel);
+        . ' · মাস ' . $monthLabel;
 
     $rows = pettyCashTableRows($income, $expense);
     $body = '';
@@ -429,7 +483,7 @@ function pettyCashDownloadPdf(
         . '.diff{color:#c62828;font-weight:bold;text-align:center;margin-top:3mm}';
     $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
     $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
-    $safe = 'petty-cash-' . preg_replace('/[^0-9-]/', '', $monthLabel) . '.pdf';
+    $safe = 'petty-cash-' . preg_replace('/[^0-9-]/', '', $monthKey) . '.pdf';
     $mpdf->Output($safe !== '.pdf' ? $safe : 'petty-cash.pdf', \Mpdf\Output\Destination::DOWNLOAD);
     exit;
 }
