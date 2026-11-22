@@ -27,23 +27,26 @@ final class ReportPdf
         $mpdf->SetAutoPageBreak(true, 12);
         $head = '';
         foreach ($headers as $header) {
-            $head .= '<th>' . $header . '</th>';
+            $head .= '<th>' . \mpdfClearBnDigitsHtml($header) . '</th>';
         }
         $body = '';
         foreach ($rows as $row) {
             $body .= '<tr>';
             foreach ($row as $cell) {
-                $body .= '<td>' . $cell . '</td>';
+                $body .= '<td>' . \mpdfClearBnDigitsHtml($cell) . '</td>';
             }
             $body .= '</tr>';
         }
         $pad = $settings !== [] ? \mpdfSchoolPadHtml($settings) : '';
         $html = $pad
-            . '<h1>' . \h($title) . '</h1><p class="sub">' . \h($subtitle) . '</p>'
+            . '<h1>' . \mpdfClearBnDigitsHtml(\h($title)) . '</h1>'
+            . '<p class="sub">' . \mpdfClearBnDigitsHtml(\h($subtitle)) . '</p>'
             . '<table class="report"><thead><tr>' . $head . '</tr></thead><tbody>' . $body . '</tbody></table>';
         $font = \mpdfBanglaFontFamily();
+        $digitFont = \mpdfBanglaDigitsFontFamily();
         $css = \mpdfSchoolPadCss()
             . "body{font-family:{$font},sans-serif;font-size:11pt}"
+            . ".bn-num{font-family:{$digitFont},{$font},sans-serif}"
             . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
             . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
             . 'table.report{width:100%;border-collapse:collapse;font-size:10pt}'
