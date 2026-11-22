@@ -134,6 +134,9 @@ if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::REPOR
 if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::VOUCHER_CREATE)) {
     $steps[] = ['ক্যাশ ও ব্যাংক', 'স্থিতি ও সরানো', 'books.php', 'bi-safe'];
 }
+if ($access->can(Capability::REPORTS_VIEW_ALL) || $access->can(Capability::VOUCHER_CREATE)) {
+    $steps[] = ['Petty Cash Book', 'ক্ষুদ্র আয়-ব্যয়ের আলাদা খাতা', 'petty-cash.php', 'bi-journal-text'];
+}
 if ($access->can(Capability::HANDOVER_SUBMIT) && !$access->hasSchoolWideScope()) {
     $steps[] = ['টাকা জমা', 'নেওয়া নগদ অফিসে', 'handovers.php', 'bi-arrow-left-right'];
 }
