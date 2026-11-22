@@ -255,10 +255,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                                 <a class="btn btn-link btn-sm p-0 text-primary"
                                    href="<?= h($hitMonthUrl . '&edit=' . (int) $hit['id'] . '&q=' . rawurlencode($searchQuery)) ?>"
                                    title="এডিট" aria-label="এডিট"
-                                   onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                   onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
                                   <i class="bi bi-pencil" aria-hidden="true"></i>
                                 </a>
-                                <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                <form method="post" class="d-inline" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
+                                  <?= csrfField() ?>
                                   <input type="hidden" name="action" value="delete">
                                   <input type="hidden" name="id" value="<?= (int) $hit['id'] ?>">
                                   <input type="hidden" name="month" value="<?= h($hitMonth['key']) ?>">
@@ -285,6 +286,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         data-selected-month="<?= h($monthKey) ?>"
                         data-selected-label="<?= h($monthLabel) ?>"
                         data-confirm-msg="<?= h($updateConfirmMsg) ?>">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="id" value="<?= (int) $editRow['id'] ?>">
                     <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -317,6 +319,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             data-selected-month="<?= h($monthKey) ?>"
                             data-selected-label="<?= h($monthLabel) ?>"
                             data-confirm-msg="<?= h($createConfirmMsg) ?>">
+                        <?= csrfField() ?>
                         <input type="hidden" name="action" value="create">
                         <input type="hidden" name="entry_type" value="<?= h(PETTY_CASH_INCOME) ?>">
                         <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -347,6 +350,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                             data-selected-month="<?= h($monthKey) ?>"
                             data-selected-label="<?= h($monthLabel) ?>"
                             data-confirm-msg="<?= h($createConfirmMsg) ?>">
+                        <?= csrfField() ?>
                         <input type="hidden" name="action" value="create">
                         <input type="hidden" name="entry_type" value="<?= h(PETTY_CASH_EXPENSE) ?>">
                         <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -414,10 +418,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
-                                     onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                     onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
                                     <i class="bi bi-pencil" aria-hidden="true"></i>
                                   </a>
-                                  <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                  <form method="post" class="d-inline" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
+                                    <?= csrfField() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
                                     <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -472,10 +477,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
-                                     onclick="return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                     onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
                                     <i class="bi bi-pencil" aria-hidden="true"></i>
                                   </a>
-                                  <form method="post" class="d-inline" onsubmit="return confirm(<?= json_encode($deleteConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);">
+                                  <form method="post" class="d-inline" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
+                                    <?= csrfField() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
                                     <input type="hidden" name="month" value="<?= h($monthKey) ?>">
@@ -515,6 +521,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         </div>
 <script>
 (function () {
+  var pettyCsrf = <?= json_encode(csrfToken(), JSON_UNESCAPED_UNICODE) ?>;
   document.querySelectorAll('.js-petty-entry-form').forEach(function (form) {
     form.addEventListener('submit', function (event) {
       var dateInput = form.querySelector('input[name="entry_date"]');
@@ -596,18 +603,23 @@ include __DIR__ . '/../../includes/layout-head.php';
       body.set('entry_type', tbody.getAttribute('data-type') || '');
       body.set('month', tbody.getAttribute('data-month') || '');
       body.set('ordered_ids', ids.join(','));
+      body.set('csrf_token', pettyCsrf);
       fetch('petty-cash.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-TOKEN': pettyCsrf
         },
         body: body.toString(),
         credentials: 'same-origin'
       }).then(function (response) {
-        return response.json().then(function (data) {
-          if (!response.ok || !data.ok) {
-            throw new Error((data && data.message) || 'সাজানো সংরক্ষণ হয়নি।');
+        return response.text().then(function (text) {
+          var data = null;
+          try { data = JSON.parse(text); } catch (e) { data = null; }
+          if (!response.ok || !data || !data.ok) {
+            var message = (data && data.message) || text || 'সাজানো সংরক্ষণ হয়নি।';
+            throw new Error(message);
           }
         });
       }).catch(function (error) {
