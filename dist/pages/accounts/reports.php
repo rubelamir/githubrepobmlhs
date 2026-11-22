@@ -19,7 +19,10 @@ if (!$access->can(Capability::REPORTS_VIEW_ALL) && !$access->can(Capability::REP
 $reports = accReports();
 $basePath = '../../';
 $pageTitle = 'রিপোর্ট | School Admin';
-$pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
+$pageCssFiles = [
+    'https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap',
+    accAssetUrl($basePath, 'css/accounts.css'),
+];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 
 $today = accToday();
@@ -191,6 +194,13 @@ unset($query['format']);
 $pdfUrl = 'reports.php?' . http_build_query($query + ['format' => 'pdf']);
 $xlsUrl = 'reports.php?' . http_build_query($query + ['format' => 'xls']);
 
+$settings = schoolSettings($db);
+$padLogo = !empty($settings['logo']) ? publicSiteUrl((string) $settings['logo']) : publicSiteUrl('image/school_logo.png');
+$padSchool = trim((string) ($settings['school_name_bn'] ?? ''));
+$padAddress = trim((string) ($settings['address'] ?? ''));
+$padEiin = trim((string) ($settings['eiin'] ?? ''));
+$padMobile = trim((string) ($settings['mobile'] ?? ''));
+
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
         <div class="app-content-header acc-page-header">
@@ -238,11 +248,26 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php if ($rangeError !== ''): ?>
               <div class="alert alert-warning"><?= h($rangeError) ?></div>
             <?php else: ?>
-              <div class="card">
-                <div class="card-header"><h3 class="card-title mb-0"><?= h(ReportService::LABELS[$type]) ?> <span class="small text-secondary"><?= h($subtitle) ?></span></h3></div>
-                <div class="card-body p-0">
+              <div class="card acc-report-sheet">
+                <div class="card-body">
+                  <header class="acc-report-pad">
+                    <?php if ($padLogo !== ''): ?><img class="acc-report-pad-logo" src="<?= h($padLogo) ?>" alt=""><?php endif; ?>
+                    <div class="acc-report-pad-brand">
+                      <div class="acc-report-pad-name"><?= h($padSchool) ?></div>
+                      <?php if ($padAddress !== ''): ?><div class="acc-report-pad-meta"><?= h($padAddress) ?></div><?php endif; ?>
+                      <?php if ($padEiin !== '' || $padMobile !== ''): ?>
+                        <div class="acc-report-pad-meta">
+                          <?php if ($padEiin !== ''): ?>EIIN: <?= h(bnDigits($padEiin)) ?><?php endif; ?>
+                          <?php if ($padEiin !== '' && $padMobile !== ''): ?> · <?php endif; ?>
+                          <?php if ($padMobile !== ''): ?>মোবাইল: <?= h(bnDigits($padMobile)) ?><?php endif; ?>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  </header>
+                  <h3 class="acc-report-title"><?= h(ReportService::LABELS[$type]) ?></h3>
+                  <?php if ($subtitle !== ''): ?><p class="acc-report-sub"><?= h($subtitle) ?></p><?php endif; ?>
                   <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table table-sm align-middle mb-0 acc-report-table">
                       <thead><tr><?php foreach ($headers as $header): ?><th><?= h($header) ?></th><?php endforeach; ?></tr></thead>
                       <tbody>
                         <?php if (count($htmlRows) <= 1): ?><tr><td colspan="<?= count($headers) ?>" class="text-secondary p-3">এই পরিসরে কিছু নেই।</td></tr><?php endif; ?>
@@ -252,10 +277,10 @@ include __DIR__ . '/../../includes/layout-head.php';
                       </tbody>
                     </table>
                   </div>
+                  <?php if ($balanced !== null): ?>
+                    <p class="acc-report-balance small mb-0 mt-2"><?= $balanced ? 'দুই পাশ মিলেছে।' : 'দুই পাশ মিলছে না। হিসাব রক্ষককে জানান।' ?></p>
+                  <?php endif; ?>
                 </div>
-                <?php if ($balanced !== null): ?>
-                  <div class="card-footer small"><?= $balanced ? 'দুই পাশ মিলেছে।' : 'দুই পাশ মিলছে না। হিসাব রক্ষককে জানান।' ?></div>
-                <?php endif; ?>
               </div>
             <?php endif; ?>
           </div>

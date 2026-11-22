@@ -30,7 +30,7 @@ function outputStudentProfilesPdf(array $sheets, string $filename): void
 function studentProfilesPdfCss(): string
 {
     return <<<'CSS'
-body { font-family: hindsiliguri, sans-serif; color: #17231e; font-size: 9pt; }
+body { font-family: notosansbengali, sans-serif; color: #17231e; font-size: 9pt; }
 .sp-head { width: 100%; border-collapse: collapse; border-bottom: .4mm solid #1a4d3e; margin-bottom: 2mm; }
 .sp-head td { vertical-align: middle; padding: 0 0 2mm; }
 .sp-logo { width: 17mm; height: 17mm; }
