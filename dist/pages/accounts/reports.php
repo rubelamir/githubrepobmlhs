@@ -105,6 +105,31 @@ if ($built) {
         }
         $htmlRows[] = ['', 'মোট', h(Money::format($cash['opening'])), h(Money::format($cash['debit'])), h(Money::format($cash['credit'])), h(Money::format($cash['closing']))];
         $excelRows[] = ['', 'মোট', Money::toDb($cash['opening']), Money::toDb($cash['debit']), Money::toDb($cash['credit']), Money::toDb($cash['closing'])];
+    } elseif ($type === ReportService::RECEIPTS_PAYMENTS) {
+        $rp = $reports->receiptsPayments($from, $to);
+        $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to) . ' — পুরনো খাতার মতো বামে আয়, ডানে ব্যয়';
+        $headers = ['তারিখ', 'আয়', 'টাকা', 'তারিখ', 'ব্যয়', 'টাকা'];
+        $balanced = $rp['receipt_total'] === $rp['payment_total'];
+        foreach (ReportService::receiptsPaymentsTable($rp['receipts'], $rp['payments']) as $row) {
+            $htmlRows[] = [
+                $row['receipt_date'] !== '' ? h(bnDigits($row['receipt_date'])) : '',
+                h($row['receipt_narration']),
+                $row['receipt_amount'] === null ? '' : h(Money::format($row['receipt_amount'])),
+                $row['payment_date'] !== '' ? h(bnDigits($row['payment_date'])) : '',
+                h($row['payment_narration']),
+                $row['payment_amount'] === null ? '' : h(Money::format($row['payment_amount'])),
+            ];
+            $excelRows[] = [
+                $row['receipt_date'],
+                $row['receipt_narration'],
+                $row['receipt_amount'] === null ? '' : Money::toDb($row['receipt_amount']),
+                $row['payment_date'],
+                $row['payment_narration'],
+                $row['payment_amount'] === null ? '' : Money::toDb($row['payment_amount']),
+            ];
+        }
+        $htmlRows[] = ['', 'মোট আয়', h(Money::format($rp['receipt_total'])), '', 'মোট ব্যয়', h(Money::format($rp['payment_total']))];
+        $excelRows[] = ['', 'মোট আয়', Money::toDb($rp['receipt_total']), '', 'মোট ব্যয়', Money::toDb($rp['payment_total'])];
     } elseif ($type === ReportService::COLLECTION) {
         $subtitle = bnDigits($from) . ' থেকে ' . bnDigits($to);
         $headers = ['শ্রেণী / শাখা', 'মাধ্যম', 'রসিদ', 'টাকা'];
@@ -171,7 +196,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <h3 class="mb-1">রিপোর্ট</h3>
-            <p class="text-secondary mb-0">আয়-খরচ, নগদ ও ব্যাংক, ফি আদায়, বকেয়া, উদ্বৃত্ত এবং বৃত্তি/উপবৃত্তির ছাড়। একজন শিক্ষার্থীর বিবরণ ফি আদায়ের পাতা থেকে খোলে। শ্রেণিশিক্ষক শুধু নিজ শ্রেণীর আদায়, বকেয়া ও ছাড় দেখেন।</p>
+            <p class="text-secondary mb-0">মাসিক আয়-ব্যয় (পুরনো খাতার ফরম্যাট), আয়-খরচ, নগদ ও ব্যাংক, ফি আদায়, বকেয়া, উদ্বৃত্ত এবং বৃত্তি/উপবৃত্তির ছাড়। একজন শিক্ষার্থীর বিবরণ ফি আদায়ের পাতা থেকে খোলে। শ্রেণিশিক্ষক শুধু নিজ শ্রেণীর আদায়, বকেয়া ও ছাড় দেখেন।</p>
           </div>
         </div>
         <div class="app-content">
