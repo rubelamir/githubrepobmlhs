@@ -34,6 +34,15 @@ try {
 $check(pettyCashValidateDate('2021-01-15') === '2021-01-15', 'old-month dates remain valid');
 $check(function_exists('pettyCashDelete'), 'delete helper is available');
 $check(function_exists('pettyCashSearch'), 'search helper is available');
+$check(function_exists('pettyCashReorder'), 'reorder helper is available');
+$check(pettyCashParseAmount('1250') === 125000, 'whole taka parses to paisa');
+$check(pettyCashFormatAmount(125000) === '৳ ' . bnDigits('1,250'), 'format omits .00');
+try {
+    pettyCashParseAmount('1250.50');
+    $check(false, 'fractional amount must fail');
+} catch (Throwable $exception) {
+    $check(str_contains($exception->getMessage(), 'পূর্ণ সংখ্যা'), 'fractional amount rejected');
+}
 
 $income = [
     ['id' => 1, 'entry_date' => '2026-11-01', 'description' => 'চা তহবিল', 'amount' => '100.00'],

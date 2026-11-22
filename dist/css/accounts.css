@@ -224,6 +224,26 @@
   font-weight: 700;
 }
 
+.acc-petty-drag-handle {
+  cursor: grab;
+  color: #6c757d;
+  user-select: none;
+}
+
+.acc-petty-drag-row.acc-petty-dragging {
+  opacity: 0.55;
+  background: #f8faf9;
+}
+
+.acc-petty-drag-row.acc-petty-drag-over {
+  outline: 2px dashed #0a7a3e;
+  outline-offset: -2px;
+}
+
+.acc-petty-split > .border-end {
+  border-color: #c5d0cb !important;
+}
+
 @media print {
   .app-sidebar,
   .app-header,
