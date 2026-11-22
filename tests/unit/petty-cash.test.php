@@ -24,16 +24,16 @@ $fallback = pettyCashParseMonth('bad', new DateTimeImmutable('2026-03-15'));
 $check($fallback['key'] === '2026-03' && $fallback['from'] === '2026-03-01', 'invalid month falls back to provided today');
 $check($fallback['label'] === 'মার্চ-' . bnDigits('2026'), 'fallback month uses Bangla label');
 
-$today = new DateTimeImmutable('2026-11-22', new DateTimeZone('Asia/Dhaka'));
-$check(pettyCashAssertCurrentMonthDate('2026-11-05', $today) === '2026-11-05', 'current-month date is allowed for create');
+$check(pettyCashAssertSelectedMonthDate('2021-01-15', '2021-01') === '2021-01-15', 'selected-month date is allowed');
 try {
-    pettyCashAssertCurrentMonthDate('2026-10-31', $today);
-    $check(false, 'other-month date must fail for create');
+    pettyCashAssertSelectedMonthDate('2021-02-01', '2021-01');
+    $check(false, 'date outside selected month must fail');
 } catch (Throwable $exception) {
-    $check(str_contains($exception->getMessage(), 'চলতি মাস'), 'other-month create shows warning text');
+    $check(str_contains($exception->getMessage(), 'নির্বাচিত মাস'), 'outside selected month shows warning text');
 }
-$check(pettyCashValidateDate('2021-01-15') === '2021-01-15', 'old-month dates remain valid for update/delete');
+$check(pettyCashValidateDate('2021-01-15') === '2021-01-15', 'old-month dates remain valid');
 $check(function_exists('pettyCashDelete'), 'delete helper is available');
+$check(function_exists('pettyCashSearch'), 'search helper is available');
 
 $income = [
     ['id' => 1, 'entry_date' => '2026-11-01', 'description' => 'চা তহবিল', 'amount' => '100.00'],

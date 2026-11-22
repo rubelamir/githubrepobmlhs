@@ -172,24 +172,60 @@ function pettyCashMonthLabel(int $year, int $month): string
 }
 
 /**
- * Only the current calendar month (Asia/Dhaka) may receive new or edited entries.
+ * Entry dates must fall inside the month currently selected in the UI.
  *
  * @throws RuntimeException
  */
-function pettyCashAssertCurrentMonthDate(string $date, ?DateTimeImmutable $today = null): string
+function pettyCashAssertSelectedMonthDate(string $date, string $monthKey): string
 {
     $validated = pettyCashValidateDate($date);
-    $today ??= new DateTimeImmutable('today', new DateTimeZone('Asia/Dhaka'));
+    $month = pettyCashParseMonth($monthKey);
     $entryMonth = substr($validated, 0, 7);
-    $currentMonth = $today->format('Y-m');
-    if ($entryMonth !== $currentMonth) {
-        $currentLabel = pettyCashMonthLabel((int) $today->format('Y'), (int) $today->format('n'));
+    if ($entryMonth !== $month['key']) {
         throw new RuntimeException(
-            'চলতি মাস (' . $currentLabel . ') ব্যতীত অন্য মাসের তারিখে আয়-ব্যয় এন্ট্রি করা যাবে না।'
+            'শুধুমাত্র নির্বাচিত মাস (' . $month['label'] . ') এর তারিখে আয়-ব্যয় এন্ট্রি করা যাবে।'
         );
     }
 
     return $validated;
+}
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function pettyCashSearch(PDO $db, string $query, int $limit = 100): array
+{
+    $q = trim(preg_replace('/\s+/u', ' ', $query) ?? $query);
+    if ($q === '') {
+        return [];
+    }
+    $limit = max(1, min(200, $limit));
+    $like = '%' . $q . '%';
+    $amount = null;
+    if (preg_match('/^\d+(?:[.,]\d{1,2})?$/', str_replace(',', '.', $q)) === 1) {
+        $amount = str_replace(',', '.', $q);
+    }
+
+    $sql = 'SELECT id, entry_type, entry_date, description, amount, created_by, updated_by, created_at, updated_at
+            FROM petty_cash_book
+            WHERE description LIKE :like
+               OR entry_date LIKE :like_date
+               OR CAST(amount AS CHAR) LIKE :like_amount';
+    $params = [
+        'like' => $like,
+        'like_date' => $like,
+        'like_amount' => $like,
+    ];
+    if ($amount !== null) {
+        $sql .= ' OR amount = :amount';
+        $params['amount'] = $amount;
+    }
+    $sql .= ' ORDER BY entry_date DESC, id DESC LIMIT ' . $limit;
+
+    $statement = $db->prepare($sql);
+    $statement->execute($params);
+
+    return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 /** @return array{year: int, month: int, key: string, from: string, to: string, label: string} */
@@ -322,7 +358,8 @@ function pettyCashInsert(
     string $date,
     string $description,
     int $paisa,
-    ?int $actorId
+    ?int $actorId,
+    string $monthKey
 ): int {
     if (!in_array($type, [PETTY_CASH_INCOME, PETTY_CASH_EXPENSE], true)) {
         throw new RuntimeException('অজানা এন্ট্রি ধরন।');
@@ -339,7 +376,7 @@ function pettyCashInsert(
     );
     $statement->execute([
         'type' => $type,
-        'date' => pettyCashAssertCurrentMonthDate($date),
+        'date' => pettyCashAssertSelectedMonthDate($date, $monthKey),
         'description' => pettyCashValidateDescription($description),
         'amount' => \School\Accounting\Support\Money::toDb($paisa),
         'created_by' => $actorId,
@@ -357,7 +394,8 @@ function pettyCashUpdate(
     string $date,
     string $description,
     int $paisa,
-    ?int $actorId
+    ?int $actorId,
+    string $monthKey
 ): void {
     $existing = pettyCashFind($db, $id);
     if ($existing === null) {
@@ -374,7 +412,7 @@ function pettyCashUpdate(
          WHERE id = :id'
     );
     $statement->execute([
-        'date' => pettyCashValidateDate($date),
+        'date' => pettyCashAssertSelectedMonthDate($date, $monthKey),
         'description' => pettyCashValidateDescription($description),
         'amount' => \School\Accounting\Support\Money::toDb($paisa),
         'updated_by' => $actorId,
