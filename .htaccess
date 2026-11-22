@@ -7,15 +7,12 @@ RewriteEngine On
 RewriteRule ^(dist|shared|cache|android|docs|\.well-known)(/|$) - [L]
 
 # Only redirect when the browser actually requested /bmlhs/... (not after an internal rewrite).
-RewriteCond %{THE_REQUEST} \s/+(?:[^?\s]*/)?bmlhs/?[\s?] [NC]
-RewriteRule ^bmlhs/?$ ./ [R=301,L]
-
-RewriteCond %{THE_REQUEST} \s/+(?:[^?\s]*/)?bmlhs/ [NC]
-RewriteRule ^bmlhs/(.*)$ $1 [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+bmlhs(?:/|\s|\?) [NC]
+RewriteRule ^bmlhs(?:/(.*))?$ /$1 [R=301,L]
 
 # Keep the homepage address clean: /index and /index.php redirect to /.
 RewriteCond %{THE_REQUEST} \s/+index(?:\.php)?[\s?] [NC]
-RewriteRule ^index(?:\.php)?$ ./ [R=301,L]
+RewriteRule ^index(?:\.php)?$ / [R=301,L]
 
 # Map every other public request into the bmlhs/ folder without changing the URL.
 RewriteRule ^(.*)$ bmlhs/$1 [L]
