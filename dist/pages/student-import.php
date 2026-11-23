@@ -30,7 +30,24 @@ $basePath = '../';
 $pageTitle = 'এক্সেল ও ছবি | School Admin';
 $teacherId = (int) ($teacher['id'] ?? 0);
 $classes = schoolClasses($db);
-$nineId = studentImportClassNineId($classes);
+$classSectionHints = [];
+foreach ($classes as $class) {
+    $classId = (int) ($class['id'] ?? 0);
+    if ($classId < 1) {
+        continue;
+    }
+    $labels = [];
+    foreach (schoolSections($db, $classId) as $section) {
+        $label = trim((string) ($section['section_name_ban'] ?? ''));
+        if ($label === '') {
+            $label = trim((string) ($section['section_name'] ?? ''));
+        }
+        if ($label !== '') {
+            $labels[] = $label;
+        }
+    }
+    $classSectionHints[$classId] = $labels;
+}
 $sessionYear = (string) date('Y');
 $sessionYears = [];
 for ($year = (int) date('Y') + 1; $year >= 2015; $year--) {
@@ -275,7 +292,7 @@ include __DIR__ . '/../includes/layout-head.php';
           <div class="container-fluid d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
               <h3 class="mb-0">এক্সেল ও ছবি দিয়ে ভর্তি</h3>
-              <p class="text-secondary mb-0">নবম শ্রেণির তালিকা ও রেজিস্ট্রেশন নম্বরের ছবি একসাথে যোগ করুন।</p>
+              <p class="text-secondary mb-0">যেকোনো শ্রেণির তালিকা ও রেজিস্ট্রেশন নম্বরের ছবি একসাথে যোগ করুন।</p>
             </div>
             <a class="btn btn-outline-secondary" href="students.php">ছাত্র-ছাত্রী</a>
           </div>
@@ -369,7 +386,7 @@ include __DIR__ . '/../includes/layout-head.php';
                     <select class="form-select" name="cls" id="importClass" required>
                       <option value="">বাছুন</option>
                       <?php foreach ($classes as $class): ?>
-                        <option value="<?= (int) $class['id'] ?>" <?= (int) $class['id'] === $nineId ? 'selected' : '' ?>><?= h((string) $class['class_name_ban'] . ' / ' . (string) $class['class_name']) ?></option>
+                        <option value="<?= (int) $class['id'] ?>"><?= h((string) $class['class_name_ban'] . ' / ' . (string) $class['class_name']) ?></option>
                       <?php endforeach; ?>
                     </select>
                   </div>
@@ -393,7 +410,7 @@ include __DIR__ . '/../includes/layout-head.php';
                   </div>
                   <div class="col-12">
                     <p class="mb-2">নমুনা ফাইলে ভর্তি ফর্মের কলাম আছে: name_ban, name_eng, father_ban, father_eng, mother_ban, mother_eng, এনআইডি, জন্ম নিবন্ধন, ঠিকানা, জেলা, উপজেলা ও আগের বিদ্যালয়। খালি কলাম রাখলেও চলবে।</p>
-                    <p class="mb-0 text-secondary">অবশ্যই লাগবে রেজিস্ট্রেশন, নাম, লিঙ্গ, ধর্ম, রোল ও শাখা। ধর্ম: Islam, Hindu, Buddhist, Christian অথবা ইসলাম, হিন্দু, বৌদ্ধ, খ্রিস্টান। নবম শ্রেণির শাখা: বিজ্ঞান, মানবিক, ব্যবসায় শিক্ষা।</p>
+                    <p class="mb-0 text-secondary">অবশ্যই লাগবে রেজিস্ট্রেশন, নাম, লিঙ্গ, ধর্ম, রোল ও শাখা। ধর্ম: Islam, Hindu, Buddhist, Christian অথবা ইসলাম, হিন্দু, বৌদ্ধ, খ্রিস্টান। <span id="importSectionHint">শ্রেণি বাছলে সেই শ্রেণির শাখার নাম এখানে দেখাবে।</span></p>
                   </div>
                 </div>
               </div>
@@ -403,4 +420,29 @@ include __DIR__ . '/../includes/layout-head.php';
             </form>
           </div>
         </div>
+        <script>
+          (function () {
+            var hints = <?= json_encode($classSectionHints, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            var select = document.getElementById('importClass');
+            var hint = document.getElementById('importSectionHint');
+            if (!select || !hint) {
+              return;
+            }
+            var refresh = function () {
+              var id = select.value;
+              var labels = hints[id] || [];
+              if (!id) {
+                hint.textContent = 'শ্রেণি বাছলে সেই শ্রেণির শাখার নাম এখানে দেখাবে।';
+                return;
+              }
+              if (labels.length === 0) {
+                hint.textContent = 'এই শ্রেণিতে এখনো কোনো শাখা নেই। আগে শাখা যোগ করুন।';
+                return;
+              }
+              hint.textContent = 'এই শ্রেণির শাখা: ' + labels.join(', ') + '। এক্সেলে একই নাম লিখুন।';
+            };
+            select.addEventListener('change', refresh);
+            refresh();
+          })();
+        </script>
 <?php include __DIR__ . '/../includes/layout-end.php'; ?>

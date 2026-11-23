@@ -36,6 +36,35 @@ $check(studentImportNormalizeBirthDate('') === '', 'a blank birth date stays bla
 $check(studentImportNormalizeBirthDate('not-a-date') === null, 'a broken birth date is rejected');
 $check(studentImportIsClassNine(['class_name' => 'Nine', 'class_name_ban' => '৯ম']), 'class Nine is the class 9 row');
 $check(!studentImportIsClassNine(['class_name' => 'Ten', 'class_name_ban' => '১০ম']), 'class Ten is not class 9');
+$check(studentImportClassNineId([
+    ['id' => 6, 'class_name' => 'Six', 'class_name_ban' => 'ষষ্ঠ'],
+    ['id' => 9, 'class_name' => 'Nine', 'class_name_ban' => 'নবম'],
+]) === 9, 'class Nine can still be found among mixed classes');
+
+$juniorSections = [
+    ['id' => 21, 'section_name' => 'A', 'section_name_ban' => 'ক'],
+    ['id' => 22, 'section_name' => 'B', 'section_name_ban' => 'খ'],
+];
+$juniorPreview = studentImportBuildPreview(
+    [
+        ['registration_no', 'name_ban', 'gender', 'religion', 'roll', 'section'],
+        ['2511000101', 'আলিম', 'male', 'Islam', '5', 'ক'],
+        ['2511000102', 'সুমি', 'female', 'Hindu', '6', 'B'],
+    ],
+    [
+        ['stored' => '1_2511000101.jpeg', 'label' => '2511000101.jpeg'],
+        ['stored' => '2_2511000102.jpeg', 'label' => '2511000102.jpeg'],
+    ],
+    $juniorSections,
+    [],
+    []
+);
+$check(
+    $juniorPreview['ready'] === 2
+    && $juniorPreview['rows'][0]['section_id'] === 21
+    && $juniorPreview['rows'][1]['section_id'] === 22,
+    'junior-class lists match ক/A and খ/B sections with registration photos'
+);
 
 $matrix = [
     ['SL', 'Registration no.', 'নাম', 'Gender', 'ধর্ম', 'Roll', 'শাখা', 'Mobile'],
@@ -201,6 +230,8 @@ $page = file_get_contents(__DIR__ . '/../../dist/pages/student-import.php');
 $auth = file_get_contents(__DIR__ . '/../../dist/includes/auth.php');
 $sidebar = file_get_contents(__DIR__ . '/../../dist/includes/sidebar.php');
 $check(is_string($page) && str_contains($page, 'studentImportCommit'), 'the import page saves only after the preview');
+$check(is_string($page) && str_contains($page, 'যেকোনো শ্রেণির তালিকা') && !str_contains($page, 'নবম শ্রেণির তালিকা'), 'the import page is offered for every class, not only Nine');
+$check(is_string($page) && str_contains($page, 'importSectionHint') && str_contains($page, 'classSectionHints'), 'choosing a class shows that class’s section names');
 $check(is_string($auth) && str_contains($auth, "'student-import' => 'admissions'"), 'only admission staff can open the import page');
 $check(is_string($sidebar) && str_contains($sidebar, 'pages/student-import.php'), 'the student menu links to the import page');
 

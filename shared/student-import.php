@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Class-list import: a spreadsheet plus photos named by registration number.
- * Photos are center-cropped to the same 108×137 JPEG the admission form stores.
+ * Class-list import for any school class: a spreadsheet plus photos named by
+ * registration number. Photos are center-cropped to the same 108×137 JPEG the
+ * admission form stores.
  */
 
 function studentImportMatchToken(string $value): string
