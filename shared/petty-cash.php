@@ -613,19 +613,21 @@ function pettyCashReportDocument(
         $pad = $forBrowser ? pettyCashBrowserPadHtml($settings) : mpdfSchoolPadHtml($settings);
     }
 
+    // Totals stay in tbody (not tfoot) so browsers do not reprint them on every page.
+    $totalsRow = '<tr class="totals">'
+        . '<td colspan="2"><strong>মোট আয়</strong></td><td class="num"><strong>'
+        . h(pettyCashFormatAmount($incomeTotal)) . '</strong></td>'
+        . '<td colspan="2"><strong>মোট ব্যয়</strong></td><td class="num"><strong>'
+        . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
+        . '</tr>';
+
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
         . '<p class="sub">' . h($subtitle) . '</p>'
         . '<table class="report"><thead>'
         . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
         . '<tr><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th></tr>'
-        . '</thead><tbody>' . $body . '</tbody>'
-        . '<tfoot><tr>'
-        . '<td colspan="2"><strong>মোট আয়</strong></td><td class="num"><strong>'
-        . h(pettyCashFormatAmount($incomeTotal)) . '</strong></td>'
-        . '<td colspan="2"><strong>মোট ব্যয়</strong></td><td class="num"><strong>'
-        . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
-        . '</tr></tfoot></table>'
+        . '</thead><tbody>' . $body . $totalsRow . '</tbody></table>'
         . $balanceHtml;
 
     if (function_exists('mpdfClearBnDigitsHtml')) {
@@ -648,6 +650,9 @@ function pettyCashReportDocument(
         . 'table.report th{background:#e5ede9;font-weight:bold;text-align:center}'
         . 'table.report td.center,.center{text-align:center}'
         . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
+        . 'table.report tr.totals td{font-weight:bold;background:#f3f7f5}'
+        . 'table.report thead{display:table-header-group}'
+        . 'table.report tfoot{display:table-row-group}'
         . '.ok{color:#0a7a3e;font-weight:bold;text-align:center;margin-top:3mm}'
         . '.diff{color:#c62828;font-weight:bold;text-align:center;margin-top:3mm}';
 
