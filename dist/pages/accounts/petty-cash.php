@@ -634,6 +634,7 @@ include __DIR__ . '/../../includes/layout-head.php';
     ? Array.prototype.slice.call(pettySplit.querySelectorAll('.acc-petty-pane'))
     : [];
   var pettyLayoutTimer = 0;
+  var pettyLayingOut = false;
 
   function resetPettyPaneFlex() {
     pettyPanes.forEach(function (pane) {
@@ -648,15 +649,17 @@ include __DIR__ . '/../../includes/layout-head.php';
     if (!table) {
       return 0;
     }
-    var previousWidth = table.style.width;
-    table.style.width = 'max-content';
-    var width = Math.ceil(table.getBoundingClientRect().width);
-    table.style.width = previousWidth;
+    // Measure off-DOM so max-content never forces the live pane to wrap below.
+    var clone = table.cloneNode(true);
+    clone.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;width:max-content;max-width:none;';
+    document.body.appendChild(clone);
+    var width = Math.ceil(clone.getBoundingClientRect().width);
+    document.body.removeChild(clone);
     return width;
   }
 
   function layoutPettyPanes() {
-    if (!pettySplit || pettyPanes.length !== 2) {
+    if (pettyLayingOut || !pettySplit || pettyPanes.length !== 2) {
       return;
     }
     if (window.matchMedia('(max-width: 767.98px)').matches) {
@@ -664,52 +667,52 @@ include __DIR__ . '/../../includes/layout-head.php';
       return;
     }
 
-    resetPettyPaneFlex();
-    var total = pettySplit.clientWidth;
-    if (total < 1) {
-      return;
+    pettyLayingOut = true;
+    try {
+      resetPettyPaneFlex();
+      var total = pettySplit.clientWidth;
+      if (total < 1) {
+        return;
+      }
+
+      var needed = pettyPanes.map(measurePettyPaneContentWidth);
+      var half = total / 2;
+      var leftNeeds = needed[0];
+      var rightNeeds = needed[1];
+
+      // Both wide (or both fit): equal side-by-side width.
+      var leftWidth = half;
+      var rightWidth = half;
+
+      if (leftNeeds < half && rightNeeds > half) {
+        leftWidth = Math.max(0, leftNeeds);
+        rightWidth = total - leftWidth;
+      } else if (rightNeeds < half && leftNeeds > half) {
+        rightWidth = Math.max(0, rightNeeds);
+        leftWidth = total - rightWidth;
+      }
+
+      pettyPanes[0].style.flex = '0 0 ' + leftWidth + 'px';
+      pettyPanes[0].style.width = leftWidth + 'px';
+      pettyPanes[0].style.maxWidth = leftWidth + 'px';
+      pettyPanes[1].style.flex = '0 0 ' + rightWidth + 'px';
+      pettyPanes[1].style.width = rightWidth + 'px';
+      pettyPanes[1].style.maxWidth = rightWidth + 'px';
+    } finally {
+      pettyLayingOut = false;
     }
-
-    var needed = pettyPanes.map(measurePettyPaneContentWidth);
-    var half = total / 2;
-    var leftNeeds = needed[0];
-    var rightNeeds = needed[1];
-
-    // Default: equal widths when both need similar space.
-    var leftWidth = half;
-    var rightWidth = half;
-
-    if (leftNeeds <= half && rightNeeds <= half) {
-      leftWidth = half;
-      rightWidth = half;
-    } else if (leftNeeds < half && rightNeeds > half) {
-      // Short left fits content; long right takes the leftover.
-      leftWidth = Math.max(0, leftNeeds);
-      rightWidth = total - leftWidth;
-    } else if (rightNeeds < half && leftNeeds > half) {
-      // Short right fits content; long left takes the leftover.
-      rightWidth = Math.max(0, rightNeeds);
-      leftWidth = total - rightWidth;
-    }
-
-    pettyPanes[0].style.flex = '0 0 auto';
-    pettyPanes[0].style.width = leftWidth + 'px';
-    pettyPanes[0].style.maxWidth = leftWidth + 'px';
-    pettyPanes[1].style.flex = '0 0 auto';
-    pettyPanes[1].style.width = rightWidth + 'px';
-    pettyPanes[1].style.maxWidth = rightWidth + 'px';
   }
 
   function schedulePettyPaneLayout() {
+    if (pettyLayingOut) {
+      return;
+    }
     window.clearTimeout(pettyLayoutTimer);
     pettyLayoutTimer = window.setTimeout(layoutPettyPanes, 50);
   }
 
   layoutPettyPanes();
   window.addEventListener('resize', schedulePettyPaneLayout);
-  if (window.ResizeObserver && pettySplit) {
-    new ResizeObserver(schedulePettyPaneLayout).observe(pettySplit);
-  }
 })();
 </script>
 <?php include __DIR__ . '/../../includes/layout-end.php'; ?>

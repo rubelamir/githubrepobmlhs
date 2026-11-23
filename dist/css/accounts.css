@@ -209,10 +209,10 @@
   background: #fdecea;
 }
 
-/* Panes start equal; JS may shrink a short side so the long বিবরণ can grow. */
+/* Always side-by-side on desktop. Equal by default; JS may give leftover to the longer side. */
 .acc-petty-split {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   width: 100%;
 }
@@ -221,7 +221,7 @@
   flex: 1 1 0;
   width: 0;
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
   box-sizing: border-box;
 }
 
@@ -285,9 +285,11 @@
 @media (max-width: 767.98px) {
   .acc-petty-split {
     flex-direction: column;
+    flex-wrap: wrap;
   }
 
   .acc-petty-pane {
+    flex: 1 1 auto;
     width: 100%;
     max-width: 100%;
   }
