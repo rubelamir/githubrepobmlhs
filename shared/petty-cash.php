@@ -660,25 +660,44 @@ function pettyCashReportDocument(
 }
 
 /**
- * School letterhead for browser print (public logo URL instead of local file path).
+ * Embed the school logo as a data URI so browser print does not depend on
+ * relative asset paths under /dist/pages/accounts/.
+ *
+ * @param array<string, mixed> $settings
+ */
+function pettyCashBrowserLogoDataUri(array $settings): string
+{
+    require_once __DIR__ . '/mpdf-bangla.php';
+    $path = mpdfSchoolLogoPath($settings);
+    if ($path === '' || !is_file($path)) {
+        return '';
+    }
+
+    $bytes = @file_get_contents($path);
+    if ($bytes === false || $bytes === '') {
+        return '';
+    }
+
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $mime = match ($ext) {
+        'jpg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+        default => 'image/png',
+    };
+
+    return 'data:' . $mime . ';base64,' . base64_encode($bytes);
+}
+
+/**
+ * School letterhead for browser print (embedded logo, same source as the PDF pad).
  *
  * @param array<string, mixed> $settings
  */
 function pettyCashBrowserPadHtml(array $settings): string
 {
-    $logo = '';
-    if (function_exists('schoolLogoUrl')) {
-        $logo = trim((string) schoolLogoUrl($settings));
-    }
-    if ($logo === '') {
-        $logo = trim((string) ($settings['logo'] ?? 'image/school_logo.png'));
-    }
-    if ($logo !== '' && preg_match('#^https?://#i', $logo) !== 1 && function_exists('publicSiteUrl')) {
-        $logo = publicSiteUrl(ltrim($logo, '/'));
-    }
-    if ($logo !== '' && function_exists('optimizedPublicImageUrl')) {
-        $logo = optimizedPublicImageUrl($logo);
-    }
+    $logo = pettyCashBrowserLogoDataUri($settings);
 
     $schoolName = trim((string) ($settings['school_name_bn'] ?? ''));
     $address = function_exists('schoolPlainAddress')

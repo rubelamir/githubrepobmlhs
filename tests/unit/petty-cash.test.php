@@ -87,6 +87,16 @@ $last = $payload['entries'][count($payload['entries']) - 1] ?? [];
 $check(($first['date'] ?? '') === '2021-01-01', 'import starts at 2021-01-01');
 $check(($last['date'] ?? '') >= '2026-05-01', 'import reaches May-26');
 
+$logoUri = pettyCashBrowserLogoDataUri(['logo' => 'image/school_logo.png']);
+$check(str_starts_with($logoUri, 'data:image/'), 'browser print logo embeds as a data URI');
+$check(str_contains(pettyCashBrowserPadHtml([
+    'logo' => 'image/school_logo.png',
+    'school_name_bn' => 'টেস্ট স্কুল',
+    'address' => '',
+    'eiin' => '',
+    'mobile' => '',
+]), 'school-pad-logo-img'), 'browser pad HTML includes the logo image');
+
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);
     exit(1);
