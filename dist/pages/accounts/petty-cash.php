@@ -143,6 +143,7 @@ $expense = pettyCashEntries($db, PETTY_CASH_EXPENSE, $month['from'], $month['to'
 $incomeTotal = pettyCashTotalPaisa($income);
 $expenseTotal = pettyCashTotalPaisa($expense);
 $diff = $incomeTotal - $expenseTotal;
+$printRows = pettyCashTableRows($income, $expense);
 $searchHits = $searchQuery !== '' ? pettyCashSearch($db, $searchQuery, 100) : [];
 
 if ((string) ($_GET['format'] ?? '') === 'pdf') {
@@ -192,7 +193,7 @@ include __DIR__ . '/../../includes/layout-head.php';
         </div>
         <div class="app-content">
           <div class="container-fluid">
-            <?php include __DIR__ . '/../../includes/flash.php'; ?>
+            <div class="d-print-none"><?php include __DIR__ . '/../../includes/flash.php'; ?></div>
 
             <form method="get" class="card card-body mb-3 d-print-none">
               <div class="row g-2 align-items-end">
@@ -376,15 +377,65 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php endif; ?>
 
             <div class="card acc-petty-sheet">
-              <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 d-print-none">
                 <h3 class="card-title mb-0">মাসিক খাতা · <?= h($monthLabel) ?></h3>
-                <span class="small text-secondary d-print-none">
+                <span class="small text-secondary">
                   <?= h(accFormatDate($month['from'])) ?> — <?= h(accFormatDate($month['to'])) ?>
                   <?php if ($canWrite): ?> · সারিতে ধরে টেনে সাজাতে পারবেন<?php endif; ?>
                 </span>
               </div>
               <div class="card-body p-0">
-                <div class="row g-0 acc-petty-split">
+                <div class="acc-petty-print-sheet d-none d-print-block">
+                  <h1 class="acc-petty-print-title">Petty Cash Book</h1>
+                  <p class="acc-petty-print-sub">
+                    <?= h(accFormatDate($month['from'])) ?> থেকে <?= h(accFormatDate($month['to'])) ?>
+                    · মাস <?= h($monthLabel) ?>
+                  </p>
+                  <table class="table table-sm table-bordered align-middle mb-0 acc-petty-print-table">
+                    <thead>
+                      <tr>
+                        <th colspan="3" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th>
+                        <th colspan="3" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th>
+                      </tr>
+                      <tr>
+                        <th class="text-center">তারিখ</th>
+                        <th>বিবরণ</th>
+                        <th class="text-end">টাকা</th>
+                        <th class="text-center">তারিখ</th>
+                        <th>বিবরণ</th>
+                        <th class="text-end">টাকা</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php if ($printRows === []): ?>
+                        <tr><td colspan="6" class="text-center text-secondary p-3">এই মাসে কোনো এন্ট্রি নেই।</td></tr>
+                      <?php endif; ?>
+                      <?php foreach ($printRows as $printRow): ?>
+                        <?php
+                        $left = $printRow['income'];
+                        $right = $printRow['expense'];
+                        ?>
+                        <tr>
+                          <td class="text-nowrap text-center"><?= $left ? h(accFormatDate((string) $left['entry_date'])) : '' ?></td>
+                          <td><?= $left ? h((string) $left['description']) : '' ?></td>
+                          <td class="text-end text-nowrap"><?= $left ? h(pettyCashFormatAmount(Money::fromDb($left['amount']))) : '' ?></td>
+                          <td class="text-nowrap text-center"><?= $right ? h(accFormatDate((string) $right['entry_date'])) : '' ?></td>
+                          <td><?= $right ? h((string) $right['description']) : '' ?></td>
+                          <td class="text-end text-nowrap"><?= $right ? h(pettyCashFormatAmount(Money::fromDb($right['amount']))) : '' ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                    <tfoot>
+                      <tr class="fw-semibold">
+                        <td colspan="2">মোট আয়</td>
+                        <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
+                        <td colspan="2">মোট ব্যয়</td>
+                        <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div class="row g-0 acc-petty-split d-print-none">
                   <div class="col-md-6 border-end">
                     <div class="table-responsive">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
