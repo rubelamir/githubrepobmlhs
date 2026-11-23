@@ -25,7 +25,7 @@ if ($canWrite && function_exists('schemaMigrationApplied')
             redirectWithMessage('petty-cash.php?month=2021-01', 'success', $import['message']);
         }
     } catch (Throwable $exception) {
-        redirectWithMessage('petty-cash-import.php', 'danger', userFacingError($exception));
+        redirectWithMessage('petty-cash.php', 'danger', userFacingError($exception));
     }
 }
 
@@ -184,7 +184,6 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <div class="d-flex flex-wrap gap-1">
                 <a class="btn btn-outline-secondary btn-sm" href="dashboard.php">← ড্যাশবোর্ড</a>
-                <a class="btn btn-outline-secondary btn-sm" href="petty-cash-import.php">এক্সেল ইমপোর্ট</a>
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">প্রিন্ট</button>
                 <a class="btn btn-outline-secondary btn-sm" href="<?= h($pdfUrl) ?>">PDF</a>
               </div>
