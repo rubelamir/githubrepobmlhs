@@ -568,11 +568,12 @@ function pettyCashReportMaxDescChars(array $entries): int
 }
 
 /**
- * Pane widths for print/PDF — same rules as the on-screen split:
- * 1) date/amount stay content-tight inside each pane
- * 2) both sides equal (50/50) when both need ≥ half or both fit under half
- * 3) if one side's content fits under half and the other needs more, the short
- *    side stays content-fit and the long side takes the leftover
+ * Pane widths for print/PDF — same five rules as the on-screen split:
+ * 1) আয়/ব্যয় side-by-side
+ * 2) তারিখ/টাকা content-fit so বিবরণ grows
+ * 3) both sides equal when both are wide or both are short
+ * 4) one short side stays content-fit; the long side takes leftover
+ * 5) screen, print, and PDF share this logic
  *
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
@@ -581,13 +582,13 @@ function pettyCashReportMaxDescChars(array $entries): int
 function pettyCashReportDescWidthShare(array $income, array $expense): array
 {
     // Approximate natural width in % of the full report (landscape ~10pt).
-    $fitColsChars = 14; // তারিখ + টাকা
+    $fitColsChars = 12; // তারিখ + টাকা (compact)
     $fullWidthChars = 72;
     $leftNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($income)) / $fullWidthChars;
     $rightNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($expense)) / $fullWidthChars;
 
-    // Keep a usable minimum so date/amount (and Bangla glyphs) are not clipped in mPDF.
-    $minFitPct = 22;
+    // Minimum keeps date/amount readable when the short side content-fits.
+    $minFitPct = 20;
 
     if ($leftNeedPct < 50 && $rightNeedPct > 50) {
         $left = (int) max($minFitPct, min(48, round($leftNeedPct)));
@@ -619,6 +620,57 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
         'left_fit' => false,
         'right_fit' => false,
         'equal' => true,
+    ];
+}
+
+/**
+ * Split each pane % into date / বিবরণ / amount so halves always sum to 100
+ * and fit columns stay compact (rule 2).
+ *
+ * @param array{left: int, right: int, left_fit: bool, right_fit: bool, equal: bool} $widths
+ * @return array{ld: int, ldesc: int, la: int, rd: int, rdesc: int, ra: int}
+ */
+function pettyCashReportColumnPercents(array $widths): array
+{
+    $splitHalf = static function (int $halfPct, bool $contentFit): array {
+        // Within a pane: date ~18%, amount ~22%, বিবরণ the rest.
+        // Content-fit panes keep date/amount a bit tighter.
+        $dateShare = $contentFit ? 0.20 : 0.18;
+        $amountShare = $contentFit ? 0.24 : 0.22;
+        $date = (int) max(6, round($halfPct * $dateShare));
+        $amount = (int) max(7, round($halfPct * $amountShare));
+        $desc = $halfPct - $date - $amount;
+        if ($desc < 6) {
+            $shrink = 6 - $desc;
+            $amount = max(6, $amount - (int) ceil($shrink / 2));
+            $date = max(5, $date - (int) floor($shrink / 2));
+            $desc = $halfPct - $date - $amount;
+        }
+
+        return [$date, max(5, $desc), $amount];
+    };
+
+    [$ld, $ldesc, $la] = $splitHalf($widths['left'], $widths['left_fit']);
+    [$rd, $rdesc, $ra] = $splitHalf($widths['right'], $widths['right_fit']);
+
+    // Equal panes → equal বিবরণ widths.
+    if ($widths['equal']) {
+        $ldesc = (int) floor(($ldesc + $rdesc) / 2);
+        $rdesc = (100 - $ld - $la - $rd - $ra) - $ldesc;
+    }
+
+    $sum = $ld + $ldesc + $la + $rd + $rdesc + $ra;
+    if ($sum !== 100) {
+        $rdesc += 100 - $sum;
+    }
+
+    return [
+        'ld' => $ld,
+        'ldesc' => $ldesc,
+        'la' => $la,
+        'rd' => $rd,
+        'rdesc' => $rdesc,
+        'ra' => $ra,
     ];
 }
 
@@ -656,18 +708,7 @@ function pettyCashReportDocument(
         . ' · মাস ' . $monthLabel;
 
     $widths = pettyCashReportDescWidthShare($income, $expense);
-    // Convert pane % into per-column % (date/amount stay tight; বিবরণ takes the rest of each half).
-    $leftHalf = $widths['left'];
-    $rightHalf = $widths['right'];
-    $datePct = 9;
-    $amountPct = 11;
-    $leftDescPct = max(8, $leftHalf - $datePct - $amountPct);
-    $rightDescPct = max(8, $rightHalf - $datePct - $amountPct);
-    // Normalize to 100% (rounding drift).
-    $sum = $datePct + $leftDescPct + $amountPct + $datePct + $rightDescPct + $amountPct;
-    if ($sum !== 100) {
-        $rightDescPct += 100 - $sum;
-    }
+    $cols = pettyCashReportColumnPercents($widths);
     $leftDescClass = 'desc' . ($widths['left_fit'] ? ' desc-fit' : '');
     $rightDescClass = 'desc' . ($widths['right_fit'] ? ' desc-fit' : '');
 
@@ -724,12 +765,12 @@ function pettyCashReportDocument(
     }
 
     $colgroup = '<colgroup>'
-        . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="' . $leftDescClass . '" style="width:' . $leftDescPct . '%">'
-        . '<col class="fit" style="width:' . $amountPct . '%">'
-        . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="' . $rightDescClass . '" style="width:' . $rightDescPct . '%">'
-        . '<col class="fit" style="width:' . $amountPct . '%">'
+        . '<col class="fit" style="width:' . $cols['ld'] . '%">'
+        . '<col class="' . $leftDescClass . '" style="width:' . $cols['ldesc'] . '%">'
+        . '<col class="fit" style="width:' . $cols['la'] . '%">'
+        . '<col class="fit" style="width:' . $cols['rd'] . '%">'
+        . '<col class="' . $rightDescClass . '" style="width:' . $cols['rdesc'] . '%">'
+        . '<col class="fit" style="width:' . $cols['ra'] . '%">'
         . '</colgroup>';
 
     $html = $pad
