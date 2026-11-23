@@ -623,41 +623,9 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
 }
 
 /**
- * One income or expense side table for print/PDF.
- *
- * @param list<array<string, mixed>> $entries
- */
-function pettyCashReportSideTableHtml(
-    string $title,
-    array $entries,
-    int $totalPaisa,
-    string $totalLabel,
-    bool $contentFit
-): string {
-    $descClass = 'desc' . ($contentFit ? ' desc-fit' : '');
-    $body = '';
-    foreach ($entries as $entry) {
-        $body .= '<tr>'
-            . '<td class="center fit">' . h(function_exists('accFormatDate') ? accFormatDate((string) $entry['entry_date']) : (string) $entry['entry_date']) . '</td>'
-            . '<td class="' . $descClass . '">' . h((string) $entry['description']) . '</td>'
-            . '<td class="num fit">' . h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($entry['amount']))) . '</td>'
-            . '</tr>';
-    }
-    if ($body === '') {
-        $body = '<tr><td colspan="3" class="center">এই মাসে কোনো এন্ট্রি নেই।</td></tr>';
-    }
-
-    return '<table class="side' . ($contentFit ? ' side-fit' : '') . '"><thead>'
-        . '<tr><th colspan="3">' . h($title) . '</th></tr>'
-        . '<tr><th class="fit">তারিখ</th><th class="' . $descClass . '">বিবরণ</th><th class="fit">টাকা</th></tr>'
-        . '</thead><tbody>' . $body
-        . '<tr class="totals"><td class="fit" colspan="2"><strong>' . h($totalLabel) . '</strong></td>'
-        . '<td class="num fit"><strong>' . h(pettyCashFormatAmount($totalPaisa)) . '</strong></td></tr>'
-        . '</tbody></table>';
-}
-
-/**
  * Shared Petty Cash report markup used by PDF download and browser print.
+ * One 6-column table: shorter side is padded with empty cells so মোট আয় / মোট ব্যয়
+ * stay on the same final row (mPDF-safe; nested pane tables were blanking PDFs).
  *
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
@@ -688,20 +656,61 @@ function pettyCashReportDocument(
         . ' · মাস ' . $monthLabel;
 
     $widths = pettyCashReportDescWidthShare($income, $expense);
-    $incomeHtml = pettyCashReportSideTableHtml(
-        'আয়ের খাত সমূহ',
-        $income,
-        $incomeTotal,
-        'মোট আয়',
-        $widths['left_fit']
-    );
-    $expenseHtml = pettyCashReportSideTableHtml(
-        'ব্যয়ের খাত সমূহ',
-        $expense,
-        $expenseTotal,
-        'মোট ব্যয়',
-        $widths['right_fit']
-    );
+    // Convert pane % into per-column % (date/amount stay tight; বিবরণ takes the rest of each half).
+    $leftHalf = $widths['left'];
+    $rightHalf = $widths['right'];
+    $datePct = 9;
+    $amountPct = 11;
+    $leftDescPct = max(8, $leftHalf - $datePct - $amountPct);
+    $rightDescPct = max(8, $rightHalf - $datePct - $amountPct);
+    // Normalize to 100% (rounding drift).
+    $sum = $datePct + $leftDescPct + $amountPct + $datePct + $rightDescPct + $amountPct;
+    if ($sum !== 100) {
+        $rightDescPct += 100 - $sum;
+    }
+    $leftDescClass = 'desc' . ($widths['left_fit'] ? ' desc-fit' : '');
+    $rightDescClass = 'desc' . ($widths['right_fit'] ? ' desc-fit' : '');
+
+    $formatCell = static function (?array $entry, string $descClass): array {
+        if ($entry === null) {
+            return ['date' => '', 'desc' => '', 'amount' => ''];
+        }
+        $date = function_exists('accFormatDate')
+            ? accFormatDate((string) $entry['entry_date'])
+            : (string) $entry['entry_date'];
+
+        return [
+            'date' => h($date),
+            'desc' => h((string) $entry['description']),
+            'amount' => h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($entry['amount']))),
+        ];
+    };
+
+    $rows = pettyCashTableRows($income, $expense);
+    $body = '';
+    foreach ($rows as $row) {
+        $left = $formatCell($row['income'], $leftDescClass);
+        $right = $formatCell($row['expense'], $rightDescClass);
+        $body .= '<tr>'
+            . '<td class="center fit">' . $left['date'] . '</td>'
+            . '<td class="' . $leftDescClass . '">' . $left['desc'] . '</td>'
+            . '<td class="num fit">' . $left['amount'] . '</td>'
+            . '<td class="center fit">' . $right['date'] . '</td>'
+            . '<td class="' . $rightDescClass . '">' . $right['desc'] . '</td>'
+            . '<td class="num fit">' . $right['amount'] . '</td>'
+            . '</tr>';
+    }
+    if ($body === '') {
+        $body = '<tr><td colspan="6" class="center">এই মাসে কোনো এন্ট্রি নেই।</td></tr>';
+    }
+
+    // Totals stay in tbody (not tfoot) so browsers do not reprint them on every page.
+    $totalsRow = '<tr class="totals">'
+        . '<td class="fit" colspan="2"><strong>মোট আয়</strong></td>'
+        . '<td class="num fit"><strong>' . h(pettyCashFormatAmount($incomeTotal)) . '</strong></td>'
+        . '<td class="fit" colspan="2"><strong>মোট ব্যয়</strong></td>'
+        . '<td class="num fit"><strong>' . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
+        . '</tr>';
 
     $diff = $incomeTotal - $expenseTotal;
     $balanceHtml = $diff === 0
@@ -714,16 +723,23 @@ function pettyCashReportDocument(
         $pad = $forBrowser ? pettyCashBrowserPadHtml($settings) : mpdfSchoolPadHtml($settings);
     }
 
-    // Two panes side-by-side (same structure/rules as the on-screen split).
+    $colgroup = '<colgroup>'
+        . '<col class="fit" style="width:' . $datePct . '%">'
+        . '<col class="' . $leftDescClass . '" style="width:' . $leftDescPct . '%">'
+        . '<col class="fit" style="width:' . $amountPct . '%">'
+        . '<col class="fit" style="width:' . $datePct . '%">'
+        . '<col class="' . $rightDescClass . '" style="width:' . $rightDescPct . '%">'
+        . '<col class="fit" style="width:' . $amountPct . '%">'
+        . '</colgroup>';
+
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
         . '<p class="sub">' . h($subtitle) . '</p>'
-        . '<table class="split"><tr>'
-        . '<td class="pane' . ($widths['left_fit'] ? ' pane-fit' : '') . '" style="width:' . $widths['left'] . '%">'
-        . $incomeHtml . '</td>'
-        . '<td class="pane' . ($widths['right_fit'] ? ' pane-fit' : '') . '" style="width:' . $widths['right'] . '%">'
-        . $expenseHtml . '</td>'
-        . '</tr></table>'
+        . '<table class="report">' . $colgroup . '<thead>'
+        . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
+        . '<tr><th class="fit">তারিখ</th><th class="' . $leftDescClass . '">বিবরণ</th><th class="fit">টাকা</th>'
+        . '<th class="fit">তারিখ</th><th class="' . $rightDescClass . '">বিবরণ</th><th class="fit">টাকা</th></tr>'
+        . '</thead><tbody>' . $body . $totalsRow . '</tbody></table>'
         . $balanceHtml;
 
     if (function_exists('mpdfClearBnDigitsHtml')) {
@@ -741,18 +757,17 @@ function pettyCashReportDocument(
         . ".bn-num{font-family:{$digitFont}}"
         . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
         . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
-        . 'table.split{width:100%;border-collapse:collapse;table-layout:fixed}'
-        . 'table.split>tbody>tr>td.pane{vertical-align:top;padding:0;border:none;overflow:visible}'
-        . 'table.side{width:100%;border-collapse:collapse;table-layout:auto}'
-        . 'table.side th,table.side td{border:0.25mm solid #687b72;padding:1.4mm 1.2mm;vertical-align:top}'
-        . 'table.side th{background:#e5ede9;font-weight:bold;text-align:center}'
-        . 'table.side td.center,.center{text-align:center}'
-        . 'table.side th.fit,table.side td.fit{width:1%;white-space:nowrap}'
-        . 'table.side td.num,.num{text-align:right;white-space:nowrap}'
-        . 'table.side th.desc,table.side td.desc{width:auto;overflow-wrap:break-word;word-break:break-word;white-space:normal}'
-        . 'table.side th.desc-fit,table.side td.desc-fit{width:1%;white-space:nowrap;overflow-wrap:break-word;word-break:break-word}'
-        . 'table.side tr.totals td{font-weight:bold;background:#f3f7f5}'
-        . 'table.side thead{display:table-header-group}'
+        . 'table.report{width:100%;border-collapse:collapse;table-layout:fixed}'
+        . 'table.report th,table.report td{border:0.25mm solid #687b72;padding:1.4mm 1.2mm;vertical-align:top}'
+        . 'table.report th{background:#e5ede9;font-weight:bold;text-align:center}'
+        . 'table.report td.center,.center{text-align:center}'
+        . 'table.report .fit{white-space:nowrap}'
+        . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
+        . 'table.report th.desc,table.report td.desc{overflow-wrap:break-word;word-break:break-word;white-space:normal}'
+        . 'table.report th.desc-fit,table.report td.desc-fit{white-space:nowrap;overflow-wrap:break-word;word-break:break-word}'
+        . 'table.report tr.totals td{font-weight:bold;background:#f3f7f5}'
+        . 'table.report thead{display:table-header-group}'
+        . 'table.report tfoot{display:table-row-group}'
         . '.ok{color:#0a7a3e;font-weight:bold;text-align:center;margin-top:3mm}'
         . '.diff{color:#c62828;font-weight:bold;text-align:center;margin-top:3mm}';
 
