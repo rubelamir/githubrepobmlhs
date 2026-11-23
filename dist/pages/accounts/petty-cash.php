@@ -395,11 +395,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center" style="width:2rem"></th><?php endif; ?>
-                            <th class="text-center">তারিখ</th>
-                            <th>বিবরণ</th>
-                            <th class="text-end">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center">কর্ম</th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit"></th><?php endif; ?>
+                            <th class="text-center acc-petty-col-fit">তারিখ</th>
+                            <th class="acc-petty-col-desc">বিবরণ</th>
+                            <th class="text-end acc-petty-col-fit">টাকা</th>
+                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -411,13 +411,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($income as $left): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $left['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="text-center acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
-                              <td class="text-nowrap text-center"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
-                              <td><?= h((string) $left['description']) ?></td>
-                              <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
+                              <td class="text-nowrap text-center acc-petty-col-fit"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
+                              <td class="acc-petty-col-desc"><?= h((string) $left['description']) ?></td>
+                              <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap">
+                                <td class="text-center text-nowrap acc-petty-col-fit">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
@@ -452,11 +452,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center" style="width:2rem"></th><?php endif; ?>
-                            <th class="text-center">তারিখ</th>
-                            <th>বিবরণ</th>
-                            <th class="text-end">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center">কর্ম</th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit"></th><?php endif; ?>
+                            <th class="text-center acc-petty-col-fit">তারিখ</th>
+                            <th class="acc-petty-col-desc">বিবরণ</th>
+                            <th class="text-end acc-petty-col-fit">টাকা</th>
+                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -468,13 +468,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($expense as $right): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $right['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="text-center acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
-                              <td class="text-nowrap text-center"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
-                              <td><?= h((string) $right['description']) ?></td>
-                              <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
+                              <td class="text-nowrap text-center acc-petty-col-fit"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
+                              <td class="acc-petty-col-desc"><?= h((string) $right['description']) ?></td>
+                              <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap">
+                                <td class="text-center text-nowrap acc-petty-col-fit">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
