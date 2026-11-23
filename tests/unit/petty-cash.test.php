@@ -101,16 +101,14 @@ $equalShare = pettyCashReportDescWidthShare(
     [['description' => str_repeat('লম্বা বিবরণ ', 6)], ['description' => str_repeat('আরও লম্বা ', 6)]],
     [['description' => str_repeat('লম্বা ব্যয় ', 6)], ['description' => str_repeat('আরও ব্যয় ', 6)]]
 );
-$check($equalShare['left'] === $equalShare['right'], 'wide descriptions share equally in print/PDF');
+$check(!empty($equalShare['equal']), 'wide descriptions use equal print/PDF layout');
 $check(!$equalShare['left_fit'] && !$equalShare['right_fit'], 'equal wide sides are not content-fit');
 
 $skewShare = pettyCashReportDescWidthShare(
     [['description' => 'চা']],
     [['description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8)]]
 );
-$check($skewShare['left_fit'] && !$skewShare['right_fit'], 'short income description is marked content-fit');
-$check($skewShare['left'] < 15, 'short description width stays content-tight');
-$check($skewShare['right'] > $skewShare['left'], 'long expense description receives leftover width');
+$check($skewShare['left_fit'] && !$skewShare['right_fit'] && empty($skewShare['equal']), 'short income description is content-fit in print/PDF');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);

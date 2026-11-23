@@ -572,51 +572,33 @@ function pettyCashReportMaxDescChars(array $entries): int
 }
 
 /**
- * Print/PDF বিবরণ column widths as % of the full table (date/amount use the rest).
- * Same pane rule as the screen: equal when both need ≥ half; otherwise the short
- * side stays content-fit and the long side takes the leftover.
+ * Print/PDF layout mode for the two বিবরণ columns (mirrors the on-screen panes).
+ * Equal when both need ≥ half; otherwise the short side is content-fit and the
+ * long side takes the leftover width.
  *
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
- * @return array{left: int, right: int, left_fit: bool, right_fit: bool, date: int, amount: int}
+ * @return array{left_fit: bool, right_fit: bool, equal: bool}
  */
 function pettyCashReportDescWidthShare(array $income, array $expense): array
 {
-    $datePct = 9;
-    $amountPct = 11;
-    $descBudget = 100 - (2 * $datePct) - (2 * $amountPct); // 60
-    $half = $descBudget / 2.0;
-
-    // ~27 Bangla chars fill half the description budget at 10pt landscape.
-    $pctPerChar = $half / 27.0;
+    // ~27 Bangla chars ≈ half of the description area at 10pt landscape.
+    $halfChars = 27;
     $leftChars = pettyCashReportMaxDescChars($income);
     $rightChars = pettyCashReportMaxDescChars($expense);
-    // Content-fit estimate (no artificial wide floor — short text stays tight).
-    $leftNeed = min($descBudget - 6, max(5, $leftChars * $pctPerChar));
-    $rightNeed = min($descBudget - 6, max(5, $rightChars * $pctPerChar));
 
     $leftFit = false;
     $rightFit = false;
-    if ($leftNeed < $half && $rightNeed > $half) {
-        $leftPct = (int) max(5, round($leftNeed));
-        $rightPct = $descBudget - $leftPct;
+    if ($leftChars < $halfChars && $rightChars > $halfChars) {
         $leftFit = true;
-    } elseif ($rightNeed < $half && $leftNeed > $half) {
-        $rightPct = (int) max(5, round($rightNeed));
-        $leftPct = $descBudget - $rightPct;
+    } elseif ($rightChars < $halfChars && $leftChars > $halfChars) {
         $rightFit = true;
-    } else {
-        $leftPct = (int) round($half);
-        $rightPct = $descBudget - $leftPct;
     }
 
     return [
-        'left' => $leftPct,
-        'right' => $rightPct,
         'left_fit' => $leftFit,
         'right_fit' => $rightFit,
-        'date' => $datePct,
-        'amount' => $amountPct,
+        'equal' => !$leftFit && !$rightFit,
     ];
 }
 
@@ -652,12 +634,8 @@ function pettyCashReportDocument(
         . ' · মাস ' . $monthLabel;
 
     $widths = pettyCashReportDescWidthShare($income, $expense);
-    $leftDescPct = $widths['left'];
-    $rightDescPct = $widths['right'];
-    $datePct = $widths['date'];
-    $amountPct = $widths['amount'];
-    $leftDescClass = 'desc' . ($widths['left_fit'] ? ' desc-fit' : '');
-    $rightDescClass = 'desc' . ($widths['right_fit'] ? ' desc-fit' : '');
+    $leftDescClass = 'desc' . ($widths['left_fit'] ? ' desc-fit' : ($widths['equal'] ? '' : ' desc-grow'));
+    $rightDescClass = 'desc' . ($widths['right_fit'] ? ' desc-fit' : ($widths['equal'] ? '' : ' desc-grow'));
 
     $rows = pettyCashTableRows($income, $expense);
     $body = '';
@@ -696,19 +674,33 @@ function pettyCashReportDocument(
         . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
         . '</tr>';
 
-    $colgroup = '<colgroup>'
-        . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="' . $leftDescClass . '" style="width:' . $leftDescPct . '%">'
-        . '<col class="fit" style="width:' . $amountPct . '%">'
-        . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="' . $rightDescClass . '" style="width:' . $rightDescPct . '%">'
-        . '<col class="fit" style="width:' . $amountPct . '%">'
-        . '</colgroup>';
+    // Equal: fixed 50/50 বিবরণ. Skewed: auto layout so short বিবরণ + date/amount content-fit.
+    if ($widths['equal']) {
+        $colgroup = '<colgroup>'
+            . '<col class="fit" style="width:9%">'
+            . '<col class="desc" style="width:30%">'
+            . '<col class="fit" style="width:11%">'
+            . '<col class="fit" style="width:9%">'
+            . '<col class="desc" style="width:30%">'
+            . '<col class="fit" style="width:11%">'
+            . '</colgroup>';
+        $tableLayout = 'fixed';
+    } else {
+        $colgroup = '<colgroup>'
+            . '<col class="fit">'
+            . '<col class="' . $leftDescClass . '">'
+            . '<col class="fit">'
+            . '<col class="fit">'
+            . '<col class="' . $rightDescClass . '">'
+            . '<col class="fit">'
+            . '</colgroup>';
+        $tableLayout = 'auto';
+    }
 
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
         . '<p class="sub">' . h($subtitle) . '</p>'
-        . '<table class="report">' . $colgroup . '<thead>'
+        . '<table class="report" style="table-layout:' . $tableLayout . '">' . $colgroup . '<thead>'
         . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
         . '<tr><th class="fit">তারিখ</th><th class="' . $leftDescClass . '">বিবরণ</th><th class="fit">টাকা</th>'
         . '<th class="fit">তারিখ</th><th class="' . $rightDescClass . '">বিবরণ</th><th class="fit">টাকা</th></tr>'
@@ -730,14 +722,15 @@ function pettyCashReportDocument(
         . ".bn-num{font-family:{$digitFont}}"
         . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
         . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
-        . 'table.report{width:100%;border-collapse:collapse;table-layout:fixed}'
+        . 'table.report{width:100%;border-collapse:collapse}'
         . 'table.report th,table.report td{border:0.25mm solid #687b72;padding:1.4mm 1.2mm;vertical-align:top}'
         . 'table.report th{background:#e5ede9;font-weight:bold;text-align:center}'
         . 'table.report td.center,.center{text-align:center}'
-        . 'table.report .fit{white-space:nowrap}'
+        . 'table.report col.fit,table.report th.fit,table.report td.fit{width:1%;white-space:nowrap}'
         . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
         . 'table.report th.desc,table.report td.desc{overflow-wrap:break-word;word-break:break-word;white-space:normal}'
-        . 'table.report th.desc-fit,table.report td.desc-fit{white-space:nowrap;overflow-wrap:normal;word-break:normal}'
+        . 'table.report col.desc-fit,table.report th.desc-fit,table.report td.desc-fit{width:1%;white-space:nowrap;overflow-wrap:normal;word-break:normal}'
+        . 'table.report col.desc-grow,table.report th.desc-grow,table.report td.desc-grow{width:auto;overflow-wrap:break-word;word-break:break-word;white-space:normal}'
         . 'table.report tr.totals td{font-weight:bold;background:#f3f7f5}'
         . 'table.report thead{display:table-header-group}'
         . 'table.report tfoot{display:table-row-group}'
