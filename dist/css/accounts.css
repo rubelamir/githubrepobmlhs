@@ -251,6 +251,14 @@
   word-break: break-word;
 }
 
+/* Short pane: বিবরণ stays content-fit (no wrap stretch). */
+.acc-petty-pane-fit .acc-petty-col-desc {
+  width: 1%;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .acc-petty-table .acc-petty-drag-handle {
   width: 1%;
   white-space: nowrap;

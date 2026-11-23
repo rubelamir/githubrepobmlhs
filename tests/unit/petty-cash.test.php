@@ -101,14 +101,35 @@ $equalShare = pettyCashReportDescWidthShare(
     [['description' => str_repeat('লম্বা বিবরণ ', 6)], ['description' => str_repeat('আরও লম্বা ', 6)]],
     [['description' => str_repeat('লম্বা ব্যয় ', 6)], ['description' => str_repeat('আরও ব্যয় ', 6)]]
 );
-$check(!empty($equalShare['equal']), 'wide descriptions use equal print/PDF layout');
+$check(!empty($equalShare['equal']) && $equalShare['left'] === 50 && $equalShare['right'] === 50, 'wide sides share equally 50/50');
 $check(!$equalShare['left_fit'] && !$equalShare['right_fit'], 'equal wide sides are not content-fit');
+
+$bothShort = pettyCashReportDescWidthShare(
+    [['description' => 'চা']],
+    [['description' => 'কফি']]
+);
+$check(!empty($bothShort['equal']) && $bothShort['left'] === 50, 'both short sides stay equal');
 
 $skewShare = pettyCashReportDescWidthShare(
     [['description' => 'চা']],
     [['description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8)]]
 );
-$check($skewShare['left_fit'] && !$skewShare['right_fit'] && empty($skewShare['equal']), 'short income description is content-fit in print/PDF');
+$check($skewShare['left_fit'] && !$skewShare['right_fit'] && empty($skewShare['equal']), 'short income pane is content-fit');
+$check($skewShare['left'] < 50 && $skewShare['right'] > 50, 'long expense pane receives leftover width');
+
+$doc = pettyCashReportDocument(
+    'মার্চ-' . bnDigits('2025'),
+    '2025-03-01',
+    '2025-03-31',
+    [['entry_date' => '2025-03-01', 'description' => 'চা', 'amount' => '100.00']],
+    [['entry_date' => '2025-03-02', 'description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8), 'amount' => '500.00']],
+    10000,
+    50000,
+    true
+);
+$check(str_contains($doc['html'], 'table class="split"'), 'print/PDF uses side-by-side panes');
+$check(str_contains($doc['html'], 'pane-fit'), 'print/PDF marks the short pane as content-fit');
+$check(str_contains($doc['html'], 'desc-fit'), 'print/PDF marks short বিবরণ as content-fit');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);

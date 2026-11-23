@@ -641,6 +641,7 @@ include __DIR__ . '/../../includes/layout-head.php';
       pane.style.flex = '';
       pane.style.width = '';
       pane.style.maxWidth = '';
+      pane.classList.remove('acc-petty-pane-fit');
     });
   }
 
@@ -649,9 +650,14 @@ include __DIR__ . '/../../includes/layout-head.php';
     if (!table) {
       return 0;
     }
-    // Measure off-DOM so max-content never forces the live pane to wrap below.
+    // Measure unwrapped content width (তারিখ/টাকা/বিবরণ) off-DOM.
     var clone = table.cloneNode(true);
-    clone.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;width:max-content;max-width:none;';
+    clone.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;width:max-content;max-width:none;table-layout:auto;';
+    Array.prototype.forEach.call(clone.querySelectorAll('.acc-petty-col-desc'), function (cell) {
+      cell.style.whiteSpace = 'nowrap';
+      cell.style.overflowWrap = 'normal';
+      cell.style.wordBreak = 'normal';
+    });
     document.body.appendChild(clone);
     var width = Math.ceil(clone.getBoundingClientRect().width);
     document.body.removeChild(clone);
@@ -680,16 +686,20 @@ include __DIR__ . '/../../includes/layout-head.php';
       var leftNeeds = needed[0];
       var rightNeeds = needed[1];
 
-      // Both wide (or both fit): equal side-by-side width.
+      // Both wide (or both fit under half): equal side-by-side width.
       var leftWidth = half;
       var rightWidth = half;
+      var leftFit = false;
+      var rightFit = false;
 
       if (leftNeeds < half && rightNeeds > half) {
         leftWidth = Math.max(0, leftNeeds);
         rightWidth = total - leftWidth;
+        leftFit = true;
       } else if (rightNeeds < half && leftNeeds > half) {
         rightWidth = Math.max(0, rightNeeds);
         leftWidth = total - rightWidth;
+        rightFit = true;
       }
 
       pettyPanes[0].style.flex = '0 0 ' + leftWidth + 'px';
@@ -698,6 +708,12 @@ include __DIR__ . '/../../includes/layout-head.php';
       pettyPanes[1].style.flex = '0 0 ' + rightWidth + 'px';
       pettyPanes[1].style.width = rightWidth + 'px';
       pettyPanes[1].style.maxWidth = rightWidth + 'px';
+      if (leftFit) {
+        pettyPanes[0].classList.add('acc-petty-pane-fit');
+      }
+      if (rightFit) {
+        pettyPanes[1].classList.add('acc-petty-pane-fit');
+      }
     } finally {
       pettyLayingOut = false;
     }
