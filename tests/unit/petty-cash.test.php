@@ -103,6 +103,9 @@ $equalShare = pettyCashReportDescWidthShare(
 );
 $check(!empty($equalShare['equal']) && $equalShare['left'] === 50 && $equalShare['right'] === 50, 'wide sides share equally 50/50');
 $check(!$equalShare['left_fit'] && !$equalShare['right_fit'], 'equal wide sides are not content-fit');
+$equalCols = pettyCashReportColumnPercents($equalShare);
+$check($equalCols['ldesc'] === $equalCols['rdesc'], 'equal panes get equal বিবরণ column widths');
+$check(($equalCols['ld'] + $equalCols['ldesc'] + $equalCols['la'] + $equalCols['rd'] + $equalCols['rdesc'] + $equalCols['ra']) === 100, 'column percents sum to 100');
 
 $bothShort = pettyCashReportDescWidthShare(
     [['description' => 'চা']],
@@ -116,6 +119,9 @@ $skewShare = pettyCashReportDescWidthShare(
 );
 $check($skewShare['left_fit'] && !$skewShare['right_fit'] && empty($skewShare['equal']), 'short income pane is content-fit');
 $check($skewShare['left'] < 50 && $skewShare['right'] > 50, 'long expense pane receives leftover width');
+$skewCols = pettyCashReportColumnPercents($skewShare);
+$check($skewCols['ldesc'] < $skewCols['rdesc'], 'short-side বিবরণ stays tighter than long side');
+$check(($skewCols['ld'] + $skewCols['ldesc'] + $skewCols['la']) === $skewShare['left'], 'fit pane columns match pane width');
 
 $doc = pettyCashReportDocument(
     'মার্চ-' . bnDigits('2025'),

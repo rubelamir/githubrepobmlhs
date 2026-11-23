@@ -675,6 +675,9 @@ include __DIR__ . '/../../includes/layout-head.php';
     return width;
   }
 
+  // Width rules (same as print/PDF):
+  // 1) side-by-side  2) date/amount/actions content-fit  3) equal when both wide or both short
+  // 4) one short side content-fits; long side takes leftover  5) shared across screen/print/PDF
   function layoutPettyPanes() {
     if (pettyLayingOut || !pettySplit || pettyPanes.length !== 2) {
       return;
@@ -699,12 +702,13 @@ include __DIR__ . '/../../includes/layout-head.php';
       // Extra room for icon font + edit/delete so কর্ম never clips.
       var fitPad = 36;
 
-      // Both wide (or both fit under half): equal side-by-side width.
+      // Rule 3: both wide or both short → equal halves.
       var leftWidth = half;
       var rightWidth = half;
       var leftFit = false;
       var rightFit = false;
 
+      // Rule 4: one short + one long → short content-fits, long gets leftover.
       if (leftNeeds < half && rightNeeds > half) {
         leftWidth = Math.min(half - 1, Math.max(0, leftNeeds + fitPad));
         rightWidth = total - leftWidth;
