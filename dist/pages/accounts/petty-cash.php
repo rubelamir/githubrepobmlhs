@@ -647,6 +647,7 @@ include __DIR__ . '/../../includes/layout-head.php';
       pane.style.maxWidth = '';
       pane.style.minWidth = '';
       pane.classList.remove('acc-petty-pane-fit');
+      pane.classList.remove('acc-petty-pane-equal');
     });
   }
 
@@ -701,36 +702,55 @@ include __DIR__ . '/../../includes/layout-head.php';
       var rightNeeds = needed[1];
       // Extra room for icon font + edit/delete so কর্ম never clips.
       var fitPad = 36;
+      // Only clearly-short sides content-fit. Moderately wide + wide → equal (rule 3).
+      var shortLimit = half * 0.7;
 
-      // Rule 3: both wide or both short → equal halves.
+      // Rule 3 default: both wide (or both short) → equal halves.
       var leftWidth = half;
       var rightWidth = half;
       var leftFit = false;
       var rightFit = false;
+      var bothWide = leftNeeds >= half && rightNeeds >= half;
+      var bothShort = leftNeeds < shortLimit && rightNeeds < shortLimit;
 
-      // Rule 4: one short + one long → short content-fits, long gets leftover.
-      if (leftNeeds < half && rightNeeds > half) {
-        leftWidth = Math.min(half - 1, Math.max(0, leftNeeds + fitPad));
-        rightWidth = total - leftWidth;
-        leftFit = true;
-      } else if (rightNeeds < half && leftNeeds > half) {
-        rightWidth = Math.min(half - 1, Math.max(0, rightNeeds + fitPad));
-        leftWidth = total - rightWidth;
-        rightFit = true;
+      // Rule 4: one clearly short + one long → short content-fits, long gets leftover.
+      if (!bothWide && !bothShort) {
+        if (leftNeeds < shortLimit && rightNeeds > half) {
+          leftWidth = Math.min(half - 1, Math.max(0, leftNeeds + fitPad));
+          rightWidth = total - leftWidth;
+          leftFit = true;
+        } else if (rightNeeds < shortLimit && leftNeeds > half) {
+          rightWidth = Math.min(half - 1, Math.max(0, rightNeeds + fitPad));
+          leftWidth = total - rightWidth;
+          rightFit = true;
+        }
       }
 
-      pettyPanes[0].style.flex = '0 0 ' + leftWidth + 'px';
-      pettyPanes[0].style.width = leftWidth + 'px';
-      pettyPanes[0].style.minWidth = leftWidth + 'px';
-      pettyPanes[1].style.flex = '0 0 ' + rightWidth + 'px';
-      pettyPanes[1].style.width = rightWidth + 'px';
-      pettyPanes[1].style.minWidth = rightWidth + 'px';
-      // Avoid maxWidth — it was clipping the income কর্ম delete icon when fit.
-      if (leftFit) {
-        pettyPanes[0].classList.add('acc-petty-pane-fit');
-      }
-      if (rightFit) {
-        pettyPanes[1].classList.add('acc-petty-pane-fit');
+      if (!leftFit && !rightFit) {
+        // True 50/50 when both contents are wide (or both short).
+        leftWidth = half;
+        rightWidth = half;
+        pettyPanes[0].style.flex = '1 1 0';
+        pettyPanes[0].style.width = '50%';
+        pettyPanes[0].style.minWidth = '0';
+        pettyPanes[1].style.flex = '1 1 0';
+        pettyPanes[1].style.width = '50%';
+        pettyPanes[1].style.minWidth = '0';
+        pettyPanes[0].classList.add('acc-petty-pane-equal');
+        pettyPanes[1].classList.add('acc-petty-pane-equal');
+      } else {
+        pettyPanes[0].style.flex = '0 0 ' + leftWidth + 'px';
+        pettyPanes[0].style.width = leftWidth + 'px';
+        pettyPanes[0].style.minWidth = leftWidth + 'px';
+        pettyPanes[1].style.flex = '0 0 ' + rightWidth + 'px';
+        pettyPanes[1].style.width = rightWidth + 'px';
+        pettyPanes[1].style.minWidth = rightWidth + 'px';
+        if (leftFit) {
+          pettyPanes[0].classList.add('acc-petty-pane-fit');
+        }
+        if (rightFit) {
+          pettyPanes[1].classList.add('acc-petty-pane-fit');
+        }
       }
     } finally {
       pettyLayingOut = false;

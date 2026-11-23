@@ -306,6 +306,22 @@
   overflow: visible;
 }
 
+/* Both sides wide (or both short): lock equal pane width. */
+.acc-petty-pane-equal {
+  flex: 1 1 0;
+  width: 50%;
+  max-width: 50%;
+  min-width: 0;
+}
+
+/* Equal + wide: বিবরণ wraps inside the half instead of stretching the pane. */
+.acc-petty-pane-equal .acc-petty-col-desc {
+  width: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .acc-petty-table .acc-petty-drag-handle {
   width: 1%;
   white-space: nowrap;

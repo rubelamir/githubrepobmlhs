@@ -587,10 +587,24 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
     $leftNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($income)) / $fullWidthChars;
     $rightNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($expense)) / $fullWidthChars;
 
-    // Minimum keeps date/amount readable when the short side content-fits.
-    $minFitPct = 20;
+    // Rule 3: both wide OR both short → equal 50/50.
+    $shortLimit = 35; // clearly short (mirrors screen shortLimit ≈ 0.7 × half)
+    $wideLimit = 50;
+    $bothWide = $leftNeedPct >= $wideLimit && $rightNeedPct >= $wideLimit;
+    $bothShort = $leftNeedPct < $shortLimit && $rightNeedPct < $shortLimit;
+    if ($bothWide || $bothShort) {
+        return [
+            'left' => 50,
+            'right' => 50,
+            'left_fit' => false,
+            'right_fit' => false,
+            'equal' => true,
+        ];
+    }
 
-    if ($leftNeedPct < 50 && $rightNeedPct > 50) {
+    // Rule 4: one clearly short + one wide → short content-fits.
+    $minFitPct = 20;
+    if ($leftNeedPct < $shortLimit && $rightNeedPct > $wideLimit) {
         $left = (int) max($minFitPct, min(48, round($leftNeedPct)));
 
         return [
@@ -602,7 +616,7 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
         ];
     }
 
-    if ($rightNeedPct < 50 && $leftNeedPct > 50) {
+    if ($rightNeedPct < $shortLimit && $leftNeedPct > $wideLimit) {
         $right = (int) max($minFitPct, min(48, round($rightNeedPct)));
 
         return [
@@ -614,6 +628,7 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
         ];
     }
 
+    // Borderline / both moderately wide → equal.
     return [
         'left' => 50,
         'right' => 50,

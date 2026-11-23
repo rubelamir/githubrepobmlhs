@@ -123,6 +123,20 @@ $skewCols = pettyCashReportColumnPercents($skewShare);
 $check($skewCols['ldesc'] < $skewCols['rdesc'], 'short-side বিবরণ stays tighter than long side');
 $check(($skewCols['ld'] + $skewCols['ldesc'] + $skewCols['la']) === $skewShare['left'], 'fit pane columns match pane width');
 
+$wideDoc = pettyCashReportDocument(
+    'মার্চ-' . bnDigits('2025'),
+    '2025-03-01',
+    '2025-03-31',
+    [['entry_date' => '2025-03-01', 'description' => str_repeat('লম্বা আয়ের বিবরণ ', 8), 'amount' => '100.00']],
+    [['entry_date' => '2025-03-02', 'description' => str_repeat('লম্বা ব্যয়ের বিবরণ ', 8), 'amount' => '100.00']],
+    10000,
+    10000,
+    true
+);
+$check(str_contains($wideDoc['html'], 'table class="report"'), 'print/PDF uses a single report table');
+$check(!str_contains($wideDoc['html'], 'desc-fit'), 'both-wide print/PDF allows wrap (no desc-fit)');
+$check(str_contains($wideDoc['css'], 'white-space:normal'), 'both-wide print/PDF CSS wraps বিবরণ');
+
 $doc = pettyCashReportDocument(
     'মার্চ-' . bnDigits('2025'),
     '2025-03-01',
@@ -136,7 +150,6 @@ $doc = pettyCashReportDocument(
     50000,
     true
 );
-$check(str_contains($doc['html'], 'table class="report"'), 'print/PDF uses a single report table');
 $check(str_contains($doc['html'], 'desc-fit'), 'print/PDF marks short বিবরণ as content-fit');
 $check(str_contains($doc['html'], 'মোট আয়') && str_contains($doc['html'], 'মোট ব্যয়'), 'print/PDF includes both totals');
 // Shorter income side is padded so both totals sit on one row after equal body rows.
