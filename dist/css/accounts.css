@@ -209,6 +209,26 @@
   background: #fdecea;
 }
 
+/* Panes start equal; JS may shrink a short side so the long বিবরণ can grow. */
+.acc-petty-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  width: 100%;
+}
+
+.acc-petty-pane {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.acc-petty-pane-income {
+  border-right: 1px solid #c5d0cb;
+}
+
 .acc-petty-table {
   width: 100%;
   table-layout: auto;
@@ -262,8 +282,20 @@
   outline-offset: -2px;
 }
 
-.acc-petty-split > .border-end {
-  border-color: #c5d0cb !important;
+@media (max-width: 767.98px) {
+  .acc-petty-split {
+    flex-direction: column;
+  }
+
+  .acc-petty-pane {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .acc-petty-pane-income {
+    border-right: 0;
+    border-bottom: 1px solid #c5d0cb;
+  }
 }
 
 @media print {

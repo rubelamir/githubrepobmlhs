@@ -389,8 +389,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </span>
               </div>
               <div class="card-body p-0">
-                <div class="row g-0 acc-petty-split">
-                  <div class="col-md-6 border-end">
+                <div class="acc-petty-split">
+                  <div class="acc-petty-pane acc-petty-pane-income">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
@@ -447,7 +447,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                         </tfoot>
                       </table>
                   </div>
-                  <div class="col-md-6">
+                  <div class="acc-petty-pane acc-petty-pane-expense">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
@@ -628,6 +628,88 @@ include __DIR__ . '/../../includes/layout-head.php';
       });
     });
   });
+
+  var pettySplit = document.querySelector('.acc-petty-split');
+  var pettyPanes = pettySplit
+    ? Array.prototype.slice.call(pettySplit.querySelectorAll('.acc-petty-pane'))
+    : [];
+  var pettyLayoutTimer = 0;
+
+  function resetPettyPaneFlex() {
+    pettyPanes.forEach(function (pane) {
+      pane.style.flex = '';
+      pane.style.width = '';
+      pane.style.maxWidth = '';
+    });
+  }
+
+  function measurePettyPaneContentWidth(pane) {
+    var table = pane.querySelector('.acc-petty-table');
+    if (!table) {
+      return 0;
+    }
+    var previousWidth = table.style.width;
+    table.style.width = 'max-content';
+    var width = Math.ceil(table.getBoundingClientRect().width);
+    table.style.width = previousWidth;
+    return width;
+  }
+
+  function layoutPettyPanes() {
+    if (!pettySplit || pettyPanes.length !== 2) {
+      return;
+    }
+    if (window.matchMedia('(max-width: 767.98px)').matches) {
+      resetPettyPaneFlex();
+      return;
+    }
+
+    resetPettyPaneFlex();
+    var total = pettySplit.clientWidth;
+    if (total < 1) {
+      return;
+    }
+
+    var needed = pettyPanes.map(measurePettyPaneContentWidth);
+    var half = total / 2;
+    var leftNeeds = needed[0];
+    var rightNeeds = needed[1];
+
+    // Default: equal widths when both need similar space.
+    var leftWidth = half;
+    var rightWidth = half;
+
+    if (leftNeeds <= half && rightNeeds <= half) {
+      leftWidth = half;
+      rightWidth = half;
+    } else if (leftNeeds < half && rightNeeds > half) {
+      // Short left fits content; long right takes the leftover.
+      leftWidth = Math.max(0, leftNeeds);
+      rightWidth = total - leftWidth;
+    } else if (rightNeeds < half && leftNeeds > half) {
+      // Short right fits content; long left takes the leftover.
+      rightWidth = Math.max(0, rightNeeds);
+      leftWidth = total - rightWidth;
+    }
+
+    pettyPanes[0].style.flex = '0 0 auto';
+    pettyPanes[0].style.width = leftWidth + 'px';
+    pettyPanes[0].style.maxWidth = leftWidth + 'px';
+    pettyPanes[1].style.flex = '0 0 auto';
+    pettyPanes[1].style.width = rightWidth + 'px';
+    pettyPanes[1].style.maxWidth = rightWidth + 'px';
+  }
+
+  function schedulePettyPaneLayout() {
+    window.clearTimeout(pettyLayoutTimer);
+    pettyLayoutTimer = window.setTimeout(layoutPettyPanes, 50);
+  }
+
+  layoutPettyPanes();
+  window.addEventListener('resize', schedulePettyPaneLayout);
+  if (window.ResizeObserver && pettySplit) {
+    new ResizeObserver(schedulePettyPaneLayout).observe(pettySplit);
+  }
 })();
 </script>
 <?php include __DIR__ . '/../../includes/layout-end.php'; ?>
