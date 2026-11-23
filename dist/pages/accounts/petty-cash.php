@@ -661,7 +661,7 @@ include __DIR__ . '/../../includes/layout-head.php';
     });
     // Icon fonts can under-measure in the clone; keep কর্ম wide enough for edit+delete.
     Array.prototype.forEach.call(clone.querySelectorAll('.acc-petty-col-actions'), function (cell) {
-      cell.style.minWidth = '4.5rem';
+      cell.style.minWidth = '5.75rem';
       cell.style.whiteSpace = 'nowrap';
     });
     document.body.appendChild(clone);
@@ -691,8 +691,8 @@ include __DIR__ . '/../../includes/layout-head.php';
       var half = total / 2;
       var leftNeeds = needed[0];
       var rightNeeds = needed[1];
-      // Padding covers icon-font / button chrome so delete is never clipped.
-      var fitPad = 20;
+      // Extra room for icon font + edit/delete so কর্ম never clips.
+      var fitPad = 36;
 
       // Both wide (or both fit under half): equal side-by-side width.
       var leftWidth = half;

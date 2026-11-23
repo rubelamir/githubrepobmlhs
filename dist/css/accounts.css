@@ -249,8 +249,15 @@
 /* Edit + delete must stay fully visible even when the pane is content-fit. */
 .acc-petty-table .acc-petty-col-actions {
   width: 1%;
-  min-width: 4.5rem;
+  min-width: 5.75rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
   white-space: nowrap;
+}
+
+.acc-petty-table .acc-petty-col-actions .btn-link + form,
+.acc-petty-table .acc-petty-col-actions a + form {
+  margin-left: 0.35rem;
 }
 
 .acc-petty-table .acc-petty-col-desc {
