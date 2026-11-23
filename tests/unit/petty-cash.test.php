@@ -122,14 +122,22 @@ $doc = pettyCashReportDocument(
     '2025-03-01',
     '2025-03-31',
     [['entry_date' => '2025-03-01', 'description' => 'চা', 'amount' => '100.00']],
-    [['entry_date' => '2025-03-02', 'description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8), 'amount' => '500.00']],
+    [
+        ['entry_date' => '2025-03-02', 'description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8), 'amount' => '300.00'],
+        ['entry_date' => '2025-03-03', 'description' => 'আরও ব্যয়', 'amount' => '200.00'],
+    ],
     10000,
     50000,
     true
 );
-$check(str_contains($doc['html'], 'table class="split"'), 'print/PDF uses side-by-side panes');
-$check(str_contains($doc['html'], 'pane-fit'), 'print/PDF marks the short pane as content-fit');
+$check(str_contains($doc['html'], 'table class="report"'), 'print/PDF uses a single report table');
 $check(str_contains($doc['html'], 'desc-fit'), 'print/PDF marks short বিবরণ as content-fit');
+$check(str_contains($doc['html'], 'মোট আয়') && str_contains($doc['html'], 'মোট ব্যয়'), 'print/PDF includes both totals');
+// Shorter income side is padded so both totals sit on one row after equal body rows.
+$check(substr_count($doc['html'], '<tr>') >= 4, 'print/PDF pads shorter side with empty rows before totals');
+$totalsPos = strpos($doc['html'], 'class="totals"');
+$check($totalsPos !== false && str_contains(substr($doc['html'], $totalsPos, 280), 'মোট আয়')
+    && str_contains(substr($doc['html'], $totalsPos, 280), 'মোট ব্যয়'), 'মোট আয় and মোট ব্যয় share one totals row');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);
