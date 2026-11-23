@@ -553,16 +553,23 @@ function pettyCashDelete(PDO $db, int $id): void
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
  */
-function pettyCashDownloadPdf(
-    string $monthKey,
+/**
+ * Shared Petty Cash report markup used by PDF download and browser print.
+ *
+ * @param list<array<string, mixed>> $income
+ * @param list<array<string, mixed>> $expense
+ * @return array{title: string, subtitle: string, html: string, css: string}
+ */
+function pettyCashReportDocument(
     string $monthLabel,
     string $from,
     string $to,
     array $income,
     array $expense,
     int $incomeTotal,
-    int $expenseTotal
-): void {
+    int $expenseTotal,
+    bool $forBrowser = false
+): array {
     require_once __DIR__ . '/mpdf-bangla.php';
     if (!function_exists('schoolPlainAddress')) {
         require_once dirname(__DIR__) . '/bmlhs/includes/site.php';
@@ -601,12 +608,14 @@ function pettyCashDownloadPdf(
         : '<p class="diff">পার্থক্য: ' . h(pettyCashFormatAmount(abs($diff)))
             . ($diff > 0 ? ' (আয় বেশি)' : ' (ব্যয় বেশি)') . '</p>';
 
-    $pad = $settings !== [] ? mpdfSchoolPadHtml($settings) : '';
-    $font = mpdfBanglaFontFamily();
-    $digitFont = function_exists('mpdfBanglaDigitsFontFamily') ? mpdfBanglaDigitsFontFamily() : $font;
+    $pad = '';
+    if ($settings !== []) {
+        $pad = $forBrowser ? pettyCashBrowserPadHtml($settings) : mpdfSchoolPadHtml($settings);
+    }
+
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
-        . '<p class="sub">' . (function_exists('mpdfClearBnDigitsHtml') ? mpdfClearBnDigitsHtml(h($subtitle)) : h($subtitle)) . '</p>'
+        . '<p class="sub">' . h($subtitle) . '</p>'
         . '<table class="report"><thead>'
         . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
         . '<tr><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th></tr>'
@@ -623,11 +632,15 @@ function pettyCashDownloadPdf(
         $html = mpdfClearBnDigitsHtml($html);
     }
 
-    $mpdf = createBanglaMpdf($title, $title, 'A4', 'L');
-    $mpdf->SetMargins(12, 12, 12);
-    $css = (function_exists('mpdfSchoolPadCss') ? mpdfSchoolPadCss() : '')
-        . "body{font-family:{$font},sans-serif;font-size:10pt}"
-        . ".bn-num{font-family:{$digitFont},{$font},sans-serif}"
+    $font = $forBrowser
+        ? '"Noto Sans Bengali", "Hind Siliguri", sans-serif'
+        : mpdfBanglaFontFamily();
+    $digitFont = $forBrowser
+        ? '"Noto Sans Bengali", sans-serif'
+        : (function_exists('mpdfBanglaDigitsFontFamily') ? mpdfBanglaDigitsFontFamily() : $font);
+    $css = ($forBrowser ? pettyCashBrowserPadCss() : (function_exists('mpdfSchoolPadCss') ? mpdfSchoolPadCss() : ''))
+        . "body{font-family:{$font};font-size:10pt;color:#16231e;margin:0;padding:12mm;background:#fff}"
+        . ".bn-num{font-family:{$digitFont}}"
         . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
         . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
         . 'table.report{width:100%;border-collapse:collapse}'
@@ -637,8 +650,131 @@ function pettyCashDownloadPdf(
         . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
         . '.ok{color:#0a7a3e;font-weight:bold;text-align:center;margin-top:3mm}'
         . '.diff{color:#c62828;font-weight:bold;text-align:center;margin-top:3mm}';
-    $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
-    $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+
+    return [
+        'title' => $title,
+        'subtitle' => $subtitle,
+        'html' => $html,
+        'css' => $css,
+    ];
+}
+
+/**
+ * School letterhead for browser print (public logo URL instead of local file path).
+ *
+ * @param array<string, mixed> $settings
+ */
+function pettyCashBrowserPadHtml(array $settings): string
+{
+    $logo = '';
+    if (function_exists('schoolLogoUrl')) {
+        $logo = trim((string) schoolLogoUrl($settings));
+    }
+    if ($logo === '') {
+        $logo = trim((string) ($settings['logo'] ?? 'image/school_logo.png'));
+    }
+    if ($logo !== '' && preg_match('#^https?://#i', $logo) !== 1 && function_exists('publicSiteUrl')) {
+        $logo = publicSiteUrl(ltrim($logo, '/'));
+    }
+    if ($logo !== '' && function_exists('optimizedPublicImageUrl')) {
+        $logo = optimizedPublicImageUrl($logo);
+    }
+
+    $schoolName = trim((string) ($settings['school_name_bn'] ?? ''));
+    $address = function_exists('schoolPlainAddress')
+        ? schoolPlainAddress((string) ($settings['address'] ?? ''))
+        : trim((string) ($settings['address'] ?? ''));
+    $eiin = trim((string) ($settings['eiin'] ?? ''));
+    $mobile = function_exists('publicStaffMobileDisplay')
+        ? publicStaffMobileDisplay((string) ($settings['mobile'] ?? ''))
+        : trim((string) ($settings['mobile'] ?? ''));
+    $meta = '';
+    if ($eiin !== '') {
+        $meta .= 'EIIN: ' . h(function_exists('bnDigits') ? bnDigits($eiin) : $eiin);
+    }
+    if ($eiin !== '' && $mobile !== '') {
+        $meta .= ' · ';
+    }
+    if ($mobile !== '') {
+        $meta .= 'মোবাইল: ' . h(function_exists('bnDigits') ? bnDigits($mobile) : $mobile);
+    }
+
+    return '<table class="school-pad"><tr>'
+        . '<td class="school-pad-logo">'
+        . ($logo !== '' ? '<img class="school-pad-logo-img" src="' . h($logo) . '" width="40" height="40" alt="">' : '')
+        . '</td>'
+        . '<td class="school-pad-brand">'
+        . '<div class="school-pad-name">' . h($schoolName) . '</div>'
+        . ($address !== '' ? '<div class="school-pad-meta">' . h($address) . '</div>' : '')
+        . ($meta !== '' ? '<div class="school-pad-meta">' . $meta . '</div>' : '')
+        . '</td>'
+        . '<td class="school-pad-logo"></td>'
+        . '</tr></table>';
+}
+
+function pettyCashBrowserPadCss(): string
+{
+    return <<<'CSS'
+.school-pad { width: 100%; border-collapse: collapse; margin: 0 0 2.5mm; border-bottom: 0.35mm solid #1a3a30; }
+.school-pad td { border: 0 !important; padding: 0 0 1.5mm; vertical-align: middle; background: transparent; }
+.school-pad-logo { width: 14mm; text-align: center; }
+.school-pad-logo-img, .school-pad-logo img { width: 11mm; height: 11mm; max-width: 11mm; max-height: 11mm; }
+.school-pad-brand { text-align: center; }
+.school-pad-name { font-size: 15pt; font-weight: bold; line-height: 1.3; color: #174936; }
+.school-pad-meta { font-size: 9pt; color: #374b43; margin-top: 0.4mm; }
+CSS;
+}
+
+function pettyCashRenderBrowserPrint(
+    string $monthKey,
+    string $monthLabel,
+    string $from,
+    string $to,
+    array $income,
+    array $expense,
+    int $incomeTotal,
+    int $expenseTotal
+): void {
+    $doc = pettyCashReportDocument($monthLabel, $from, $to, $income, $expense, $incomeTotal, $expenseTotal, true);
+    $title = $doc['title'] . ' · ' . $monthLabel;
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!doctype html><html lang="bn"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>' . h($title) . '</title>'
+        . '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+        . '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">'
+        . '<style>'
+        . '@page{size:A4 landscape;margin:10mm}'
+        . '@media print{body{padding:0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+        . '.no-print{display:none !important}}'
+        . '.no-print{margin:0 0 8px;text-align:right}'
+        . '.no-print button{font:inherit;padding:6px 12px;cursor:pointer}'
+        . $doc['css']
+        . '</style></head><body>'
+        . '<div class="no-print"><button type="button" onclick="window.print()">প্রিন্ট</button></div>'
+        . $doc['html']
+        . '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},250);});</script>'
+        . '</body></html>';
+    exit;
+}
+
+function pettyCashDownloadPdf(
+    string $monthKey,
+    string $monthLabel,
+    string $from,
+    string $to,
+    array $income,
+    array $expense,
+    int $incomeTotal,
+    int $expenseTotal
+): void {
+    require_once __DIR__ . '/mpdf-bangla.php';
+    $doc = pettyCashReportDocument($monthLabel, $from, $to, $income, $expense, $incomeTotal, $expenseTotal, false);
+    $mpdf = createBanglaMpdf($doc['title'], $doc['title'], 'A4', 'L');
+    $mpdf->SetMargins(12, 12, 12);
+    $mpdf->WriteHTML($doc['css'], \Mpdf\HTMLParserMode::HEADER_CSS);
+    $mpdf->WriteHTML($doc['html'], \Mpdf\HTMLParserMode::HTML_BODY);
     $safe = 'petty-cash-' . preg_replace('/[^0-9-]/', '', $monthKey) . '.pdf';
     $mpdf->Output($safe !== '.pdf' ? $safe : 'petty-cash.pdf', \Mpdf\Output\Destination::DOWNLOAD);
     exit;
