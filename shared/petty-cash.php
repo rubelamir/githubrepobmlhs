@@ -554,43 +554,70 @@ function pettyCashDelete(PDO $db, int $id): void
  * @param list<array<string, mixed>> $expense
  */
 /**
- * Relative widths for the two বিবরণ columns in print/PDF (sum = 100).
- * Equal when both sides are wide; a clearly shorter side stays tighter.
+ * Max description character length for a side (at least the header label).
+ *
+ * @param list<array<string, mixed>> $entries
+ */
+function pettyCashReportMaxDescChars(array $entries): int
+{
+    $max = mb_strlen('বিবরণ', 'UTF-8');
+    foreach ($entries as $entry) {
+        $len = mb_strlen(trim((string) ($entry['description'] ?? '')), 'UTF-8');
+        if ($len > $max) {
+            $max = $len;
+        }
+    }
+
+    return $max;
+}
+
+/**
+ * Print/PDF বিবরণ column widths as % of the full table (date/amount use the rest).
+ * Same pane rule as the screen: equal when both need ≥ half; otherwise the short
+ * side stays content-fit and the long side takes the leftover.
  *
  * @param list<array<string, mixed>> $income
  * @param list<array<string, mixed>> $expense
- * @return array{left: int, right: int}
+ * @return array{left: int, right: int, left_fit: bool, right_fit: bool, date: int, amount: int}
  */
 function pettyCashReportDescWidthShare(array $income, array $expense): array
 {
-    $maxLen = static function (array $entries): int {
-        $max = 0;
-        foreach ($entries as $entry) {
-            $len = mb_strlen(trim((string) ($entry['description'] ?? '')), 'UTF-8');
-            if ($len > $max) {
-                $max = $len;
-            }
-        }
+    $datePct = 9;
+    $amountPct = 11;
+    $descBudget = 100 - (2 * $datePct) - (2 * $amountPct); // 60
+    $half = $descBudget / 2.0;
 
-        return max(1, $max);
-    };
+    // ~27 Bangla chars fill half the description budget at 10pt landscape.
+    $pctPerChar = $half / 27.0;
+    $leftChars = pettyCashReportMaxDescChars($income);
+    $rightChars = pettyCashReportMaxDescChars($expense);
+    // Content-fit estimate (no artificial wide floor — short text stays tight).
+    $leftNeed = min($descBudget - 6, max(5, $leftChars * $pctPerChar));
+    $rightNeed = min($descBudget - 6, max(5, $rightChars * $pctPerChar));
 
-    $left = $maxLen($income);
-    $right = $maxLen($expense);
-    $longer = max($left, $right);
-    $shorter = min($left, $right);
-
-    // Both wide enough, or similar length → equal share (same rule as the screen panes).
-    if ($shorter * 2 >= $longer) {
-        return ['left' => 50, 'right' => 50];
+    $leftFit = false;
+    $rightFit = false;
+    if ($leftNeed < $half && $rightNeed > $half) {
+        $leftPct = (int) max(5, round($leftNeed));
+        $rightPct = $descBudget - $leftPct;
+        $leftFit = true;
+    } elseif ($rightNeed < $half && $leftNeed > $half) {
+        $rightPct = (int) max(5, round($rightNeed));
+        $leftPct = $descBudget - $rightPct;
+        $rightFit = true;
+    } else {
+        $leftPct = (int) round($half);
+        $rightPct = $descBudget - $leftPct;
     }
 
-    $shortShare = (int) max(18, min(40, round(100 * $shorter / ($left + $right))));
-    if ($left <= $right) {
-        return ['left' => $shortShare, 'right' => 100 - $shortShare];
-    }
-
-    return ['left' => 100 - $shortShare, 'right' => $shortShare];
+    return [
+        'left' => $leftPct,
+        'right' => $rightPct,
+        'left_fit' => $leftFit,
+        'right_fit' => $rightFit,
+        'date' => $datePct,
+        'amount' => $amountPct,
+    ];
 }
 
 /**
@@ -624,13 +651,13 @@ function pettyCashReportDocument(
         . (function_exists('accFormatDate') ? accFormatDate($to) : $to)
         . ' · মাস ' . $monthLabel;
 
-    $descShare = pettyCashReportDescWidthShare($income, $expense);
-    // Date/amount stay content-tight; the two বিবরণ columns share the remaining ~60%.
-    $descBudget = 60;
-    $leftDescPct = (int) max(10, round($descBudget * $descShare['left'] / 100));
-    $rightDescPct = $descBudget - $leftDescPct;
-    $datePct = 9;
-    $amountPct = 11;
+    $widths = pettyCashReportDescWidthShare($income, $expense);
+    $leftDescPct = $widths['left'];
+    $rightDescPct = $widths['right'];
+    $datePct = $widths['date'];
+    $amountPct = $widths['amount'];
+    $leftDescClass = 'desc' . ($widths['left_fit'] ? ' desc-fit' : '');
+    $rightDescClass = 'desc' . ($widths['right_fit'] ? ' desc-fit' : '');
 
     $rows = pettyCashTableRows($income, $expense);
     $body = '';
@@ -639,10 +666,10 @@ function pettyCashReportDocument(
         $right = $row['expense'];
         $body .= '<tr>'
             . '<td class="center fit">' . ($left ? h(function_exists('accFormatDate') ? accFormatDate((string) $left['entry_date']) : (string) $left['entry_date']) : '') . '</td>'
-            . '<td class="desc">' . ($left ? h((string) $left['description']) : '') . '</td>'
+            . '<td class="' . $leftDescClass . '">' . ($left ? h((string) $left['description']) : '') . '</td>'
             . '<td class="num fit">' . ($left ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($left['amount']))) : '') . '</td>'
             . '<td class="center fit">' . ($right ? h(function_exists('accFormatDate') ? accFormatDate((string) $right['entry_date']) : (string) $right['entry_date']) : '') . '</td>'
-            . '<td class="desc">' . ($right ? h((string) $right['description']) : '') . '</td>'
+            . '<td class="' . $rightDescClass . '">' . ($right ? h((string) $right['description']) : '') . '</td>'
             . '<td class="num fit">' . ($right ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($right['amount']))) : '') . '</td>'
             . '</tr>';
     }
@@ -671,10 +698,10 @@ function pettyCashReportDocument(
 
     $colgroup = '<colgroup>'
         . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="desc" style="width:' . $leftDescPct . '%">'
+        . '<col class="' . $leftDescClass . '" style="width:' . $leftDescPct . '%">'
         . '<col class="fit" style="width:' . $amountPct . '%">'
         . '<col class="fit" style="width:' . $datePct . '%">'
-        . '<col class="desc" style="width:' . $rightDescPct . '%">'
+        . '<col class="' . $rightDescClass . '" style="width:' . $rightDescPct . '%">'
         . '<col class="fit" style="width:' . $amountPct . '%">'
         . '</colgroup>';
 
@@ -683,8 +710,8 @@ function pettyCashReportDocument(
         . '<p class="sub">' . h($subtitle) . '</p>'
         . '<table class="report">' . $colgroup . '<thead>'
         . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
-        . '<tr><th class="fit">তারিখ</th><th class="desc">বিবরণ</th><th class="fit">টাকা</th>'
-        . '<th class="fit">তারিখ</th><th class="desc">বিবরণ</th><th class="fit">টাকা</th></tr>'
+        . '<tr><th class="fit">তারিখ</th><th class="' . $leftDescClass . '">বিবরণ</th><th class="fit">টাকা</th>'
+        . '<th class="fit">তারিখ</th><th class="' . $rightDescClass . '">বিবরণ</th><th class="fit">টাকা</th></tr>'
         . '</thead><tbody>' . $body . $totalsRow . '</tbody></table>'
         . $balanceHtml;
 
@@ -710,6 +737,7 @@ function pettyCashReportDocument(
         . 'table.report .fit{white-space:nowrap}'
         . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
         . 'table.report th.desc,table.report td.desc{overflow-wrap:break-word;word-break:break-word;white-space:normal}'
+        . 'table.report th.desc-fit,table.report td.desc-fit{white-space:nowrap;overflow-wrap:normal;word-break:normal}'
         . 'table.report tr.totals td{font-weight:bold;background:#f3f7f5}'
         . 'table.report thead{display:table-header-group}'
         . 'table.report tfoot{display:table-row-group}'
