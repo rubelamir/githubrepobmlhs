@@ -391,7 +391,6 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="card-body p-0">
                 <div class="row g-0 acc-petty-split">
                   <div class="col-md-6 border-end">
-                    <div class="table-responsive">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
@@ -447,10 +446,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                           </tr>
                         </tfoot>
                       </table>
-                    </div>
                   </div>
                   <div class="col-md-6">
-                    <div class="table-responsive">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
@@ -506,7 +503,6 @@ include __DIR__ . '/../../includes/layout-head.php';
                           </tr>
                         </tfoot>
                       </table>
-                    </div>
                   </div>
                 </div>
               </div>

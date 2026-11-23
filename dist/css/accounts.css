@@ -209,9 +209,26 @@
   background: #fdecea;
 }
 
+.acc-petty-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
 .acc-petty-table th,
 .acc-petty-table td {
   vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.acc-petty-table .acc-petty-drag-handle {
+  width: 2.25rem;
+}
+
+.acc-petty-table .text-nowrap {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .acc-petty-balanced {
