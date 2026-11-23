@@ -395,11 +395,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit"></th><?php endif; ?>
-                            <th class="text-center acc-petty-col-fit">তারিখ</th>
+                            <?php if ($canWrite): ?><th class="acc-petty-col-fit"></th><?php endif; ?>
+                            <th class="acc-petty-col-fit">তারিখ</th>
                             <th class="acc-petty-col-desc">বিবরণ</th>
-                            <th class="text-end acc-petty-col-fit">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit">কর্ম</th><?php endif; ?>
+                            <th class="acc-petty-col-fit acc-petty-col-amount">টাকা</th>
+                            <?php if ($canWrite): ?><th class="acc-petty-col-fit acc-petty-col-actions">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -411,28 +411,30 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($income as $left): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $left['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
-                              <td class="text-nowrap text-center acc-petty-col-fit"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
+                              <td class="acc-petty-col-fit"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
                               <td class="acc-petty-col-desc"><?= h((string) $left['description']) ?></td>
-                              <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
+                              <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap acc-petty-col-fit acc-petty-col-actions">
-                                  <a class="btn btn-link btn-sm p-0 text-primary"
-                                     href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
-                                     title="এডিট" aria-label="এডিট"
-                                     onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
-                                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                                  </a>
-                                  <form method="post" class="d-inline" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
-                                    <?= csrfField() ?>
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
-                                    <input type="hidden" name="month" value="<?= h($monthKey) ?>">
-                                    <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
-                                      <i class="bi bi-trash" aria-hidden="true"></i>
-                                    </button>
-                                  </form>
+                                <td class="acc-petty-col-fit acc-petty-col-actions">
+                                  <span class="acc-petty-actions">
+                                    <a class="btn btn-link btn-sm p-0 text-primary"
+                                       href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
+                                       title="এডিট" aria-label="এডিট"
+                                       onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
+                                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <form method="post" class="d-inline mb-0" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
+                                      <?= csrfField() ?>
+                                      <input type="hidden" name="action" value="delete">
+                                      <input type="hidden" name="id" value="<?= (int) $left['id'] ?>">
+                                      <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                      <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                      </button>
+                                    </form>
+                                  </span>
                                 </td>
                               <?php endif; ?>
                             </tr>
@@ -441,8 +443,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <tfoot>
                           <tr class="fw-semibold">
                             <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট আয়</td>
-                            <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
-                            <?php if ($canWrite): ?><td></td><?php endif; ?>
+                            <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
+                            <?php if ($canWrite): ?><td class="acc-petty-col-fit acc-petty-col-actions"></td><?php endif; ?>
                           </tr>
                         </tfoot>
                       </table>
@@ -452,11 +454,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit"></th><?php endif; ?>
-                            <th class="text-center acc-petty-col-fit">তারিখ</th>
+                            <?php if ($canWrite): ?><th class="acc-petty-col-fit"></th><?php endif; ?>
+                            <th class="acc-petty-col-fit">তারিখ</th>
                             <th class="acc-petty-col-desc">বিবরণ</th>
-                            <th class="text-end acc-petty-col-fit">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center acc-petty-col-fit">কর্ম</th><?php endif; ?>
+                            <th class="acc-petty-col-fit acc-petty-col-amount">টাকা</th>
+                            <?php if ($canWrite): ?><th class="acc-petty-col-fit acc-petty-col-actions">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -468,28 +470,30 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($expense as $right): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $right['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
-                              <td class="text-nowrap text-center acc-petty-col-fit"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
+                              <td class="acc-petty-col-fit"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
                               <td class="acc-petty-col-desc"><?= h((string) $right['description']) ?></td>
-                              <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
+                              <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap acc-petty-col-fit acc-petty-col-actions">
-                                  <a class="btn btn-link btn-sm p-0 text-primary"
-                                     href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
-                                     title="এডিট" aria-label="এডিট"
-                                     onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
-                                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                                  </a>
-                                  <form method="post" class="d-inline" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
-                                    <?= csrfField() ?>
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
-                                    <input type="hidden" name="month" value="<?= h($monthKey) ?>">
-                                    <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
-                                      <i class="bi bi-trash" aria-hidden="true"></i>
-                                    </button>
-                                  </form>
+                                <td class="acc-petty-col-fit acc-petty-col-actions">
+                                  <span class="acc-petty-actions">
+                                    <a class="btn btn-link btn-sm p-0 text-primary"
+                                       href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
+                                       title="এডিট" aria-label="এডিট"
+                                       onclick='return confirm(<?= json_encode($editConfirmMsg, JSON_UNESCAPED_UNICODE) ?>);'>
+                                      <i class="bi bi-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <form method="post" class="d-inline mb-0" data-acc-confirm="<?= h($deleteConfirmMsg) ?>" data-acc-confirm-variant="danger" data-acc-confirm-ok="হ্যাঁ, মুছুন">
+                                      <?= csrfField() ?>
+                                      <input type="hidden" name="action" value="delete">
+                                      <input type="hidden" name="id" value="<?= (int) $right['id'] ?>">
+                                      <input type="hidden" name="month" value="<?= h($monthKey) ?>">
+                                      <button class="btn btn-link btn-sm p-0 text-danger" type="submit" title="ডিলিট" aria-label="ডিলিট">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                      </button>
+                                    </form>
+                                  </span>
                                 </td>
                               <?php endif; ?>
                             </tr>
@@ -498,8 +502,8 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <tfoot>
                           <tr class="fw-semibold">
                             <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট ব্যয়</td>
-                            <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
-                            <?php if ($canWrite): ?><td></td><?php endif; ?>
+                            <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
+                            <?php if ($canWrite): ?><td class="acc-petty-col-fit acc-petty-col-actions"></td><?php endif; ?>
                           </tr>
                         </tfoot>
                       </table>
@@ -661,8 +665,9 @@ include __DIR__ . '/../../includes/layout-head.php';
     });
     // Icon fonts can under-measure in the clone; keep কর্ম wide enough for edit+delete.
     Array.prototype.forEach.call(clone.querySelectorAll('.acc-petty-col-actions'), function (cell) {
-      cell.style.minWidth = '5.75rem';
+      cell.style.minWidth = '4.75rem';
       cell.style.whiteSpace = 'nowrap';
+      cell.style.textAlign = 'center';
     });
     document.body.appendChild(clone);
     var width = Math.ceil(clone.getBoundingClientRect().width);

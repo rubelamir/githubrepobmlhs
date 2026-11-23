@@ -243,21 +243,43 @@
 /* Date / amount / actions shrink to content so বিবরণ can grow. */
 .acc-petty-table .acc-petty-col-fit {
   width: 1%;
+  max-width: max-content;
   white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
 }
 
-/* Edit + delete must stay fully visible even when the pane is content-fit. */
+/* টাকা stays compact but right-aligned for amounts. */
+.acc-petty-table th.acc-petty-col-amount,
+.acc-petty-table td.acc-petty-col-amount {
+  text-align: right;
+}
+
+/* Edit + delete: centered, no clip, tight so বিবরণ gets leftover width. */
 .acc-petty-table .acc-petty-col-actions {
   width: 1%;
-  min-width: 5.75rem;
-  padding-left: 0.35rem;
-  padding-right: 0.35rem;
+  min-width: 4.75rem;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
   white-space: nowrap;
+  text-align: center;
+  overflow: visible;
 }
 
-.acc-petty-table .acc-petty-col-actions .btn-link + form,
-.acc-petty-table .acc-petty-col-actions a + form {
-  margin-left: 0.35rem;
+.acc-petty-actions {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.acc-petty-actions .btn-link {
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 .acc-petty-table .acc-petty-col-desc {
