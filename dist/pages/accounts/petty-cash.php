@@ -417,7 +417,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td class="acc-petty-col-desc"><?= h((string) $left['description']) ?></td>
                               <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap acc-petty-col-fit">
+                                <td class="text-center text-nowrap acc-petty-col-fit acc-petty-col-actions">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
@@ -474,7 +474,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                               <td class="acc-petty-col-desc"><?= h((string) $right['description']) ?></td>
                               <td class="text-end text-nowrap acc-petty-col-fit"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center text-nowrap acc-petty-col-fit">
+                                <td class="text-center text-nowrap acc-petty-col-fit acc-petty-col-actions">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
@@ -641,6 +641,7 @@ include __DIR__ . '/../../includes/layout-head.php';
       pane.style.flex = '';
       pane.style.width = '';
       pane.style.maxWidth = '';
+      pane.style.minWidth = '';
       pane.classList.remove('acc-petty-pane-fit');
     });
   }
@@ -650,13 +651,18 @@ include __DIR__ . '/../../includes/layout-head.php';
     if (!table) {
       return 0;
     }
-    // Measure unwrapped content width (তারিখ/টাকা/বিবরণ) off-DOM.
+    // Measure unwrapped content width (তারিখ/টাকা/বিবরণ/কর্ম) off-DOM.
     var clone = table.cloneNode(true);
     clone.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;width:max-content;max-width:none;table-layout:auto;';
     Array.prototype.forEach.call(clone.querySelectorAll('.acc-petty-col-desc'), function (cell) {
       cell.style.whiteSpace = 'nowrap';
       cell.style.overflowWrap = 'normal';
       cell.style.wordBreak = 'normal';
+    });
+    // Icon fonts can under-measure in the clone; keep কর্ম wide enough for edit+delete.
+    Array.prototype.forEach.call(clone.querySelectorAll('.acc-petty-col-actions'), function (cell) {
+      cell.style.minWidth = '4.5rem';
+      cell.style.whiteSpace = 'nowrap';
     });
     document.body.appendChild(clone);
     var width = Math.ceil(clone.getBoundingClientRect().width);
@@ -685,6 +691,8 @@ include __DIR__ . '/../../includes/layout-head.php';
       var half = total / 2;
       var leftNeeds = needed[0];
       var rightNeeds = needed[1];
+      // Padding covers icon-font / button chrome so delete is never clipped.
+      var fitPad = 20;
 
       // Both wide (or both fit under half): equal side-by-side width.
       var leftWidth = half;
@@ -693,21 +701,22 @@ include __DIR__ . '/../../includes/layout-head.php';
       var rightFit = false;
 
       if (leftNeeds < half && rightNeeds > half) {
-        leftWidth = Math.max(0, leftNeeds);
+        leftWidth = Math.min(half - 1, Math.max(0, leftNeeds + fitPad));
         rightWidth = total - leftWidth;
         leftFit = true;
       } else if (rightNeeds < half && leftNeeds > half) {
-        rightWidth = Math.max(0, rightNeeds);
+        rightWidth = Math.min(half - 1, Math.max(0, rightNeeds + fitPad));
         leftWidth = total - rightWidth;
         rightFit = true;
       }
 
       pettyPanes[0].style.flex = '0 0 ' + leftWidth + 'px';
       pettyPanes[0].style.width = leftWidth + 'px';
-      pettyPanes[0].style.maxWidth = leftWidth + 'px';
+      pettyPanes[0].style.minWidth = leftWidth + 'px';
       pettyPanes[1].style.flex = '0 0 ' + rightWidth + 'px';
       pettyPanes[1].style.width = rightWidth + 'px';
-      pettyPanes[1].style.maxWidth = rightWidth + 'px';
+      pettyPanes[1].style.minWidth = rightWidth + 'px';
+      // Avoid maxWidth — it was clipping the income কর্ম delete icon when fit.
       if (leftFit) {
         pettyPanes[0].classList.add('acc-petty-pane-fit');
       }
