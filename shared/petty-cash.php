@@ -554,6 +554,46 @@ function pettyCashDelete(PDO $db, int $id): void
  * @param list<array<string, mixed>> $expense
  */
 /**
+ * Relative widths for the two বিবরণ columns in print/PDF (sum = 100).
+ * Equal when both sides are wide; a clearly shorter side stays tighter.
+ *
+ * @param list<array<string, mixed>> $income
+ * @param list<array<string, mixed>> $expense
+ * @return array{left: int, right: int}
+ */
+function pettyCashReportDescWidthShare(array $income, array $expense): array
+{
+    $maxLen = static function (array $entries): int {
+        $max = 0;
+        foreach ($entries as $entry) {
+            $len = mb_strlen(trim((string) ($entry['description'] ?? '')), 'UTF-8');
+            if ($len > $max) {
+                $max = $len;
+            }
+        }
+
+        return max(1, $max);
+    };
+
+    $left = $maxLen($income);
+    $right = $maxLen($expense);
+    $longer = max($left, $right);
+    $shorter = min($left, $right);
+
+    // Both wide enough, or similar length → equal share (same rule as the screen panes).
+    if ($shorter * 2 >= $longer) {
+        return ['left' => 50, 'right' => 50];
+    }
+
+    $shortShare = (int) max(18, min(40, round(100 * $shorter / ($left + $right))));
+    if ($left <= $right) {
+        return ['left' => $shortShare, 'right' => 100 - $shortShare];
+    }
+
+    return ['left' => 100 - $shortShare, 'right' => $shortShare];
+}
+
+/**
  * Shared Petty Cash report markup used by PDF download and browser print.
  *
  * @param list<array<string, mixed>> $income
@@ -584,18 +624,26 @@ function pettyCashReportDocument(
         . (function_exists('accFormatDate') ? accFormatDate($to) : $to)
         . ' · মাস ' . $monthLabel;
 
+    $descShare = pettyCashReportDescWidthShare($income, $expense);
+    // Date/amount stay content-tight; the two বিবরণ columns share the remaining ~60%.
+    $descBudget = 60;
+    $leftDescPct = (int) max(10, round($descBudget * $descShare['left'] / 100));
+    $rightDescPct = $descBudget - $leftDescPct;
+    $datePct = 9;
+    $amountPct = 11;
+
     $rows = pettyCashTableRows($income, $expense);
     $body = '';
     foreach ($rows as $row) {
         $left = $row['income'];
         $right = $row['expense'];
         $body .= '<tr>'
-            . '<td class="center">' . ($left ? h(function_exists('accFormatDate') ? accFormatDate((string) $left['entry_date']) : (string) $left['entry_date']) : '') . '</td>'
-            . '<td>' . ($left ? h((string) $left['description']) : '') . '</td>'
-            . '<td class="num">' . ($left ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($left['amount']))) : '') . '</td>'
-            . '<td class="center">' . ($right ? h(function_exists('accFormatDate') ? accFormatDate((string) $right['entry_date']) : (string) $right['entry_date']) : '') . '</td>'
-            . '<td>' . ($right ? h((string) $right['description']) : '') . '</td>'
-            . '<td class="num">' . ($right ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($right['amount']))) : '') . '</td>'
+            . '<td class="center fit">' . ($left ? h(function_exists('accFormatDate') ? accFormatDate((string) $left['entry_date']) : (string) $left['entry_date']) : '') . '</td>'
+            . '<td class="desc">' . ($left ? h((string) $left['description']) : '') . '</td>'
+            . '<td class="num fit">' . ($left ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($left['amount']))) : '') . '</td>'
+            . '<td class="center fit">' . ($right ? h(function_exists('accFormatDate') ? accFormatDate((string) $right['entry_date']) : (string) $right['entry_date']) : '') . '</td>'
+            . '<td class="desc">' . ($right ? h((string) $right['description']) : '') . '</td>'
+            . '<td class="num fit">' . ($right ? h(pettyCashFormatAmount(\School\Accounting\Support\Money::fromDb($right['amount']))) : '') . '</td>'
             . '</tr>';
     }
     if ($body === '') {
@@ -615,18 +663,28 @@ function pettyCashReportDocument(
 
     // Totals stay in tbody (not tfoot) so browsers do not reprint them on every page.
     $totalsRow = '<tr class="totals">'
-        . '<td colspan="2"><strong>মোট আয়</strong></td><td class="num"><strong>'
+        . '<td class="fit" colspan="2"><strong>মোট আয়</strong></td><td class="num fit"><strong>'
         . h(pettyCashFormatAmount($incomeTotal)) . '</strong></td>'
-        . '<td colspan="2"><strong>মোট ব্যয়</strong></td><td class="num"><strong>'
+        . '<td class="fit" colspan="2"><strong>মোট ব্যয়</strong></td><td class="num fit"><strong>'
         . h(pettyCashFormatAmount($expenseTotal)) . '</strong></td>'
         . '</tr>';
+
+    $colgroup = '<colgroup>'
+        . '<col class="fit" style="width:' . $datePct . '%">'
+        . '<col class="desc" style="width:' . $leftDescPct . '%">'
+        . '<col class="fit" style="width:' . $amountPct . '%">'
+        . '<col class="fit" style="width:' . $datePct . '%">'
+        . '<col class="desc" style="width:' . $rightDescPct . '%">'
+        . '<col class="fit" style="width:' . $amountPct . '%">'
+        . '</colgroup>';
 
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
         . '<p class="sub">' . h($subtitle) . '</p>'
-        . '<table class="report"><thead>'
+        . '<table class="report">' . $colgroup . '<thead>'
         . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
-        . '<tr><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th><th>তারিখ</th><th>বিবরণ</th><th>টাকা</th></tr>'
+        . '<tr><th class="fit">তারিখ</th><th class="desc">বিবরণ</th><th class="fit">টাকা</th>'
+        . '<th class="fit">তারিখ</th><th class="desc">বিবরণ</th><th class="fit">টাকা</th></tr>'
         . '</thead><tbody>' . $body . $totalsRow . '</tbody></table>'
         . $balanceHtml;
 
@@ -645,11 +703,13 @@ function pettyCashReportDocument(
         . ".bn-num{font-family:{$digitFont}}"
         . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
         . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
-        . 'table.report{width:100%;border-collapse:collapse}'
+        . 'table.report{width:100%;border-collapse:collapse;table-layout:fixed}'
         . 'table.report th,table.report td{border:0.25mm solid #687b72;padding:1.4mm 1.2mm;vertical-align:top}'
         . 'table.report th{background:#e5ede9;font-weight:bold;text-align:center}'
         . 'table.report td.center,.center{text-align:center}'
+        . 'table.report .fit{white-space:nowrap}'
         . 'table.report td.num,.num{text-align:right;white-space:nowrap}'
+        . 'table.report th.desc,table.report td.desc{overflow-wrap:break-word;word-break:break-word;white-space:normal}'
         . 'table.report tr.totals td{font-weight:bold;background:#f3f7f5}'
         . 'table.report thead{display:table-header-group}'
         . 'table.report tfoot{display:table-row-group}'

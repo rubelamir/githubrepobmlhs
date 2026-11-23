@@ -97,6 +97,18 @@ $check(str_contains(pettyCashBrowserPadHtml([
     'mobile' => '',
 ]), 'school-pad-logo-img'), 'browser pad HTML includes the logo image');
 
+$equalShare = pettyCashReportDescWidthShare(
+    [['description' => 'লম্বা বিবরণ এক'], ['description' => 'লম্বা বিবরণ দুই']],
+    [['description' => 'লম্বা ব্যয় বিবরণ'], ['description' => 'আরও লম্বা ব্যয়']]
+);
+$check($equalShare['left'] === 50 && $equalShare['right'] === 50, 'wide descriptions share equally in print/PDF');
+
+$skewShare = pettyCashReportDescWidthShare(
+    [['description' => 'চা']],
+    [['description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8)]]
+);
+$check($skewShare['left'] < $skewShare['right'], 'short income description stays tighter than long expense description');
+
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);
     exit(1);
