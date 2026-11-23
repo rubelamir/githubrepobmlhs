@@ -143,11 +143,14 @@ $expense = pettyCashEntries($db, PETTY_CASH_EXPENSE, $month['from'], $month['to'
 $incomeTotal = pettyCashTotalPaisa($income);
 $expenseTotal = pettyCashTotalPaisa($expense);
 $diff = $incomeTotal - $expenseTotal;
-$printRows = pettyCashTableRows($income, $expense);
 $searchHits = $searchQuery !== '' ? pettyCashSearch($db, $searchQuery, 100) : [];
 
-if ((string) ($_GET['format'] ?? '') === 'pdf') {
+$format = (string) ($_GET['format'] ?? '');
+if ($format === 'pdf') {
     pettyCashDownloadPdf($monthKey, $monthLabel, $month['from'], $month['to'], $income, $expense, $incomeTotal, $expenseTotal);
+}
+if ($format === 'print') {
+    pettyCashRenderBrowserPrint($monthKey, $monthLabel, $month['from'], $month['to'], $income, $expense, $incomeTotal, $expenseTotal);
 }
 
 $editId = (int) ($_GET['edit'] ?? 0);
@@ -164,6 +167,7 @@ $pageTitle = 'Petty Cash Book | School Admin';
 $pageCssFiles = [accAssetUrl($basePath, 'css/accounts.css')];
 $pageScriptFiles = [accAssetUrl($basePath, 'js/accounts.js')];
 $pdfUrl = 'petty-cash.php?month=' . rawurlencode($monthKey) . '&format=pdf';
+$printUrl = 'petty-cash.php?month=' . rawurlencode($monthKey) . '&format=print';
 $defaultDate = $isCurrentMonth ? $today->format('Y-m-d') : $month['from'];
 $monthMin = $month['from'];
 $monthMax = $month['to'];
@@ -176,7 +180,7 @@ $updateConfirmMsg = 'এন্ট্রি আপডেট নিশ্চিত
 
 include __DIR__ . '/../../includes/layout-head.php';
 ?>
-        <div class="app-content-header acc-page-header d-print-none">
+        <div class="app-content-header acc-page-header">
           <div class="container-fluid">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
               <div>
@@ -185,7 +189,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               </div>
               <div class="d-flex flex-wrap gap-1">
                 <a class="btn btn-outline-secondary btn-sm" href="dashboard.php">← ড্যাশবোর্ড</a>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">প্রিন্ট</button>
+                <a class="btn btn-outline-secondary btn-sm" href="<?= h($printUrl) ?>" target="_blank" rel="noopener">প্রিন্ট</a>
                 <a class="btn btn-outline-secondary btn-sm" href="<?= h($pdfUrl) ?>">PDF</a>
               </div>
             </div>
@@ -193,9 +197,9 @@ include __DIR__ . '/../../includes/layout-head.php';
         </div>
         <div class="app-content">
           <div class="container-fluid">
-            <div class="d-print-none"><?php include __DIR__ . '/../../includes/flash.php'; ?></div>
+            <?php include __DIR__ . '/../../includes/flash.php'; ?>
 
-            <form method="get" class="card card-body mb-3 d-print-none">
+            <form method="get" class="card card-body mb-3">
               <div class="row g-2 align-items-end">
                 <div class="col-md-3">
                   <label class="form-label" for="petty-month">মাস</label>
@@ -216,7 +220,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             </form>
 
             <?php if ($searchQuery !== ''): ?>
-              <div class="card mb-3 d-print-none">
+              <div class="card mb-3">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                   <h3 class="card-title mb-0">সার্চ ফলাফল · “<?= h($searchQuery) ?>”</h3>
                   <span class="small text-secondary"><?= h(bnDigits((string) count($searchHits))) ?>টি মিল</span>
@@ -279,7 +283,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php endif; ?>
 
             <?php if ($editRow !== null && $canWrite): ?>
-              <div class="card mb-3 border-primary d-print-none">
+              <div class="card mb-3 border-primary">
                 <div class="card-header"><h3 class="card-title mb-0">এন্ট্রি সম্পাদনা — <?= h($editRow['entry_type'] === PETTY_CASH_INCOME ? 'আয়' : 'ব্যয়') ?></h3></div>
                 <div class="card-body">
                   <form method="post" class="row g-2 align-items-end js-petty-entry-form"
@@ -310,7 +314,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </div>
               </div>
             <?php elseif ($canWrite): ?>
-              <div class="row g-3 mb-3 d-print-none">
+              <div class="row g-3 mb-3">
                 <div class="col-lg-6">
                   <div class="card h-100">
                     <div class="card-header"><h3 class="card-title mb-0">আয় এন্ট্রি</h3></div>
@@ -377,7 +381,7 @@ include __DIR__ . '/../../includes/layout-head.php';
             <?php endif; ?>
 
             <div class="card acc-petty-sheet">
-              <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 d-print-none">
+              <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h3 class="card-title mb-0">মাসিক খাতা · <?= h($monthLabel) ?></h3>
                 <span class="small text-secondary">
                   <?= h(accFormatDate($month['from'])) ?> — <?= h(accFormatDate($month['to'])) ?>
@@ -385,68 +389,18 @@ include __DIR__ . '/../../includes/layout-head.php';
                 </span>
               </div>
               <div class="card-body p-0">
-                <div class="acc-petty-print-sheet d-none d-print-block">
-                  <h1 class="acc-petty-print-title">Petty Cash Book</h1>
-                  <p class="acc-petty-print-sub">
-                    <?= h(accFormatDate($month['from'])) ?> থেকে <?= h(accFormatDate($month['to'])) ?>
-                    · মাস <?= h($monthLabel) ?>
-                  </p>
-                  <table class="table table-sm table-bordered align-middle mb-0 acc-petty-print-table">
-                    <thead>
-                      <tr>
-                        <th colspan="3" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th>
-                        <th colspan="3" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th>
-                      </tr>
-                      <tr>
-                        <th class="text-center">তারিখ</th>
-                        <th>বিবরণ</th>
-                        <th class="text-end">টাকা</th>
-                        <th class="text-center">তারিখ</th>
-                        <th>বিবরণ</th>
-                        <th class="text-end">টাকা</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php if ($printRows === []): ?>
-                        <tr><td colspan="6" class="text-center text-secondary p-3">এই মাসে কোনো এন্ট্রি নেই।</td></tr>
-                      <?php endif; ?>
-                      <?php foreach ($printRows as $printRow): ?>
-                        <?php
-                        $left = $printRow['income'];
-                        $right = $printRow['expense'];
-                        ?>
-                        <tr>
-                          <td class="text-nowrap text-center"><?= $left ? h(accFormatDate((string) $left['entry_date'])) : '' ?></td>
-                          <td><?= $left ? h((string) $left['description']) : '' ?></td>
-                          <td class="text-end text-nowrap"><?= $left ? h(pettyCashFormatAmount(Money::fromDb($left['amount']))) : '' ?></td>
-                          <td class="text-nowrap text-center"><?= $right ? h(accFormatDate((string) $right['entry_date'])) : '' ?></td>
-                          <td><?= $right ? h((string) $right['description']) : '' ?></td>
-                          <td class="text-end text-nowrap"><?= $right ? h(pettyCashFormatAmount(Money::fromDb($right['amount']))) : '' ?></td>
-                        </tr>
-                      <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                      <tr class="fw-semibold">
-                        <td colspan="2">মোট আয়</td>
-                        <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
-                        <td colspan="2">মোট ব্যয়</td>
-                        <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-                <div class="row g-0 acc-petty-split d-print-none">
+                <div class="row g-0 acc-petty-split">
                   <div class="col-md-6 border-end">
                     <div class="table-responsive">
                       <table class="table table-sm table-bordered align-middle mb-0 acc-petty-table">
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-income-head">আয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center d-print-none" style="width:2rem"></th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center" style="width:2rem"></th><?php endif; ?>
                             <th class="text-center">তারিখ</th>
                             <th>বিবরণ</th>
                             <th class="text-end">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center d-print-none">কর্ম</th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -458,13 +412,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($income as $left): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $left['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center d-print-none acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="text-center acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
                               <td class="text-nowrap text-center"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
                               <td><?= h((string) $left['description']) ?></td>
                               <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center d-print-none text-nowrap">
+                                <td class="text-center text-nowrap">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $left['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
@@ -489,7 +443,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <tr class="fw-semibold">
                             <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট আয়</td>
                             <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($incomeTotal)) ?></td>
-                            <?php if ($canWrite): ?><td class="d-print-none"></td><?php endif; ?>
+                            <?php if ($canWrite): ?><td></td><?php endif; ?>
                           </tr>
                         </tfoot>
                       </table>
@@ -501,11 +455,11 @@ include __DIR__ . '/../../includes/layout-head.php';
                         <thead>
                           <tr><th colspan="<?= $canWrite ? 5 : 3 ?>" class="text-center acc-petty-expense-head">ব্যয়ের খাত সমূহ</th></tr>
                           <tr>
-                            <?php if ($canWrite): ?><th class="text-center d-print-none" style="width:2rem"></th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center" style="width:2rem"></th><?php endif; ?>
                             <th class="text-center">তারিখ</th>
                             <th>বিবরণ</th>
                             <th class="text-end">টাকা</th>
-                            <?php if ($canWrite): ?><th class="text-center d-print-none">কর্ম</th><?php endif; ?>
+                            <?php if ($canWrite): ?><th class="text-center">কর্ম</th><?php endif; ?>
                           </tr>
                         </thead>
                         <tbody class="<?= $canWrite ? 'js-petty-sortable' : '' ?>"
@@ -517,13 +471,13 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <?php foreach ($expense as $right): ?>
                             <tr draggable="<?= $canWrite ? 'true' : 'false' ?>" data-id="<?= (int) $right['id'] ?>" class="<?= $canWrite ? 'acc-petty-drag-row' : '' ?>">
                               <?php if ($canWrite): ?>
-                                <td class="text-center d-print-none acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
+                                <td class="text-center acc-petty-drag-handle" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
                               <td class="text-nowrap text-center"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
                               <td><?= h((string) $right['description']) ?></td>
                               <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
                               <?php if ($canWrite): ?>
-                                <td class="text-center d-print-none text-nowrap">
+                                <td class="text-center text-nowrap">
                                   <a class="btn btn-link btn-sm p-0 text-primary"
                                      href="<?= h($redirectBase . '&edit=' . (int) $right['id']) ?>"
                                      title="এডিট" aria-label="এডিট"
@@ -548,7 +502,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <tr class="fw-semibold">
                             <td colspan="<?= $canWrite ? 3 : 2 ?>">মোট ব্যয়</td>
                             <td class="text-end text-nowrap"><?= h(pettyCashFormatAmount($expenseTotal)) ?></td>
-                            <?php if ($canWrite): ?><td class="d-print-none"></td><?php endif; ?>
+                            <?php if ($canWrite): ?><td></td><?php endif; ?>
                           </tr>
                         </tfoot>
                       </table>
