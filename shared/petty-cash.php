@@ -779,22 +779,33 @@ function pettyCashReportDocument(
         $pad = $forBrowser ? pettyCashBrowserPadHtml($settings) : mpdfSchoolPadHtml($settings);
     }
 
+    // mPDF ignores col/% alone when the first row uses colspan — put width on
+    // every header cell (and colgroup) so equal / short-long panes actually render.
+    $wAttr = static function (int $pct): string {
+        return ' width="' . $pct . '%" style="width:' . $pct . '%"';
+    };
+
     $colgroup = '<colgroup>'
-        . '<col class="fit" style="width:' . $cols['ld'] . '%">'
-        . '<col class="' . $leftDescClass . '" style="width:' . $cols['ldesc'] . '%">'
-        . '<col class="fit" style="width:' . $cols['la'] . '%">'
-        . '<col class="fit" style="width:' . $cols['rd'] . '%">'
-        . '<col class="' . $rightDescClass . '" style="width:' . $cols['rdesc'] . '%">'
-        . '<col class="fit" style="width:' . $cols['ra'] . '%">'
+        . '<col class="fit"' . $wAttr($cols['ld']) . '>'
+        . '<col class="' . $leftDescClass . '"' . $wAttr($cols['ldesc']) . '>'
+        . '<col class="fit"' . $wAttr($cols['la']) . '>'
+        . '<col class="fit"' . $wAttr($cols['rd']) . '>'
+        . '<col class="' . $rightDescClass . '"' . $wAttr($cols['rdesc']) . '>'
+        . '<col class="fit"' . $wAttr($cols['ra']) . '>'
         . '</colgroup>';
 
     $html = $pad
         . '<h1>' . h($title) . '</h1>'
         . '<p class="sub">' . h($subtitle) . '</p>'
         . '<table class="report">' . $colgroup . '<thead>'
-        . '<tr><th colspan="3">আয়ের খাত সমূহ</th><th colspan="3">ব্যয়ের খাত সমূহ</th></tr>'
-        . '<tr><th class="fit">তারিখ</th><th class="' . $leftDescClass . '">বিবরণ</th><th class="fit">টাকা</th>'
-        . '<th class="fit">তারিখ</th><th class="' . $rightDescClass . '">বিবরণ</th><th class="fit">টাকা</th></tr>'
+        . '<tr><th colspan="3"' . $wAttr($widths['left']) . '>আয়ের খাত সমূহ</th>'
+        . '<th colspan="3"' . $wAttr($widths['right']) . '>ব্যয়ের খাত সমূহ</th></tr>'
+        . '<tr><th class="fit"' . $wAttr($cols['ld']) . '>তারিখ</th>'
+        . '<th class="' . $leftDescClass . '"' . $wAttr($cols['ldesc']) . '>বিবরণ</th>'
+        . '<th class="fit"' . $wAttr($cols['la']) . '>টাকা</th>'
+        . '<th class="fit"' . $wAttr($cols['rd']) . '>তারিখ</th>'
+        . '<th class="' . $rightDescClass . '"' . $wAttr($cols['rdesc']) . '>বিবরণ</th>'
+        . '<th class="fit"' . $wAttr($cols['ra']) . '>টাকা</th></tr>'
         . '</thead><tbody>' . $body . $totalsRow . '</tbody></table>'
         . $balanceHtml;
 

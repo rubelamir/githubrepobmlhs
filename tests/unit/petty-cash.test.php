@@ -136,6 +136,8 @@ $wideDoc = pettyCashReportDocument(
 $check(str_contains($wideDoc['html'], 'table class="report"'), 'print/PDF uses a single report table');
 $check(!str_contains($wideDoc['html'], 'desc-fit'), 'both-wide print/PDF allows wrap (no desc-fit)');
 $check(str_contains($wideDoc['css'], 'white-space:normal'), 'both-wide print/PDF CSS wraps বিবরণ');
+$check(str_contains($wideDoc['html'], 'colspan="3" width="50%"'), 'both-wide PDF headers pin equal pane widths for mPDF');
+$check(str_contains($wideDoc['html'], 'width="' . $equalCols['ldesc'] . '%"'), 'both-wide PDF sets বিবরণ column width on header cells');
 
 $doc = pettyCashReportDocument(
     'মার্চ-' . bnDigits('2025'),
@@ -151,6 +153,8 @@ $doc = pettyCashReportDocument(
     true
 );
 $check(str_contains($doc['html'], 'desc-fit'), 'print/PDF marks short বিবরণ as content-fit');
+$check(str_contains($doc['html'], 'colspan="3" width="' . $skewShare['left'] . '%"'), 'short/long PDF pins left pane width for mPDF');
+$check(str_contains($doc['html'], 'colspan="3" width="' . $skewShare['right'] . '%"'), 'short/long PDF pins right pane width for mPDF');
 $check(str_contains($doc['html'], 'মোট আয়') && str_contains($doc['html'], 'মোট ব্যয়'), 'print/PDF includes both totals');
 // Shorter income side is padded so both totals sit on one row after equal body rows.
 $check(substr_count($doc['html'], '<tr>') >= 4, 'print/PDF pads shorter side with empty rows before totals');
