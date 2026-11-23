@@ -98,16 +98,19 @@ $check(str_contains(pettyCashBrowserPadHtml([
 ]), 'school-pad-logo-img'), 'browser pad HTML includes the logo image');
 
 $equalShare = pettyCashReportDescWidthShare(
-    [['description' => 'লম্বা বিবরণ এক'], ['description' => 'লম্বা বিবরণ দুই']],
-    [['description' => 'লম্বা ব্যয় বিবরণ'], ['description' => 'আরও লম্বা ব্যয়']]
+    [['description' => str_repeat('লম্বা বিবরণ ', 6)], ['description' => str_repeat('আরও লম্বা ', 6)]],
+    [['description' => str_repeat('লম্বা ব্যয় ', 6)], ['description' => str_repeat('আরও ব্যয় ', 6)]]
 );
-$check($equalShare['left'] === 50 && $equalShare['right'] === 50, 'wide descriptions share equally in print/PDF');
+$check($equalShare['left'] === $equalShare['right'], 'wide descriptions share equally in print/PDF');
+$check(!$equalShare['left_fit'] && !$equalShare['right_fit'], 'equal wide sides are not content-fit');
 
 $skewShare = pettyCashReportDescWidthShare(
     [['description' => 'চা']],
     [['description' => str_repeat('খুব লম্বা ব্যয়ের বিবরণ ', 8)]]
 );
-$check($skewShare['left'] < $skewShare['right'], 'short income description stays tighter than long expense description');
+$check($skewShare['left_fit'] && !$skewShare['right_fit'], 'short income description is marked content-fit');
+$check($skewShare['left'] < 15, 'short description width stays content-tight');
+$check($skewShare['right'] > $skewShare['left'], 'long expense description receives leftover width');
 
 if ($failures > 0) {
     fwrite(STDERR, $failures . ' check(s) failed' . PHP_EOL);
