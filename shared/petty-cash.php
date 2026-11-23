@@ -586,8 +586,11 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
     $leftNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($income)) / $fullWidthChars;
     $rightNeedPct = 100 * ($fitColsChars + pettyCashReportMaxDescChars($expense)) / $fullWidthChars;
 
+    // Keep a usable minimum so date/amount (and Bangla glyphs) are not clipped in mPDF.
+    $minFitPct = 22;
+
     if ($leftNeedPct < 50 && $rightNeedPct > 50) {
-        $left = (int) max(12, min(48, round($leftNeedPct)));
+        $left = (int) max($minFitPct, min(48, round($leftNeedPct)));
 
         return [
             'left' => $left,
@@ -599,7 +602,7 @@ function pettyCashReportDescWidthShare(array $income, array $expense): array
     }
 
     if ($rightNeedPct < 50 && $leftNeedPct > 50) {
-        $right = (int) max(12, min(48, round($rightNeedPct)));
+        $right = (int) max($minFitPct, min(48, round($rightNeedPct)));
 
         return [
             'left' => 100 - $right,
@@ -739,7 +742,7 @@ function pettyCashReportDocument(
         . 'h1{font-size:14pt;margin:2mm 0 1mm;text-align:center}'
         . '.sub{color:#444;margin:0 0 3mm;text-align:center;font-size:10pt}'
         . 'table.split{width:100%;border-collapse:collapse;table-layout:fixed}'
-        . 'table.split>tbody>tr>td.pane{vertical-align:top;padding:0;border:none}'
+        . 'table.split>tbody>tr>td.pane{vertical-align:top;padding:0;border:none;overflow:visible}'
         . 'table.side{width:100%;border-collapse:collapse;table-layout:auto}'
         . 'table.side th,table.side td{border:0.25mm solid #687b72;padding:1.4mm 1.2mm;vertical-align:top}'
         . 'table.side th{background:#e5ede9;font-weight:bold;text-align:center}'
@@ -747,7 +750,7 @@ function pettyCashReportDocument(
         . 'table.side th.fit,table.side td.fit{width:1%;white-space:nowrap}'
         . 'table.side td.num,.num{text-align:right;white-space:nowrap}'
         . 'table.side th.desc,table.side td.desc{width:auto;overflow-wrap:break-word;word-break:break-word;white-space:normal}'
-        . 'table.side th.desc-fit,table.side td.desc-fit{width:1%;white-space:nowrap;overflow-wrap:normal;word-break:normal}'
+        . 'table.side th.desc-fit,table.side td.desc-fit{width:1%;white-space:nowrap;overflow-wrap:break-word;word-break:break-word}'
         . 'table.side tr.totals td{font-weight:bold;background:#f3f7f5}'
         . 'table.side thead{display:table-header-group}'
         . '.ok{color:#0a7a3e;font-weight:bold;text-align:center;margin-top:3mm}'

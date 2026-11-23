@@ -223,6 +223,7 @@
   min-width: 0;
   max-width: none;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .acc-petty-pane-income {
@@ -245,6 +246,13 @@
   white-space: nowrap;
 }
 
+/* Edit + delete must stay fully visible even when the pane is content-fit. */
+.acc-petty-table .acc-petty-col-actions {
+  width: 1%;
+  min-width: 4.5rem;
+  white-space: nowrap;
+}
+
 .acc-petty-table .acc-petty-col-desc {
   width: auto;
   overflow-wrap: anywhere;
@@ -257,6 +265,11 @@
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: normal;
+}
+
+.acc-petty-pane-fit {
+  /* Never clip the কর্ম icons when measurement is a few px short. */
+  overflow: visible;
 }
 
 .acc-petty-table .acc-petty-drag-handle {
