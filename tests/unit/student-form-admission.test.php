@@ -120,6 +120,11 @@ $check(
     && str_contains($onlineAdmission, 'preparedInsert($conn, \'students_info\''),
     'the public online admission insert sends an empty reg_no'
 );
+$check(
+    !str_contains($onlineAdmission, "\$_SERVER['PHP_SELF']")
+    && preg_match('/id="admissionForm"[^>]*\saction="\/admission\.php"/', $onlineAdmission) === 1,
+    'online admission posts to /admission.php so /bmlhs 301 redirects cannot drop the POST body'
+);
 $security = (string) file_get_contents($root . '/bmlhs/includes/security.php');
 $check(
     preg_match("/'students_info'\\s*=>\\s*\\[[^\\]]*\\breg_no\\b/s", $security) === 1,
