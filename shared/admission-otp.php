@@ -146,18 +146,19 @@ function admissionOtpRequest(PDO $db, string $mobile, string $clientIp, ?callabl
     ]);
     $otpId = (int) $db->lastInsertId();
 
-    $school = '';
+    // ASCII-only OTP text delivers more reliably on BD GSM routes than Bangla unicode.
+    $school = 'BMLHS';
     try {
         if (function_exists('schoolSettings')) {
-            $school = trim((string) (schoolSettings($db)['short_name_en'] ?? ''));
+            $short = trim((string) (schoolSettings($db)['short_name_en'] ?? ''));
+            if ($short !== '' && preg_match('/^[\x20-\x7E]+$/', $short) === 1) {
+                $school = $short;
+            }
         }
     } catch (Throwable $exception) {
-        $school = '';
+        // keep default
     }
-    $text = ($school !== '' ? $school . ': ' : '')
-        . 'ভর্তি আবেদনের কোড ' . $code . '। '
-        . ADMISSION_OTP_MINUTES
-        . ' মিনিট বৈধ।';
+    $text = $school . ' admission code ' . $code . '. Valid ' . ADMISSION_OTP_MINUTES . ' min.';
 
     $smsDetail = '';
     try {

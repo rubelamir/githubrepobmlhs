@@ -176,43 +176,64 @@ function dispatchWebhookSms(string $template, array $numbers, string $text, stri
 
 function dispatchBdBulkSmsNet(string $token, array $numbers, string $text): array
 {
+    // GreenWeb accepts 01… / 8801…; prefer local 01 form from their examples.
     $mobile = smsLocalBdMobile((string) ($numbers[0] ?? ''));
-    $params = [
+    $body = http_build_query([
         'token' => $token,
         'to' => $mobile,
         'message' => $text,
-    ];
-    // Bangla / non-ASCII OTP text must be marked unicode for GreenWeb.
-    if (preg_match('/[^\x00-\x7F]/u', $text) === 1) {
-        $params['unicode'] = '1';
-    }
-    $body = http_build_query($params);
+    ]);
     $response = smsHttpRequest(
         'https://api.bdbulksms.net/api.php?json',
         $body,
         ['Content-Type: application/x-www-form-urlencoded']
     );
-    $decoded = json_decode($response['body'], true);
-    $ok = $response['ok'] && !smsWebhookLooksFailed((string) $response['body']);
+    $rawBody = (string) ($response['body'] ?? '');
+    $decoded = json_decode($rawBody, true);
     $failureHint = '';
-    if (is_array($decoded)) {
+
+    // GreenWeb JSON success is status "SENT" (see api.bdbulksms.net docs). Do not
+    // treat a bare HTTP 200 / empty body as success — that caused false "sent" OTPs.
+    $ok = false;
+    if ($response['ok'] && is_array($decoded)) {
+        $sawRow = false;
         foreach ($decoded as $row) {
             if (!is_array($row)) {
                 continue;
             }
-            $status = strtolower(trim((string) ($row['status'] ?? $row['response'] ?? '')));
-            $error = trim((string) ($row['error'] ?? $row['message'] ?? $row['msg'] ?? ''));
-            if ($error !== '') {
-                $failureHint = $error;
+            $sawRow = true;
+            $status = strtoupper(trim((string) ($row['status'] ?? '')));
+            $statusMsg = trim((string) ($row['statusmsg'] ?? $row['error'] ?? $row['message'] ?? $row['msg'] ?? ''));
+            if ($statusMsg !== '') {
+                $failureHint = $statusMsg;
             }
-            if ($status !== '' && !in_array($status, ['success', 'sent', 'ok'], true) && !str_contains($status, 'success')) {
-                $ok = false;
+            if ($status === 'SENT' || $status === 'SUCCESS' || $status === 'OK') {
+                $ok = true;
+                $failureHint = '';
+                break;
             }
+            $ok = false;
         }
+        if (!$sawRow) {
+            $ok = false;
+            $failureHint = $failureHint !== '' ? $failureHint : 'empty_gateway_response';
+        }
+    } elseif ($response['ok'] && preg_match('/^\s*Ok\s*:/i', $rawBody) === 1) {
+        $ok = true;
+    } elseif ($response['ok'] && $rawBody !== '' && !smsWebhookLooksFailed($rawBody)) {
+        // Non-JSON HTML error pages still come back as HTTP 200 sometimes.
+        if (preg_match('/\b(Error|FAILED|insufficient|invalid token|no credit)\b/i', $rawBody) === 1) {
+            $failureHint = smsResponseDetail($response, 'bdbulksms_failed');
+        } else {
+            $failureHint = 'unrecognized_gateway_response';
+        }
+    } else {
+        $failureHint = smsResponseDetail($response, 'bdbulksms_failed');
     }
-    if ($ok && is_string($response['body']) && preg_match('/insufficient|no credit|balance/i', $response['body']) === 1) {
+
+    if ($ok && preg_match('/insufficient|no credit|balance/i', $rawBody) === 1) {
         $ok = false;
-        $failureHint = $failureHint !== '' ? $failureHint : (string) $response['body'];
+        $failureHint = $failureHint !== '' ? $failureHint : $rawBody;
     }
 
     return [

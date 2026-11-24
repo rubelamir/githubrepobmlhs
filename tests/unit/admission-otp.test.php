@@ -51,6 +51,11 @@ $check(count($sentSms) === 1, 'one SMS is sent');
 preg_match('/(\d{6})/u', $sentSms[0][1] ?? '', $match);
 $code = $match[1] ?? '';
 $check(strlen($code) === 6, 'SMS body contains a 6-digit code');
+$check(
+    preg_match('/[^\x00-\x7F]/u', $sentSms[0][1] ?? '') !== 1
+    && str_contains((string) ($sentSms[0][1] ?? ''), 'admission code'),
+    'OTP SMS text stays ASCII for reliable GSM delivery'
+);
 
 $check(
     admissionOtpVerifyAndConsume($db, (int) $sent['otp_id'], '01799887766', '000000') === false,
