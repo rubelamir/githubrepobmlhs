@@ -107,4 +107,5 @@ $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
 
 $safeClass = preg_replace('/[^0-9A-Za-z_-]+/', '', $cls) ?: 'class';
 $filename = 'admission-applicants-' . $safeClass . '-' . $gender . '.pdf';
-$mpdf->Output($filename, \Mpdf\Output\Destination::DOWNLOAD);
+$inline = ($_GET['inline'] ?? '') === '1';
+$mpdf->Output($filename, $inline ? \Mpdf\Output\Destination::INLINE : \Mpdf\Output\Destination::DOWNLOAD);

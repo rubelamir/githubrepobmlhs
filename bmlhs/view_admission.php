@@ -106,7 +106,7 @@ $pdfQuery = http_build_query(['cls' => $cls, 'gender' => $gender]);
                             <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
                             <span>PDF ডাউনলোড</span>
                         </a>
-                        <button class="school-profile-print" type="button" onclick="window.print()">
+                        <button class="school-profile-print" type="button" id="admPrintBtn" data-src="<?= h('view_admission_pdf.php?' . $pdfQuery . '&inline=1') ?>">
                             <i class="fa-solid fa-print" aria-hidden="true"></i>
                             <span>প্রিন্ট</span>
                         </button>
@@ -161,4 +161,17 @@ $pdfQuery = http_build_query(['cls' => $cls, 'gender' => $gender]);
         </div>
     </section>
 </div>
+<script>
+document.getElementById('admPrintBtn')?.addEventListener('click', function () {
+  var src = this.dataset.src;
+  var frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+  frame.onload = function () {
+    try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+    catch (e) { window.open(src, '_blank'); }
+  };
+  frame.src = src;
+  document.body.appendChild(frame);
+});
+</script>
 <?php include('footer.php'); ?>

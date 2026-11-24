@@ -3612,8 +3612,40 @@ html.school-loading body {
 }
 
 @media print {
+  html,
+  body.school-site:has(.adm-list-table-wrap) {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  body.school-site:has(.adm-list-table-wrap) .school-shell {
+    overflow: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    background: #fff !important;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-page,
   body.school-site:has(.adm-list-table-wrap) .adm-wrap {
     padding: 0 !important;
+    background: #fff !important;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-wrap .container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table thead {
+    display: table-header-group;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   body.school-site:has(.adm-list-table-wrap) .adm-list-print-head {
     display: flex;
@@ -3642,7 +3674,8 @@ html.school-loading body {
     color: #3d5a50;
   }
   body.school-site:has(.adm-list-table-wrap) .adm-list-table-wrap {
-    overflow: visible;
+    overflow: visible !important;
+    max-width: none !important;
     border: 0;
     border-radius: 0;
     box-shadow: none;
