@@ -157,7 +157,7 @@ function admissionOtpRequest(PDO $db, string $mobile, string $clientIp, ?callabl
     $text = ($school !== '' ? $school . ': ' : '')
         . 'ভর্তি আবেদনের কোড ' . $code . '। '
         . (function_exists('bnDigits') ? bnDigits((string) ADMISSION_OTP_MINUTES) : (string) ADMISSION_OTP_MINUTES)
-        . ' মিনিট বৈধ। কাউকে জানাবেন না।';
+        . ' মিনিট বৈধ।';
 
     $sender = $sendSms ?? static function (string $to, string $message) use ($db): bool {
         return sendSchoolSms($db, $to, $message, 'admission_otp')['ok'];
