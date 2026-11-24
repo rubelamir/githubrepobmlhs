@@ -311,7 +311,8 @@ exit;
     </section>
     <section class="adm-wrap">
         <div class="container" id="reg">
-                    <form method="POST" id="admissionForm" class="adm-form needs-validation adm-sheet" action="<?php echo htmlentities($_SERVER['PHP_SELF']); ?>" autocomplete="off" novalidate>
+                    <?php /* Do not use PHP_SELF: it is /bmlhs/admission.php and the /bmlhs 301 turns POST into GET. */ ?>
+                    <form method="POST" id="admissionForm" class="adm-form needs-validation adm-sheet" action="/admission.php" autocomplete="off" novalidate>
                         <?= csrfField() ?>
                         <?php if (isset($errors["csrf_error"])): ?>
                         <div class="alert alert-danger"><?= htmlspecialchars($errors["csrf_error"], ENT_QUOTES, 'UTF-8') ?></div>
