@@ -277,16 +277,13 @@ try {
 }
 if (empty($errors)) {
 try {
-$query = preparedInsert($conn, 'students_info', ['admission_token' => $admission_token, 'cls' => $cls, 'sections' => 'others', 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'birth_reg_pic' => '', 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'exam_roll' => '', 'passing_year' => $passing_year, 'scholarship_stipend_info' => 'not_applicable', 'last_school_name' => $last_school_name, 'mobile' => $mobile, 'student_pic' => $imageName, 'pass' => $pass_hash, 'status' => 0]);
+// reg_no is NOT NULL (often without DEFAULT); online applications leave it blank until assigned.
+$query = preparedInsert($conn, 'students_info', ['admission_token' => $admission_token, 'cls' => $cls, 'sections' => 'others', 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'birth_reg_pic' => '', 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'exam_roll' => '', 'passing_year' => $passing_year, 'scholarship_stipend_info' => 'not_applicable', 'last_school_name' => $last_school_name, 'mobile' => $mobile, 'student_pic' => $imageName, 'pass' => $pass_hash, 'status' => 0, 'reg_no' => '']);
 } catch (Throwable $exception) {
-    error_log($exception->getMessage());
+    error_log('online admission insert: ' . $exception->getMessage());
     $query = false;
 }
 if ($query) {
-
-
-
-
 establishAdmissionSession((int) mysqli_insert_id($conn));
 $tokenUpdate = $conn->prepare('UPDATE token SET token_status = 1 WHERE token = ?');
 $tokenUpdate->bind_param('s', $admission_token);
@@ -295,6 +292,7 @@ $query = $tokenUpdate->execute();
 header('Location: view_admission_form');
 exit;
 } else {
+    error_log('online admission insert failed: ' . (string) $conn->error);
     $errors['form_error'] = 'ফর্ম সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।';
 }
 }
