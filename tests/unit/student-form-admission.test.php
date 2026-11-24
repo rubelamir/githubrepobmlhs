@@ -114,6 +114,18 @@ $check(
     'registration number is offered on create as well as edit'
 );
 
+$onlineAdmission = (string) file_get_contents($root . '/bmlhs/admission.php');
+$check(
+    str_contains($onlineAdmission, "'reg_no' => ''")
+    && str_contains($onlineAdmission, 'preparedInsert($conn, \'students_info\''),
+    'the public online admission insert sends an empty reg_no'
+);
+$security = (string) file_get_contents($root . '/bmlhs/includes/security.php');
+$check(
+    preg_match("/'students_info'\\s*=>\\s*\\[[^\\]]*\\breg_no\\b/s", $security) === 1,
+    'preparedInsert allows reg_no for students_info'
+);
+
 if ($failed > 0) {
     fwrite(STDERR, $failed . " check(s) failed\n");
     exit(1);
