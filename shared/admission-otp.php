@@ -53,9 +53,43 @@ function ensureAdmissionMobileOtpTable(PDO $db): void
     );
 }
 
+function admissionOtpSettingEnabled(PDO $db): bool
+{
+    if (!function_exists('schoolSettings') || !function_exists('columnExists')) {
+        return false;
+    }
+    if (!columnExists($db, 'school_settings', 'admission_otp_enabled')) {
+        if (function_exists('ensureColumn')) {
+            ensureColumn($db, 'school_settings', 'admission_otp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
+        } else {
+            return false;
+        }
+    }
+    $settings = schoolSettings($db);
+
+    return (int) ($settings['admission_otp_enabled'] ?? 0) === 1;
+}
+
+function setAdmissionOtpSettingEnabled(PDO $db, bool $enabled): void
+{
+    if (function_exists('ensureColumn')) {
+        ensureColumn($db, 'school_settings', 'admission_otp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
+    }
+    $flag = $enabled ? 1 : 0;
+    $id = (int) ($db->query('SELECT id FROM school_settings ORDER BY id ASC LIMIT 1')->fetchColumn() ?: 0);
+    if ($id < 1) {
+        throw new RuntimeException('School settings are not ready yet.');
+    }
+    $db->prepare('UPDATE school_settings SET admission_otp_enabled = :flag WHERE id = :id')
+        ->execute(['flag' => $flag, 'id' => $id]);
+}
+
+/** OTP is required on the public form only when the admin switch is on and SMS is configured. */
 function admissionOtpRequired(PDO $db): bool
 {
-    return function_exists('smsGatewayReady') && smsGatewayReady($db);
+    return admissionOtpSettingEnabled($db)
+        && function_exists('smsGatewayReady')
+        && smsGatewayReady($db);
 }
 
 /** Local 01XXXXXXXXX form used on the admission form and in the OTP table. */

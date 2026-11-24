@@ -348,6 +348,7 @@ function schoolSettings(PDO $db): array
         'sms_sid' => '',
         'ga_measurement_id' => '',
         'gsc_verification' => '',
+        'admission_otp_enabled' => '0',
     ];
 
     if (!tableExists($db, 'school_settings')) {
@@ -355,8 +356,13 @@ function schoolSettings(PDO $db): array
     }
 
     $row = $db->query('SELECT * FROM school_settings ORDER BY id ASC LIMIT 1')->fetch() ?: [];
+    // Keep 0 / '0' flags (array_filter would drop empty strings only).
+    $merged = array_merge($defaults, array_filter($row, static fn ($value) => $value !== null && $value !== ''));
+    if (array_key_exists('admission_otp_enabled', $row) && $row['admission_otp_enabled'] !== null && $row['admission_otp_enabled'] !== '') {
+        $merged['admission_otp_enabled'] = (string) (int) $row['admission_otp_enabled'];
+    }
 
-    return array_merge($defaults, array_filter($row, static fn ($value) => $value !== null && $value !== ''));
+    return $merged;
 }
 
 function storeUploadedFile(string $field, string $relativeDir, array $allowedExtensions, int $maxBytes = 5242880, bool $verifySignature = false): ?string

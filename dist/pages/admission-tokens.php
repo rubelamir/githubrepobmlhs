@@ -16,6 +16,27 @@ $search = trim((string) ($_GET['q'] ?? ''));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
     try {
+        if ($action === 'toggle_otp') {
+            $enabled = isset($_POST['admission_otp_enabled']);
+            if ($enabled && !smsGatewayReady($db)) {
+                throw new RuntimeException('আগে School Settings-এ SMS provider সেট করুন, তারপর OTP চালু করুন।');
+            }
+            setAdmissionOtpSettingEnabled($db, $enabled);
+            writeAuditLog(
+                $db,
+                'update',
+                'admission_otp',
+                null,
+                $enabled ? 'Enabled online admission mobile OTP' : 'Disabled online admission mobile OTP'
+            );
+            redirectWithMessage(
+                'admission-tokens.php?status=' . rawurlencode($statusFilter) . ($search !== '' ? '&q=' . rawurlencode($search) : ''),
+                'success',
+                $enabled
+                    ? 'অনলাইন ভর্তিতে মোবাইল OTP চালু করা হয়েছে।'
+                    : 'অনলাইন ভর্তিতে মোবাইল OTP বন্ধ করা হয়েছে।'
+            );
+        }
         if ($action === 'generate') {
             $count = (int) ($_POST['count'] ?? 10);
             $created = generateUnusedAdmissionTokens($db, $count);
@@ -80,6 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirectWithMessage('admission-tokens.php?status=' . rawurlencode($statusFilter), 'danger', userFacingError($exception));
     }
 }
+
+$admissionOtpSwitchOn = admissionOtpSettingEnabled($db);
+$admissionOtpLive = admissionOtpRequired($db);
+$smsReady = smsGatewayReady($db);
 
 $rows = [];
 $unusedCount = 0;
@@ -165,6 +190,37 @@ include __DIR__ . '/../includes/layout-head.php';
         <div class="app-content">
           <div class="container-fluid">
             <?php include __DIR__ . '/../includes/flash.php'; ?>
+            <div class="card stat-card mb-3 no-print">
+              <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                  <h2 class="h6 mb-1">অনলাইন ভর্তি — মোবাইল OTP</h2>
+                  <p class="text-secondary mb-0 small">
+                    চালু থাকলে <code>/admission.php</code>-এ আবেদন জমা দিতে ৬ সংখ্যার SMS কোড লাগবে।
+                    <?php if (!$smsReady): ?>
+                      <span class="text-danger">SMS provider এখনো সেট নেই — <a href="school-settings.php">School Settings</a> দেখুন।</span>
+                    <?php elseif ($admissionOtpLive): ?>
+                      <span class="text-success">এখন লাইভে OTP চালু আছে।</span>
+                    <?php else: ?>
+                      <span class="text-secondary">এখন OTP বন্ধ — আবেদন সরাসরি জমা যাবে।</span>
+                    <?php endif; ?>
+                  </p>
+                </div>
+                <form method="post" class="mb-0" id="admissionOtpToggleForm">
+                  <?= csrfField() ?>
+                  <input type="hidden" name="action" value="toggle_otp">
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="admissionOtpEnabled"
+                      name="admission_otp_enabled" value="1"
+                      <?= $admissionOtpSwitchOn ? 'checked' : '' ?>
+                      <?= !$smsReady && !$admissionOtpSwitchOn ? 'disabled' : '' ?>
+                      onchange="this.form.submit()">
+                    <label class="form-check-label fw-semibold" for="admissionOtpEnabled">
+                      <?= $admissionOtpSwitchOn ? 'চালু' : 'বন্ধ' ?>
+                    </label>
+                  </div>
+                </form>
+              </div>
+            </div>
             <div class="row g-3 mb-3 no-print">
               <div class="col-md-6"><a href="admission-tokens.php?status=0" class="card stat-card text-decoration-none"><div class="card-body"><div class="text-secondary">Unused</div><div class="fs-3 fw-semibold"><?= $unusedCount ?></div></div></a></div>
               <div class="col-md-6"><a href="admission-tokens.php?status=1" class="card stat-card text-decoration-none"><div class="card-body"><div class="text-secondary">Used</div><div class="fs-3 fw-semibold"><?= $usedCount ?></div></div></a></div>

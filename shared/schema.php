@@ -137,6 +137,7 @@ function ensureSchoolSchema(PDO $db): void
         ensureColumn($db, 'school_settings', 'sms_sid', "VARCHAR(80) NOT NULL DEFAULT ''");
         ensureColumn($db, 'school_settings', 'ga_measurement_id', "VARCHAR(30) NOT NULL DEFAULT ''");
         ensureColumn($db, 'school_settings', 'gsc_verification', "VARCHAR(120) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'school_settings', 'admission_otp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     }
     $db->exec(
         "CREATE TABLE IF NOT EXISTS sms_log (
@@ -1365,6 +1366,7 @@ function ensurePublicFeaturesSchema(PDO $db): void
     ensureColumn($db, 'school_settings', 'sms_provider', "VARCHAR(20) NOT NULL DEFAULT ''");
     ensureColumn($db, 'school_settings', 'sms_api_token', "VARCHAR(255) NOT NULL DEFAULT ''");
     ensureColumn($db, 'school_settings', 'sms_sid', "VARCHAR(80) NOT NULL DEFAULT ''");
+    ensureColumn($db, 'school_settings', 'admission_otp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     $db->exec(
         "CREATE TABLE IF NOT EXISTS sms_log (
             id INT AUTO_INCREMENT PRIMARY KEY,
