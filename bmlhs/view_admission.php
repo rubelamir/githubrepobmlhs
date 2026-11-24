@@ -28,15 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_REQUEST['student_search']))
 
 if ($errors === [] && $cls !== '' && $gender !== '') {
     $searched = true;
-    $date = date('Y');
+    // Do not limit to the calendar/"current" session year — list every pending online application.
     if ($gender === 'all') {
-        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.session_year = ? AND students_info.cls = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
+        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
         $statement = $conn->prepare($sql);
-        $statement->bind_param('ss', $date, $cls);
+        $statement->bind_param('s', $cls);
     } else {
-        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.session_year = ? AND students_info.cls = ? AND students_info.gender = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
+        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND students_info.gender = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
         $statement = $conn->prepare($sql);
-        $statement->bind_param('sss', $date, $cls, $gender);
+        $statement->bind_param('ss', $cls, $gender);
     }
     $statement->execute();
     $query = $statement->get_result();
@@ -49,7 +49,7 @@ if ($errors === [] && $cls !== '' && $gender !== '') {
 $admHero = [
     'kicker' => 'অনলাইন ভর্তি',
     'title' => 'আবেদনকারীর তালিকা',
-    'text' => 'চলতি শিক্ষাবর্ষে ভর্তির জন্য জমা পড়া প্রাথমিক আবেদনের তালিকা।',
+    'text' => 'ভর্তির জন্য জমা পড়া প্রাথমিক আবেদনের তালিকা।',
 ];
 ?>
 <div class="adm-page">

@@ -56,7 +56,7 @@ $admHero = [
                 <article class="adm-portal-card">
                     <i class="fa-solid fa-list-ul" aria-hidden="true"></i>
                     <h2>আবেদনকারীর তালিকা</h2>
-                    <p>চলতি বছরের প্রাথমিক আবেদন তালিকা দেখুন।</p>
+                    <p>প্রাথমিক আবেদন তালিকা দেখুন।</p>
                     <a class="btn" href="view_admission">তালিকা দেখুন</a>
                 </article>
                 <article class="adm-portal-card">
