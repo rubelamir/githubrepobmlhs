@@ -118,6 +118,20 @@ $check(
     is_file($root . '/bmlhs/admission_otp.php'),
     'public admission_otp.php endpoint exists'
 );
+
+$tokensPage = (string) file_get_contents($root . '/dist/pages/admission-tokens.php');
+$check(
+    str_contains($tokensPage, 'toggle_otp')
+    && str_contains($tokensPage, 'form-switch')
+    && str_contains($tokensPage, 'setAdmissionOtpSettingEnabled'),
+    'admission tokens page exposes an OTP on/off switch'
+);
+$otpSource = (string) file_get_contents($root . '/shared/admission-otp.php');
+$check(
+    str_contains($otpSource, 'admissionOtpSettingEnabled')
+    && str_contains($otpSource, 'admission_otp_enabled'),
+    'OTP requirement respects the admin switch setting'
+);
 $validationJs = (string) file_get_contents($root . '/bmlhs/js/admission-validation.js');
 $check(
     str_contains($validationJs, '/admission_otp.php')
