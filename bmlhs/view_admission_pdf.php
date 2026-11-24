@@ -85,8 +85,8 @@ $html = mpdfSchoolPadHtml($school)
     . '<h2 class="adm-pdf-title">' . h($subtitle) . '</h2>'
     . '<table class="adm-pdf-table">'
     . '<thead><tr>'
-    . '<th>#</th><th>শ্রেণী</th><th>নাম</th><th>পিতার নাম</th><th>মাতার নাম</th>'
-    . '<th>জন্ম তারিখ</th><th>ছাত্র/ছাত্রী</th><th>মোবাইল</th><th>ছবি</th>'
+    . '<th class="w-sm">#</th><th class="w-cls">শ্রেণী</th><th>নাম</th><th>পিতার নাম</th><th>মাতার নাম</th>'
+    . '<th class="w-date">জন্ম তারিখ</th><th class="w-gen">ছাত্র/ছাত্রী</th><th class="w-mob">মোবাইল</th><th class="w-photo">ছবি</th>'
     . '</tr></thead><tbody>' . $bodyRows . '</tbody></table>';
 
 $mpdf = createBanglaMpdf($subtitle, (string) ($school['school_name_bn'] ?? 'School'), 'A4', 'L');
@@ -99,6 +99,7 @@ $mpdf->WriteHTML(
     . '.adm-pdf-table th, .adm-pdf-table td { border: 0.25mm solid #c9d8d0; padding: 1.4mm 1.6mm; vertical-align: middle; }'
     . '.adm-pdf-table thead th { background: #eef5f1; color: #0f2f26; font-weight: bold; }'
     . '.adm-pdf-table td.c { text-align: center; }'
+    . '.adm-pdf-table th.w-sm { width: 9mm; } .adm-pdf-table th.w-cls { width: 20mm; } .adm-pdf-table th.w-date { width: 24mm; } .adm-pdf-table th.w-gen { width: 20mm; } .adm-pdf-table th.w-mob { width: 27mm; } .adm-pdf-table th.w-photo { width: 14mm; }'
     . '.adm-pdf-table td.photo { width: 14mm; text-align: center; }'
     . '.adm-pdf-table td.photo img { width: 11mm; height: 13mm; }',
     \Mpdf\HTMLParserMode::HEADER_CSS
