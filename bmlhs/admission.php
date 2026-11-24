@@ -5,6 +5,7 @@ if (!empty($_SESSION['admission_login_id'])) {
     header('Location: view_admission_form');
     exit;
 }
+$admissionOtpRequired = admissionOtpRequired(publicDatabase());
 include('navbar&marqueetag.php');
 ?>
 
@@ -229,6 +230,18 @@ $statement->execute();
 $mobileCount = $statement->get_result()->num_rows;
 if ($mobileCount > 0) {
 $errors["mobile_error"] = "ইতি পূর্বে এই মোবাইল নাম্বার ব্যবহৃত হয়েছে";
+} elseif ($admissionOtpRequired && empty($errors["mobile_error"])) {
+$otpId = (int) ($_REQUEST['mobile_otp_id'] ?? 0);
+$otpCode = (string) ($_REQUEST['mobile_otp_code'] ?? '');
+try {
+    if ($otpId < 1 || trim($otpCode) === '') {
+        $errors['mobile_otp_error'] = 'মোবাইলে পাঠানো ৬ সংখ্যার কোড দিন।';
+    } elseif (!admissionOtpVerifyAndConsume(publicDatabase(), $otpId, $mobile, $otpCode)) {
+        $errors['mobile_otp_error'] = 'কোডটি সঠিক নয়। আবার চেষ্টা করুন বা নতুন কোড নিন।';
+    }
+} catch (RuntimeException $otpException) {
+    $errors['mobile_otp_error'] = $otpException->getMessage();
+}
 }
 }
 $pass = (string) ($_REQUEST["pass"] ?? '');
@@ -1066,6 +1079,7 @@ exit;
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
                                 <label for="mobile" class="form-label">মোবাইল নম্বর <span class="required">*</span></label>
+                                <div class="input-group">
                                 <input type="tel" name="mobile" class="form-control mobile_input input require <?php
                                                     if (isset($errors["mobile_error"])) {
                                                     echo 'is-invalid';
@@ -1077,17 +1091,39 @@ exit;
                                                     echo hText((string) ($mobile ?? ''));
                                                     } ?>" id="mobile" pattern="[0-9]{11}"
                                                         title="১১ সংখ্যার মোবাইল নম্বর লিখুন" maxlength="11"
-                                                        placeholder="০১XXXXXXXXX" required>
+                                                        placeholder="০১XXXXXXXXX" required
+                                                        <?= $admissionOtpRequired ? 'data-otp-required="1"' : '' ?>>
+                                <?php if ($admissionOtpRequired): ?>
+                                <button type="button" class="btn btn-outline-primary" id="admissionOtpSend" disabled>কোড পাঠান</button>
+                                <?php endif; ?>
+                                </div>
                                                     <div class="<?php if (isset($errors["mobile_error"])) {
-                                                        echo 'invalid-feedback';
-                                                        } ?>">
+                                                        echo 'invalid-feedback d-block';
+                                                        } ?>" id="mobileFeedback">
                                                         <?php
                                                         if (isset($errors["mobile_error"])) {
                                                         echo $errors["mobile_error"];
                                                         }
                                                         ?>
                                                     </div>
+                                <?php if ($admissionOtpRequired): ?>
+                                <div class="form-text" id="admissionOtpHint">মোবাইল নম্বর লিখে কোড পাঠান। SMS-এ আসা ৬ সংখ্যার কোড নিচের ঘরে দিন।</div>
+                                <?php endif; ?>
                             </div>
+                            <?php if ($admissionOtpRequired): ?>
+                            <div class="col-md-4">
+                                <label for="mobile_otp_code" class="form-label">SMS কোড <span class="required">*</span></label>
+                                <input type="hidden" name="mobile_otp_id" id="mobile_otp_id" value="<?= hText((string) ($_REQUEST['mobile_otp_id'] ?? '')) ?>">
+                                <input type="text" name="mobile_otp_code" id="mobile_otp_code" inputmode="numeric" pattern="[0-9০-৯]{6}" maxlength="6" autocomplete="one-time-code" class="form-control input require <?php
+                                    if (isset($errors['mobile_otp_error'])) {
+                                        echo 'is-invalid';
+                                    }
+                                ?>" value="<?= hText((string) ($_REQUEST['mobile_otp_code'] ?? '')) ?>" placeholder="৬ সংখ্যার কোড" required>
+                                <div class="<?php if (isset($errors['mobile_otp_error'])) { echo 'invalid-feedback d-block'; } ?>" id="mobileOtpFeedback">
+                                    <?php if (isset($errors['mobile_otp_error'])) { echo hText($errors['mobile_otp_error']); } ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                             <div class="col-md-4">
                                 <label for="pass" class="form-label">পাসওয়ার্ড <span class="required">*</span></label>
                                 <input name="pass"
