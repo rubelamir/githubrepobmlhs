@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/shared/public-features.php';
 require_once dirname(__DIR__, 2) . '/shared/security.php';
 require_once dirname(__DIR__, 2) . '/shared/deployment-config.php';
 require_once dirname(__DIR__, 2) . '/shared/sms.php';
+require_once dirname(__DIR__, 2) . '/shared/admission-otp.php';
 require_once dirname(__DIR__, 2) . '/shared/audit.php';
 
 startAppSession();

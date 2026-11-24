@@ -343,4 +343,120 @@
       }
     });
   }
+
+  const otpSend = document.getElementById('admissionOtpSend');
+  const otpIdInput = document.getElementById('mobile_otp_id');
+  const otpCodeInput = document.getElementById('mobile_otp_code');
+  const otpFeedback = document.getElementById('mobileOtpFeedback');
+  const otpHint = document.getElementById('admissionOtpHint');
+  const mobileInput = document.getElementById('mobile');
+  let otpCooldownTimer = null;
+  let otpCooldownUntil = 0;
+
+  function csrfTokenValue() {
+    const field = document.querySelector('#admissionForm input[name="csrf_token"]');
+    if (field && field.value) {
+      return field.value;
+    }
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  }
+
+  function setOtpMessage(message, isError) {
+    if (otpFeedback) {
+      otpFeedback.textContent = message || '';
+      otpFeedback.classList.toggle('invalid-feedback', !!isError);
+      otpFeedback.classList.toggle('d-block', !!message);
+      otpFeedback.classList.toggle('text-success', !isError && !!message);
+    }
+    if (otpHint && message && !isError) {
+      otpHint.textContent = message;
+    }
+  }
+
+  function updateOtpSendState() {
+    if (!otpSend || !mobileInput) {
+      return;
+    }
+    const mobileOk = mobilePattern.test(String(mobileInput.value || '').trim())
+      && !mobileInput.classList.contains('is-invalid');
+    const cooling = Date.now() < otpCooldownUntil;
+    otpSend.disabled = !mobileOk || cooling;
+  }
+
+  function startOtpCooldown(seconds) {
+    otpCooldownUntil = Date.now() + seconds * 1000;
+    if (otpCooldownTimer) {
+      clearInterval(otpCooldownTimer);
+    }
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((otpCooldownUntil - Date.now()) / 1000));
+      if (left <= 0) {
+        clearInterval(otpCooldownTimer);
+        otpCooldownTimer = null;
+        otpSend.textContent = 'কোড পাঠান';
+        updateOtpSendState();
+        return;
+      }
+      otpSend.textContent = `আবার পাঠান (${left})`;
+      updateOtpSendState();
+    };
+    tick();
+    otpCooldownTimer = setInterval(tick, 250);
+  }
+
+  if (otpSend && mobileInput && otpIdInput && otpCodeInput) {
+    mobileInput.addEventListener('input', () => {
+      otpIdInput.value = '';
+      updateOtpSendState();
+    });
+    mobileInput.addEventListener('blur', updateOtpSendState);
+    updateOtpSendState();
+
+    otpSend.addEventListener('click', () => {
+      const mobile = String(mobileInput.value || '').trim();
+      if (!mobilePattern.test(mobile)) {
+        setErrorMsg(mobileInput, 'সঠিক মোবাইল নাম্বার লিখুন');
+        updateOtpSendState();
+        return;
+      }
+      otpSend.disabled = true;
+      otpSend.textContent = 'পাঠানো হচ্ছে…';
+      setOtpMessage('', false);
+      $.ajax({
+        type: 'POST',
+        url: '/admission_otp.php',
+        dataType: 'json',
+        data: {
+          action: 'send',
+          mobile,
+          csrf_token: csrfTokenValue(),
+        },
+      }).done((response) => {
+        if (response && response.ok && response.otp_id) {
+          otpIdInput.value = String(response.otp_id);
+          otpCodeInput.value = '';
+          otpCodeInput.focus();
+          setOtpMessage(response.message || 'কোড পাঠানো হয়েছে।', false);
+          startOtpCooldown(60);
+          return;
+        }
+        setOtpMessage((response && response.error) || 'কোড পাঠানো যায়নি।', true);
+        otpSend.textContent = 'কোড পাঠান';
+        updateOtpSendState();
+      }).fail((xhr) => {
+        let message = 'কোড পাঠানো যায়নি।';
+        try {
+          const parsed = JSON.parse(xhr.responseText || '{}');
+          if (parsed && parsed.error) {
+            message = parsed.error;
+          }
+        } catch (ignore) {
+          // keep default
+        }
+        setOtpMessage(message, true);
+        otpSend.textContent = 'কোড পাঠান';
+        updateOtpSendState();
+      });
+    });
+  }
 })();

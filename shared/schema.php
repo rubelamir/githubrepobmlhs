@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const SCHOOL_SCHEMA_VERSION = 22;
+const SCHOOL_SCHEMA_VERSION = 23;
 
 function schemaMigrationApplied(PDO $db, string $name): bool
 {
@@ -118,6 +118,9 @@ function ensureSchoolSchema(PDO $db): void
         if (!tableExists($db, 'school_history_timeline')) {
             ensureHistoryTimelineTable($db);
         }
+        if (!tableExists($db, 'admission_mobile_otps') && function_exists('ensureAdmissionMobileOtpTable')) {
+            ensureAdmissionMobileOtpTable($db);
+        }
 
         return;
     }
@@ -170,6 +173,10 @@ function ensureSchoolSchema(PDO $db): void
     ensureHistoryTimelineTable($db);
     ensureSubjectRosterStorage($db);
     ensureStudentRegistrationColumn($db);
+    if (!function_exists('ensureAdmissionMobileOtpTable')) {
+        require_once __DIR__ . '/admission-otp.php';
+    }
+    ensureAdmissionMobileOtpTable($db);
 
     if (schemaVersionIsCurrent($db)) {
         @file_put_contents($marker, (string) time());
