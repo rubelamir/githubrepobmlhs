@@ -177,11 +177,16 @@ function dispatchWebhookSms(string $template, array $numbers, string $text, stri
 function dispatchBdBulkSmsNet(string $token, array $numbers, string $text): array
 {
     $mobile = smsLocalBdMobile((string) ($numbers[0] ?? ''));
-    $body = http_build_query([
+    $params = [
         'token' => $token,
         'to' => $mobile,
         'message' => $text,
-    ]);
+    ];
+    // Bangla / non-ASCII OTP text must be marked unicode for GreenWeb.
+    if (preg_match('/[^\x00-\x7F]/u', $text) === 1) {
+        $params['unicode'] = '1';
+    }
+    $body = http_build_query($params);
     $response = smsHttpRequest(
         'https://api.bdbulksms.net/api.php?json',
         $body,
@@ -189,19 +194,31 @@ function dispatchBdBulkSmsNet(string $token, array $numbers, string $text): arra
     );
     $decoded = json_decode($response['body'], true);
     $ok = $response['ok'] && !smsWebhookLooksFailed((string) $response['body']);
+    $failureHint = '';
     if (is_array($decoded)) {
         foreach ($decoded as $row) {
             if (!is_array($row)) {
                 continue;
             }
             $status = strtolower(trim((string) ($row['status'] ?? $row['response'] ?? '')));
+            $error = trim((string) ($row['error'] ?? $row['message'] ?? $row['msg'] ?? ''));
+            if ($error !== '') {
+                $failureHint = $error;
+            }
             if ($status !== '' && !in_array($status, ['success', 'sent', 'ok'], true) && !str_contains($status, 'success')) {
                 $ok = false;
             }
         }
     }
+    if ($ok && is_string($response['body']) && preg_match('/insufficient|no credit|balance/i', $response['body']) === 1) {
+        $ok = false;
+        $failureHint = $failureHint !== '' ? $failureHint : (string) $response['body'];
+    }
 
-    return ['ok' => $ok, 'detail' => $ok ? 'bdbulksms' : smsResponseDetail($response, 'bdbulksms_failed')];
+    return [
+        'ok' => $ok,
+        'detail' => $ok ? 'bdbulksms' : ($failureHint !== '' ? $failureHint : smsResponseDetail($response, 'bdbulksms_failed')),
+    ];
 }
 
 function dispatchSslWirelessSms(string $token, string $sid, array $numbers, string $text): array
@@ -268,8 +285,8 @@ function smsHttpRequest(string $url, string $body, array $headers, string $metho
         }
         $options = [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 12,
-            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_CONNECTTIMEOUT => 8,
             CURLOPT_HTTPHEADER => $headers,
         ];
         if ($method === 'POST') {

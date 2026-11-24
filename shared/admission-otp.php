@@ -156,17 +156,74 @@ function admissionOtpRequest(PDO $db, string $mobile, string $clientIp, ?callabl
     }
     $text = ($school !== '' ? $school . ': ' : '')
         . 'ভর্তি আবেদনের কোড ' . $code . '। '
-        . (function_exists('bnDigits') ? bnDigits((string) ADMISSION_OTP_MINUTES) : (string) ADMISSION_OTP_MINUTES)
+        . ADMISSION_OTP_MINUTES
         . ' মিনিট বৈধ।';
 
-    $sender = $sendSms ?? static function (string $to, string $message) use ($db): bool {
-        return sendSchoolSms($db, $to, $message, 'admission_otp')['ok'];
-    };
-    if (!$sender($local, $text)) {
-        throw new RuntimeException('এই মুহূর্তে SMS পাঠানো যাচ্ছে না। পরে আবার চেষ্টা করুন।');
+    $smsDetail = '';
+    try {
+        if ($sendSms !== null) {
+            if (!$sendSms($local, $text)) {
+                $smsDetail = 'injected_sender_failed';
+                throw new RuntimeException(admissionOtpSmsFailureMessage($smsDetail));
+            }
+        } else {
+            $sent = sendSchoolSms($db, $local, $text, 'admission_otp');
+            if (empty($sent['ok'])) {
+                $smsDetail = (string) ($sent['detail'] ?? '');
+                error_log('admission OTP SMS failed for ' . $local . ': ' . $smsDetail);
+                throw new RuntimeException(admissionOtpSmsFailureMessage($smsDetail));
+            }
+        }
+    } catch (Throwable $exception) {
+        // Do not burn the per-mobile / per-IP quota on gateway failures.
+        try {
+            $db->prepare('DELETE FROM admission_mobile_otps WHERE id = :id AND used_at IS NULL')
+                ->execute(['id' => $otpId]);
+        } catch (Throwable $cleanup) {
+            error_log('admission OTP cleanup failed: ' . $cleanup->getMessage());
+        }
+        if ($exception instanceof RuntimeException) {
+            throw $exception;
+        }
+        error_log('admission OTP SMS error: ' . $exception->getMessage());
+        throw new RuntimeException(admissionOtpSmsFailureMessage($smsDetail !== '' ? $smsDetail : $exception->getMessage()));
     }
 
     return ['otp_id' => $otpId];
+}
+
+/** Map SMS gateway detail text to a short Bangla message for applicants. */
+function admissionOtpSmsFailureMessage(string $detail): string
+{
+    $detail = strtolower(trim($detail));
+    if (
+        str_contains($detail, 'balance')
+        || str_contains($detail, 'insufficient')
+        || str_contains($detail, 'no credit')
+        || str_contains($detail, 'recharge')
+    ) {
+        return 'SMS ব্যালেন্স শেষ বা অপর্যাপ্ত। বিদ্যালয় অফিসে জানান।';
+    }
+    if (
+        str_contains($detail, 'timeout')
+        || str_contains($detail, 'timed out')
+        || str_contains($detail, 'connection')
+    ) {
+        return 'SMS সার্ভার সাড়া দিচ্ছে না। একটু পর আবার চেষ্টা করুন।';
+    }
+    if (
+        str_contains($detail, 'invalid')
+        || str_contains($detail, 'unauthorized')
+        || str_contains($detail, 'token')
+        || str_contains($detail, 'forbidden')
+    ) {
+        return 'SMS সেটিংস ঠিক নেই। বিদ্যালয় অফিসে জানান।';
+    }
+    if ($detail === 'not_configured') {
+        return 'SMS গেটওয়ে সেট করা নেই। বিদ্যালয় অফিসে জানান।';
+    }
+
+    return 'এই মুহূর্তে SMS পাঠানো যাচ্ছে না। পরে আবার চেষ্টা করুন।';
 }
 
 function admissionOtpVerifyAndConsume(PDO $db, int $otpId, string $mobile, string $code): bool

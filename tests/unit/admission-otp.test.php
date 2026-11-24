@@ -82,6 +82,26 @@ try {
 }
 $check($blocked, 'an already-registered mobile cannot request a code');
 
+$beforeFail = (int) $db->query('SELECT COUNT(*) FROM admission_mobile_otps')->fetchColumn();
+$failedSend = false;
+try {
+    admissionOtpRequest(
+        $db,
+        '01755667788',
+        '203.0.113.52',
+        static fn (): bool => false
+    );
+} catch (RuntimeException $exception) {
+    $failedSend = str_contains($exception->getMessage(), 'SMS');
+}
+$afterFail = (int) $db->query('SELECT COUNT(*) FROM admission_mobile_otps')->fetchColumn();
+$check($failedSend, 'a failed SMS send raises a clear error');
+$check($afterFail === $beforeFail, 'failed SMS sends do not leave OTP rows that burn the rate limit');
+$check(
+    str_contains(admissionOtpSmsFailureMessage('Insufficient Balance'), 'ব্যালেন্স'),
+    'low-balance gateway errors map to a Bangla balance message'
+);
+
 $admissionPhp = (string) file_get_contents($root . '/bmlhs/admission.php');
 $check(
     str_contains($admissionPhp, 'admissionOtpVerifyAndConsume')
