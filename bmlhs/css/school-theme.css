@@ -3534,6 +3534,32 @@ html.school-loading body {
   margin: 0 auto 1.25rem;
 }
 
+.adm-list-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.85rem;
+}
+
+.adm-list-toolbar-note {
+  margin: 0;
+  color: var(--school-muted);
+  font-size: 0.9rem;
+}
+
+.adm-list-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.adm-list-print-head {
+  display: none;
+}
+
 .adm-list-table-wrap {
   overflow: auto;
   background: #fff;
@@ -3583,6 +3609,63 @@ html.school-loading body {
   border: 1px dashed #c4892a;
   border-radius: 0.8rem;
   color: #4a3a18;
+}
+
+@media print {
+  body.school-site:has(.adm-list-table-wrap) .adm-wrap {
+    padding: 0 !important;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-print-head {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    margin: 0 0 3mm;
+    padding: 0 0 2.5mm;
+    border-bottom: 0.4mm solid #1a4d3e;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-print-head img {
+    width: 14mm;
+    height: 14mm;
+    object-fit: contain;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-print-head strong {
+    display: block;
+    font-size: 13pt;
+    color: #0f2f26;
+    line-height: 1.25;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-print-head span,
+  body.school-site:has(.adm-list-table-wrap) .adm-list-print-head em {
+    display: block;
+    font-style: normal;
+    font-size: 8.5pt;
+    color: #3d5a50;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table {
+    min-width: 0 !important;
+    font-size: 8.5pt;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table th,
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table td {
+    padding: 1.2mm 1.5mm;
+    border: 0.25mm solid #c9d8d0;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table thead th {
+    background: #eef5f1 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  body.school-site:has(.adm-list-table-wrap) .adm-list-table img {
+    width: 11mm;
+    height: 13mm;
+    border-radius: 0;
+  }
 }
 
 @media (max-width: 767px) {
@@ -7204,12 +7287,15 @@ body.school-site {
 
   .school-profile-actions,
   .adm-a4-toolbar,
-  .adm-a4-toolbar-actions {
+  .adm-a4-toolbar-actions,
+  .adm-list-toolbar,
+  .adm-list-toolbar-actions {
     align-items: stretch;
   }
 
   .school-profile-actions > *,
-  .adm-a4-toolbar-actions > * {
+  .adm-a4-toolbar-actions > *,
+  .adm-list-toolbar-actions > * {
     max-width: 100%;
   }
 }

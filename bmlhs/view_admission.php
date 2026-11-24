@@ -51,12 +51,20 @@ $admHero = [
     'title' => 'আবেদনকারীর তালিকা',
     'text' => 'ভর্তির জন্য জমা পড়া প্রাথমিক আবেদনের তালিকা।',
 ];
+$listGenderTitle = $gender === 'male' ? 'ছাত্র' : ($gender === 'female' ? 'ছাত্রী' : ($gender === 'all' ? 'সকল' : ''));
+$listClassTitle = $rows !== [] ? (string) ($rows[0]['class_name_ban'] ?? '') : '';
+$pdfQuery = http_build_query(['cls' => $cls, 'gender' => $gender]);
 ?>
+<style>
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+}
+</style>
 <div class="adm-page">
-    <?php include('admission_navigation.php'); ?>
+    <div class="no-print"><?php include('admission_navigation.php'); ?></div>
     <section class="adm-wrap">
         <div class="container">
-            <div class="adm-list-filter adm-sheet">
+            <div class="adm-list-filter adm-sheet no-print">
                 <form method="post" class="adm-form" novalidate>
                     <?= csrfField() ?>
                     <?php if (isset($errors['csrf_error'])): ?>
@@ -91,7 +99,28 @@ $admHero = [
             <?php if ($searched && $rows === []): ?>
                 <div class="adm-empty">এই শর্তে কোনো আবেদন পাওয়া যায়নি।</div>
             <?php elseif ($rows !== []): ?>
-                <div class="adm-list-table-wrap">
+                <div class="adm-list-toolbar no-print">
+                    <p class="adm-list-toolbar-note"><?= h($listClassTitle) ?><?= $listGenderTitle !== '' ? ' · ' . h($listGenderTitle) : '' ?> · <?= h(english_to_bengali((string) count($rows))) ?> জন</p>
+                    <div class="adm-list-toolbar-actions">
+                        <a class="school-profile-print" href="<?= h('view_admission_pdf.php?' . $pdfQuery) ?>">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>PDF ডাউনলোড</span>
+                        </a>
+                        <button class="school-profile-print" type="button" onclick="window.print()">
+                            <i class="fa-solid fa-print" aria-hidden="true"></i>
+                            <span>প্রিন্ট</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="adm-list-print-head" aria-hidden="true">
+                    <img src="<?= h(optimizedPublicImageUrl(schoolLogoUrl($school))) ?>" alt="" width="56" height="56" onerror="this.remove()">
+                    <div>
+                        <strong><?= h((string) ($school['school_name_bn'] ?? '')) ?></strong>
+                        <span><?= h(schoolPlainAddress((string) ($school['address'] ?? ''))) ?></span>
+                        <em>প্রাথমিক আবেদন তালিকা<?= $listClassTitle !== '' ? ' — ' . h($listClassTitle) : '' ?><?= $listGenderTitle !== '' ? ' · ' . h($listGenderTitle) : '' ?></em>
+                    </div>
+                </div>
+                <div class="adm-list-table-wrap" id="admApplicantList">
                     <table class="adm-list-table">
                         <thead>
                             <tr>
