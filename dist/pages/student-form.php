@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payload['division'] = (int) ($payload['division'] ?: 0);
         $payload['district'] = (int) ($payload['district'] ?: 0);
         $payload['upazilla'] = (int) ($payload['upazilla'] ?: 0);
-        $payload['status'] = (int) ($payload['status'] ?: 1);
+        $payload['status'] = in_array($payload['status'], ['0', '1', '2'], true) ? (int) $payload['status'] : 1;
         foreach (array_keys($payload) as $column) {
             if (!columnExists($db, 'students_info', $column)) {
                 unset($payload[$column]);
