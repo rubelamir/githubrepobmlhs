@@ -35,7 +35,7 @@ if ($gender === 'all') {
             FROM students_info
             JOIN cls ON students_info.cls = cls.id
             LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR)
-            WHERE students_info.cls = ? AND students_info.sections = 'others'
+            WHERE students_info.cls = ? AND (students_info.sections = 'others' OR ((students_info.sections IS NULL OR students_info.sections = '') AND students_info.status = 0))
             ORDER BY {$orderSql}";
     $statement = $db->prepare($sql);
     $statement->execute([$cls]);
@@ -44,7 +44,7 @@ if ($gender === 'all') {
             FROM students_info
             JOIN cls ON students_info.cls = cls.id
             LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR)
-            WHERE students_info.cls = ? AND students_info.gender = ? AND students_info.sections = 'others'
+            WHERE students_info.cls = ? AND students_info.gender = ? AND (students_info.sections = 'others' OR ((students_info.sections IS NULL OR students_info.sections = '') AND students_info.status = 0))
             ORDER BY {$orderSql}";
     $statement = $db->prepare($sql);
     $statement->execute([$cls, $gender]);

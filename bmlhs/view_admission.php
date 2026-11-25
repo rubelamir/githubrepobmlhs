@@ -30,11 +30,11 @@ if ($errors === [] && $cls !== '' && $gender !== '') {
     $searched = true;
     // Do not limit to the calendar/"current" session year — list every pending online application.
     if ($gender === 'all') {
-        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
+        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND (students_info.sections = 'others' OR ((students_info.sections IS NULL OR students_info.sections = '') AND students_info.status = 0)) ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
         $statement = $conn->prepare($sql);
         $statement->bind_param('s', $cls);
     } else {
-        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND students_info.gender = ? AND students_info.sections = 'others' ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
+        $sql = "SELECT students_info.*, cls.class_name_ban FROM students_info JOIN cls ON students_info.cls = cls.id LEFT JOIN sections ON CAST(students_info.sections AS CHAR) = CAST(sections.id AS CHAR) WHERE students_info.cls = ? AND students_info.gender = ? AND (students_info.sections = 'others' OR ((students_info.sections IS NULL OR students_info.sections = '') AND students_info.status = 0)) ORDER BY " . studentsListOrderSql('students_info', 'cls', 'sections');
         $statement = $conn->prepare($sql);
         $statement->bind_param('ss', $cls, $gender);
     }

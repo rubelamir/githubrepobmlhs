@@ -27,7 +27,7 @@ $check(
     'hero text no longer says current academic year'
 );
 $check(
-    str_contains($source, 'window.print()')
+    str_contains($source, 'admPrintBtn')
     && str_contains($source, 'PDF ডাউনলোড')
     && str_contains($source, 'view_admission_pdf.php'),
     'list page offers print and PDF download'
