@@ -109,6 +109,8 @@ $backLabel = $searchQuery !== '' ? '← সার্চ ফলাফলে ফ�
           $personalCount = 0;
           $personalCount += (int) echoPublicProfileRow('পিতার নাম', $row['fname_ban'] ?: ($row['fname_eng'] ?? ''));
           $personalCount += (int) echoPublicProfileRow('মাতার নাম', $row['mname_ban'] ?: ($row['mname_eng'] ?? ''));
+          $personalCount += (int) echoPublicProfileRow('পিতার পেশা', $row['fprofession'] ?? '');
+          $personalCount += (int) echoPublicProfileRow('মাতার পেশা', $row['mprofession'] ?? '');
           $personalCount += (int) echoPublicProfileRow('লিঙ্গ', $gender);
           $personalCount += (int) echoPublicProfileRow('ধর্ম', $religion);
           $personalCount += (int) echoPublicProfileRow('জন্ম তারিখ', $birth !== '' ? bnDigits($birth) : '');

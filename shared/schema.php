@@ -201,6 +201,7 @@ function ensureSchoolSchema(PDO $db): void
     dropUnionsLookupTable($db);
     dropPreviousSchoolExamFields($db);
     dropProfessionGuardianFields($db);
+    restoreParentProfessionFields($db);
     ensureAdmissionTokenSchema($db);
     convertLastClassToText($db);
     ensureSchoolMessagesSchema($db);
@@ -566,6 +567,17 @@ function dropProfessionGuardianFields(PDO $db): void
     dropColumn($db, 'students_info', 'guardian_relation');
     dropColumn($db, 'students_info', 'guardian_mobile');
     recordSchemaMigration($db, 'drop_profession_guardian_fields_v1');
+}
+
+function restoreParentProfessionFields(PDO $db): void
+{
+    if (schemaMigrationApplied($db, 'restore_parent_profession_fields_v1')) {
+        return;
+    }
+
+    ensureColumn($db, 'students_info', 'fprofession', "VARCHAR(255) NOT NULL DEFAULT ''");
+    ensureColumn($db, 'students_info', 'mprofession', "VARCHAR(255) NOT NULL DEFAULT ''");
+    recordSchemaMigration($db, 'restore_parent_profession_fields_v1');
 }
 
 function ensureAdmissionTokenSchema(PDO $db): void

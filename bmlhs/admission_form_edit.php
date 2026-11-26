@@ -253,6 +253,8 @@ $errors["fname_ban_error"] = "বাংলায় লিখুন";
 }
 }
 $father_nid_no = '';
+$fprofession = '';
+$mprofession = '';
 $mother_nid_no = '';
 if (!empty($_REQUEST["father_nid_no"])) {
 $father_nid_no = mysqli_real_escape_string($conn, test_input($_REQUEST["father_nid_no"]));
@@ -277,6 +279,8 @@ if (preg_match("/^[a-zA-Z0-9 .]*$/", $mname_ban)) {
 $errors["mname_ban_error"] = "বাংলায় লিখুন";
 }
 }
+$fprofession = mb_substr(mysqli_real_escape_string($conn, test_input((string) ($_REQUEST["fprofession"] ?? ''))), 0, 255);
+$mprofession = mb_substr(mysqli_real_escape_string($conn, test_input((string) ($_REQUEST["mprofession"] ?? ''))), 0, 255);
 if (!empty($_REQUEST["mother_nid_no"])) {
 $mother_nid_no = mysqli_real_escape_string($conn, test_input($_REQUEST["mother_nid_no"]));
 if ((strlen($mother_nid_no) != "10") && (strlen($mother_nid_no) != "13") && (strlen($mother_nid_no) != "17")) {
@@ -414,7 +418,7 @@ if ($pictureData !== '') {
     }
 }
 
-$updateFields = ['cls' => $cls, 'sections' => $sections, 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'passing_year' => $passing_year, 'last_school_name' => $last_school_name];
+$updateFields = ['cls' => $cls, 'sections' => $sections, 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'fprofession' => $fprofession, 'mprofession' => $mprofession, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'passing_year' => $passing_year, 'last_school_name' => $last_school_name];
 if ($imageName !== null) {
     $updateFields['student_pic'] = $imageName;
 }
@@ -444,7 +448,7 @@ $admHero = [
 
                 <?php
         $edit_id = (int) $_SESSION['admission_login_id'];
-        $sql = "SELECT s.id, cls.id as cls, cls.class_name_ban as cls_name_ban, s.cls_roll, s.sections, s.admission_token, s.session_year, s.name_ban, s.name_eng, s.gender, s.religion, s.fname_ban, s.fname_eng, s.father_nid_no, s.mname_ban, s.mname_eng, s.mother_nid_no, s.mobile, s.birth_date, s.birth_reg_no, s.last_class, s.exam_roll, s.passing_year, s.scholarship_stipend_info, s.last_school_name, s.house_name, s.village, s.post_office, upazilas.id as upazilas_id, districts.id as districts_id, divisions.id as divisions_id, s.student_pic, s.birth_reg_pic FROM students_info s LEFT JOIN cls ON s.cls = cls.id LEFT JOIN sections ON s.sections = sections.id LEFT JOIN divisions ON s.division = divisions.id LEFT JOIN districts ON s.district = districts.id LEFT JOIN upazilas ON s.upazilla = upazilas.id WHERE s.id = ?";
+        $sql = "SELECT s.id, cls.id as cls, cls.class_name_ban as cls_name_ban, s.cls_roll, s.sections, s.admission_token, s.session_year, s.name_ban, s.name_eng, s.gender, s.religion, s.fname_ban, s.fname_eng, s.father_nid_no, s.fprofession, s.mprofession, s.mname_ban, s.mname_eng, s.mother_nid_no, s.mobile, s.birth_date, s.birth_reg_no, s.last_class, s.exam_roll, s.passing_year, s.scholarship_stipend_info, s.last_school_name, s.house_name, s.village, s.post_office, upazilas.id as upazilas_id, districts.id as districts_id, divisions.id as divisions_id, s.student_pic, s.birth_reg_pic FROM students_info s LEFT JOIN cls ON s.cls = cls.id LEFT JOIN sections ON s.sections = sections.id LEFT JOIN divisions ON s.division = divisions.id LEFT JOIN districts ON s.district = districts.id LEFT JOIN upazilas ON s.upazilla = upazilas.id WHERE s.id = ?";
         $statement = $conn->prepare($sql);
         $statement->bind_param('i', $edit_id);
         $statement->execute();
@@ -974,6 +978,11 @@ $admHero = [
                                         ?>
                                     </div>
                                 </div>
+                                <div class="mb-4">
+                                    <label for="fprofession">পিতার পেশা</label>
+                                    <input type="text" name="fprofession" value="<?= hText((string) ($_POST['fprofession'] ?? $row['fprofession'] ?? '')) ?>" class="form-control input nonrequire<?= isset($errors["fprofession_error"]) ? ' is-invalid' : '' ?>" id="fprofession" maxlength="255" placeholder="পিতার পেশা লিখুন">
+                                    <div class="<?= isset($errors["fprofession_error"]) ? 'invalid-feedback' : '' ?>"><?= isset($errors["fprofession_error"]) ? hText((string) $errors["fprofession_error"]) : '' ?></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h5 class="content-title" style="font-size:19px">মাতার তথ‌্য</h5>
@@ -1055,6 +1064,11 @@ $admHero = [
                                         }
                                         ?>
                                     </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="mprofession">মাতার পেশা</label>
+                                    <input type="text" name="mprofession" value="<?= hText((string) ($_POST['mprofession'] ?? $row['mprofession'] ?? '')) ?>" class="form-control input nonrequire<?= isset($errors["mprofession_error"]) ? ' is-invalid' : '' ?>" id="mprofession" maxlength="255" placeholder="মাতার পেশা লিখুন">
+                                    <div class="<?= isset($errors["mprofession_error"]) ? 'invalid-feedback' : '' ?>"><?= isset($errors["mprofession_error"]) ? hText((string) $errors["mprofession_error"]) : '' ?></div>
                                 </div>
                             </div>
                         </div>
