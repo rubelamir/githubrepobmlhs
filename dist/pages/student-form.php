@@ -38,8 +38,8 @@ if (!$fullAdmission) {
 }
 $hasRegNo = columnExists($db, 'students_info', 'reg_no');
 $values = [
-    'name_ban' => '', 'name_eng' => '', 'fname_ban' => '', 'fname_eng' => '', 'father_nid_no' => '',
-    'mname_ban' => '', 'mname_eng' => '', 'mother_nid_no' => '',
+    'name_ban' => '', 'name_eng' => '', 'fname_ban' => '', 'fname_eng' => '', 'father_nid_no' => '', 'fprofession' => '',
+    'mname_ban' => '', 'mname_eng' => '', 'mother_nid_no' => '', 'mprofession' => '',
     'gender' => '', 'religion' => 'Islam', 'birth_date' => '', 'birth_reg_no' => '',
     'cls' => '', 'sections' => '', 'cls_roll' => '', 'session_year' => date('Y'),
     'mobile' => '', 'division' => '', 'district' => '', 'upazilla' => '',
@@ -351,9 +351,11 @@ include __DIR__ . '/../includes/layout-head.php';
                   <div class="col-md-6"><label class="form-label">Father (Bangla)</label><input class="form-control" name="fname_ban" value="<?= h($values['fname_ban']) ?>"></div>
                   <div class="col-md-6"><label class="form-label">Father (English)</label><input class="form-control" name="fname_eng" value="<?= h($values['fname_eng']) ?>"></div>
                   <div class="col-md-4"><label class="form-label">Father NID</label><input class="form-control" name="father_nid_no" value="<?= h($values['father_nid_no']) ?>"></div>
+                  <div class="col-md-8"><label class="form-label">Father profession / পিতার পেশা</label><input class="form-control" name="fprofession" maxlength="255" value="<?= h($values['fprofession']) ?>"></div>
                   <div class="col-md-6"><label class="form-label">Mother (Bangla)</label><input class="form-control" name="mname_ban" value="<?= h($values['mname_ban']) ?>"></div>
                   <div class="col-md-6"><label class="form-label">Mother (English)</label><input class="form-control" name="mname_eng" value="<?= h($values['mname_eng']) ?>"></div>
                   <div class="col-md-4"><label class="form-label">Mother NID</label><input class="form-control" name="mother_nid_no" value="<?= h($values['mother_nid_no']) ?>"></div>
+                  <div class="col-md-8"><label class="form-label">Mother profession / মাতার পেশা</label><input class="form-control" name="mprofession" maxlength="255" value="<?= h($values['mprofession']) ?>"></div>
 
                   <div class="col-12"><h2 class="h6 text-primary mt-2">Address</h2></div>
                   <div class="col-md-4"><label class="form-label">Division</label>

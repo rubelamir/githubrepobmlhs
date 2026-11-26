@@ -97,6 +97,10 @@ $father_nid_no = mysqli_real_escape_string($conn, test_input((string) ($_REQUEST
 if ($father_nid_no !== '' && !in_array(strlen($father_nid_no), [10, 13, 17], true)) {
     $errors["father_nid_no_error"] = "জাতীয় পরিচয় পত্র নাম্বার 10/13/17 সংখ্যার হয়। আপনি লিখেছেন " . strlen($father_nid_no) . " সংখ্যা";
 }
+$fprofession = mysqli_real_escape_string($conn, test_input((string) ($_REQUEST["fprofession"] ?? '')));
+if (mb_strlen($fprofession) > 255) {
+    $errors["fprofession_error"] = "সর্বোচ্চ ২৫৫ অক্ষর লিখুন";
+}
 if (empty($_REQUEST["mname_eng"])) {
 $errors["mname_eng_error"] = "এই ফিল্ডটি অবশ্য পূরণীয়";
 } else {
@@ -117,6 +121,10 @@ $errors["mname_ban_error"] = "বাংলায় লিখুন";
 $mother_nid_no = mysqli_real_escape_string($conn, test_input((string) ($_REQUEST["mother_nid_no"] ?? '')));
 if ($mother_nid_no !== '' && !in_array(strlen($mother_nid_no), [10, 13, 17], true)) {
     $errors["mother_nid_no_error"] = "জাতীয় পরিচয় পত্র নাম্বার 10/13/17 সংখ্যার হয়। আপনি লিখেছেন " . strlen($mother_nid_no) . " সংখ্যা";
+}
+$mprofession = mysqli_real_escape_string($conn, test_input((string) ($_REQUEST["mprofession"] ?? '')));
+if (mb_strlen($mprofession) > 255) {
+    $errors["mprofession_error"] = "সর্বোচ্চ ২৫৫ অক্ষর লিখুন";
 }
 if (empty($_REQUEST["gender"])) {
 $errors["gender_error"] = "এই ফিল্ডটি অবশ্য পূরণীয়";
@@ -291,7 +299,7 @@ try {
 if (empty($errors)) {
 try {
 // reg_no is NOT NULL (often without DEFAULT); online applications leave it blank until assigned.
-$query = preparedInsert($conn, 'students_info', ['admission_token' => $admission_token, 'cls' => $cls, 'sections' => 'others', 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'birth_reg_pic' => '', 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'exam_roll' => '', 'passing_year' => $passing_year, 'scholarship_stipend_info' => 'not_applicable', 'last_school_name' => $last_school_name, 'mobile' => $mobile, 'student_pic' => $imageName, 'pass' => $pass_hash, 'status' => 0, 'reg_no' => '']);
+$query = preparedInsert($conn, 'students_info', ['admission_token' => $admission_token, 'cls' => $cls, 'sections' => 'others', 'session_year' => $session_year, 'name_eng' => $name_eng, 'name_ban' => $name_ban, 'fname_eng' => $fname_eng, 'fname_ban' => $fname_ban, 'father_nid_no' => $father_nid_no, 'fprofession' => $fprofession, 'mprofession' => $mprofession, 'mname_eng' => $mname_eng, 'mname_ban' => $mname_ban, 'mother_nid_no' => $mother_nid_no, 'gender' => $gender, 'religion' => $religion, 'birth_date' => $birth_date, 'birth_reg_no' => $birth_reg_no, 'birth_reg_pic' => '', 'division' => $division, 'district' => $district, 'upazilla' => $upazilla, 'post_office' => $post_office, 'village' => $village, 'house_name' => $house_name, 'last_class' => $last_class, 'exam_roll' => '', 'passing_year' => $passing_year, 'scholarship_stipend_info' => 'not_applicable', 'last_school_name' => $last_school_name, 'mobile' => $mobile, 'student_pic' => $imageName, 'pass' => $pass_hash, 'status' => 0, 'reg_no' => '']);
 } catch (Throwable $exception) {
     error_log('online admission insert: ' . $exception->getMessage());
     $query = false;
@@ -712,6 +720,11 @@ exit;
                                         ?>
                                     </div>
                                 </div>
+                                <div class="mb-4">
+                                    <label for="fprofession">পিতার পেশা</label>
+                                    <input type="text" name="fprofession" value="<?= hText((string) ($fprofession ?? '')) ?>" class="form-control input nonrequire<?= isset($errors["fprofession_error"]) ? ' is-invalid' : '' ?>" id="fprofession" maxlength="255" placeholder="পিতার পেশা লিখুন">
+                                    <div class="<?= isset($errors["fprofession_error"]) ? 'invalid-feedback' : '' ?>"><?= isset($errors["fprofession_error"]) ? hText((string) $errors["fprofession_error"]) : '' ?></div>
+                                </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -789,6 +802,11 @@ exit;
                                         }
                                         ?>
                                     </div>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="mprofession">মাতার পেশা</label>
+                                    <input type="text" name="mprofession" value="<?= hText((string) ($mprofession ?? '')) ?>" class="form-control input nonrequire<?= isset($errors["mprofession_error"]) ? ' is-invalid' : '' ?>" id="mprofession" maxlength="255" placeholder="মাতার পেশা লিখুন">
+                                    <div class="<?= isset($errors["mprofession_error"]) ? 'invalid-feedback' : '' ?>"><?= isset($errors["mprofession_error"]) ? hText((string) $errors["mprofession_error"]) : '' ?></div>
                                 </div>
                                 </div>
                             </div>
