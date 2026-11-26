@@ -2,7 +2,7 @@
   'use strict';
 
   var COLORS = ['#ff4848', '#ffb400', '#7d3bc0', '#19b1ff', '#45e8a3'];
-  var MAX_TOTAL_MS = 4900;
+  var MAX_TOTAL_MS = 9900;
   var STEPS = 10;
 
   function rand(min, max) {
@@ -117,7 +117,7 @@
       styleShape(el);
 
       var isTop = i >= total - topCount;
-      var dur = rand(3, 4.5) * 1000;
+      var dur = rand(6.5, 9.5) * 1000;
       var delay = rand(0, 0.4) * 1000;
       dur = Math.min(dur, MAX_TOTAL_MS - delay);
       var spin = {
