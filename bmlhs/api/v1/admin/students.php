@@ -56,8 +56,8 @@ function mobileAdminStudentsPasswordHash(mixed $password): string
 function mobileAdminStudentsEditableFields(): array
 {
     return [
-        'name_ban', 'name_eng', 'fname_ban', 'fname_eng', 'father_nid_no',
-        'mname_ban', 'mname_eng', 'mother_nid_no', 'gender', 'religion',
+        'name_ban', 'name_eng', 'fname_ban', 'fname_eng', 'father_nid_no', 'fprofession',
+        'mname_ban', 'mname_eng', 'mother_nid_no', 'mprofession', 'gender', 'religion',
         'birth_date', 'birth_reg_no', 'mobile', 'division', 'district',
         'upazilla', 'post_office', 'post_office_en', 'village', 'village_en',
         'house_name', 'last_class', 'exam_roll', 'passing_year',
@@ -376,6 +376,8 @@ function mobileAdminStudentsCreate(PDO $db, array $payload): array
         'fname_eng' => 255,
         'mname_ban' => 255,
         'mname_eng' => 255,
+        'fprofession' => 255,
+        'mprofession' => 255,
         'birth_date' => 10,
         'birth_reg_no' => 255,
         'religion' => 255,
@@ -431,9 +433,7 @@ function mobileAdminStudentsCreate(PDO $db, array $payload): array
         'sections' => (string) $sectionId,
         'session_year' => $session,
         'gender' => $gender,
-        'fprofession' => '',
         'father_nid_no' => '',
-        'mprofession' => '',
         'mother_nid_no' => '',
         'guardian_name' => '',
         'guardian_relation' => '',
