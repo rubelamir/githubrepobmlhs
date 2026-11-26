@@ -168,6 +168,7 @@ $useAsset['jquery'] = $useAsset['jquery'] || $useAsset['owl'] || $useAsset['data
                 hidden = true;
                 root.classList.remove('school-loading');
                 loader.classList.add('is-hidden');
+                document.dispatchEvent(new Event('school:preloader-hidden'));
                 window.setTimeout(function () {
                     loader.style.display = 'none';
                 }, 500);

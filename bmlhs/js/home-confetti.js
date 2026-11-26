@@ -156,9 +156,29 @@
       .then(cleanup, cleanup);
   }
 
+  // Start once the preloader has gone; fall back if it never signals.
+  function start() {
+    var loader = document.getElementById('schoolPreloader');
+    var waiting = loader && !loader.classList.contains('is-hidden') && loader.style.display !== 'none';
+    if (!waiting) {
+      run();
+      return;
+    }
+    var started = false;
+    var go = function () {
+      if (started) {
+        return;
+      }
+      started = true;
+      run();
+    };
+    document.addEventListener('school:preloader-hidden', go, { once: true });
+    window.setTimeout(go, 6000);
+  }
+
   if (document.readyState === 'complete') {
-    run();
+    start();
   } else {
-    window.addEventListener('load', run, { once: true });
+    window.addEventListener('load', start, { once: true });
   }
 })();
