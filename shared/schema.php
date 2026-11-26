@@ -156,6 +156,8 @@ function ensureSchoolSchema(PDO $db): void
     if (tableExists($db, 'students_info')) {
         ensureColumn($db, 'students_info', 'village_en', "VARCHAR(255) NOT NULL DEFAULT ''");
         ensureColumn($db, 'students_info', 'post_office_en', "VARCHAR(255) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'students_info', 'fprofession', "VARCHAR(255) NOT NULL DEFAULT ''");
+        ensureColumn($db, 'students_info', 'mprofession', "VARCHAR(255) NOT NULL DEFAULT ''");
     }
     if (tableExists($db, 'student_promotions')) {
         ensureColumn($db, 'student_promotions', 'promotion_batch', 'VARCHAR(40) DEFAULT NULL');
