@@ -2,7 +2,7 @@
   'use strict';
 
   var COLORS = ['#ff4848', '#ffb400', '#7d3bc0', '#19b1ff', '#45e8a3'];
-  var MAX_TOTAL_MS = 8000;
+  var MAX_TOTAL_MS = 4900;
   var STEPS = 10;
 
   function rand(min, max) {
@@ -99,7 +99,7 @@
 
     var w = window.innerWidth;
     var h = window.innerHeight;
-    var total = w < 600 ? 140 : Math.round(rand(300, 360));
+    var total = w < 600 ? 60 : Math.round(rand(120, 150));
     var topCount = Math.round(total * 0.25);
 
     var overlay = document.createElement('div');
@@ -118,7 +118,7 @@
 
       var isTop = i >= total - topCount;
       var dur = rand(3, 4.5) * 1000;
-      var delay = Math.pow(Math.random(), 1.4) * (MAX_TOTAL_MS - 4500);
+      var delay = rand(0, 0.4) * 1000;
       dur = Math.min(dur, MAX_TOTAL_MS - delay);
       var spin = {
         x: rand(-1080, 1080),
