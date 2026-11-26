@@ -379,6 +379,7 @@ endif;
 <script src="js/national-anthem.js?v=<?= (int) @filemtime(__DIR__ . '/js/national-anthem.js') ?>"></script>
 <script src="js/home-scroll-reveal.js?v=<?= (int) @filemtime(__DIR__ . '/js/home-scroll-reveal.js') ?>"></script>
 <script src="js/school-home-ui.js?v=<?= (int) @filemtime(__DIR__ . '/js/school-home-ui.js') ?>"></script>
+<script src="js/home-confetti.js?v=<?= (int) @filemtime(__DIR__ . '/js/home-confetti.js') ?>"></script>
 <script>
     $(document).ready(function() {
         $('.owl-carousel').owlCarousel({
