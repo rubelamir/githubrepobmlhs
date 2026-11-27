@@ -13,7 +13,7 @@ use School\Accounting\Audit\AuditTrail;
  * Bills, receipts and bank slips attached to vouchers and deposits. Files are
  * stored outside the web root under random names; only PDF/JPG/PNG/WebP up to
  * 5 MB whose content matches the type are accepted. Attachments are evidence,
- * so they are never deleted.
+ * so they are never deleted, except petty cash receipts that go with their deleted entry.
  */
 final class AttachmentStore
 {
@@ -118,6 +118,19 @@ final class AttachmentStore
         }
 
         return $stored;
+    }
+
+    /** Removes every file and row of an owner whose record is being deleted. */
+    public function deleteForOwner(string $ownerType, int $ownerId): void
+    {
+        foreach ($this->forOwner($ownerType, $ownerId) as $attachment) {
+            $path = $this->path($attachment);
+            if ($path !== null && is_file($path)) {
+                @unlink($path);
+            }
+        }
+        $this->db->prepare('DELETE FROM acc_attachments WHERE owner_type = :type AND owner_id = :owner')
+            ->execute(['type' => $ownerType, 'owner' => $ownerId]);
     }
 
     /** @return list<array<string, mixed>> */

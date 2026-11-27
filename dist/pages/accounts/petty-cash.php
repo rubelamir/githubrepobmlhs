@@ -99,6 +99,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
             $savedMonth = pettyCashParseMonth(substr((string) $existing['entry_date'], 0, 7), $today);
             pettyCashDelete($db, $id);
+            accAttachments()->deleteForOwner('petty_cash', $id);
             redirectWithMessage(
                 'petty-cash.php?month=' . rawurlencode($savedMonth['key']),
                 'success',
