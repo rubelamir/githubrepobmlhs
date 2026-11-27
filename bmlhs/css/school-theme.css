@@ -4033,10 +4033,10 @@ html.school-loading body {
 }
 .adm-a4-line {
   display: block;
-  margin: 0 auto 4px;
+  margin: 0 0 4px;
   width: 100%;
   border-top: 1px solid #1a4d3e;
-  padding-top: 15mm;
+  margin-top: 15mm;
 }
 .adm-a4-date {
   order: 3;
@@ -4163,7 +4163,7 @@ html.school-loading body {
   .adm-a4-signs {
     grid-template-columns: 55mm 55mm !important;
   }
-  .adm-a4-line { padding-top: 13mm; }
+  .adm-a4-line { margin-top: 13mm; }
   .adm-a4-banner { margin: 4px 0 6px; padding: 3px 6px; }
   .adm-a4-banner h2 { font-size: 16px; font-weight: 700; }
   .adm-a4-banner p { font-size: 13px; font-weight: 600; }
