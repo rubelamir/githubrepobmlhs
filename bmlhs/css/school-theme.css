@@ -4019,9 +4019,10 @@ html.school-loading body {
 }
 .adm-a4-signs {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 50mm auto 50mm;
+  justify-content: center;
   align-items: end;
-  gap: 10px;
+  gap: 6mm;
   margin-top: 0;
 }
 .adm-a4-signs > div {
@@ -4033,10 +4034,9 @@ html.school-loading body {
 .adm-a4-line {
   display: block;
   margin: 0 auto 4px;
-  width: 42mm;
-  max-width: 90%;
+  width: 100%;
   border-top: 1px solid #1a4d3e;
-  padding-top: 16px;
+  padding-top: 15mm;
 }
 .adm-a4-date {
   font-weight: 600;
@@ -4159,9 +4159,9 @@ html.school-loading body {
   .adm-a4-address th { width: 16%; }
   .adm-a4-address td { width: 34%; }
   .adm-a4-signs {
-    grid-template-columns: 1fr auto 1fr !important;
+    grid-template-columns: 50mm auto 50mm !important;
   }
-  .adm-a4-line { padding-top: 10px; }
+  .adm-a4-line { padding-top: 13mm; }
   .adm-a4-banner { margin: 4px 0 6px; padding: 3px 6px; }
   .adm-a4-banner h2 { font-size: 16px; font-weight: 700; }
   .adm-a4-banner p { font-size: 13px; font-weight: 600; }
