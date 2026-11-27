@@ -4022,7 +4022,7 @@ html.school-loading body {
   grid-template-columns: 55mm 55mm;
   justify-content: center;
   align-items: end;
-  gap: 2mm 4mm;
+  gap: 2mm 12mm;
   margin-top: 0;
 }
 .adm-a4-signs > div {
