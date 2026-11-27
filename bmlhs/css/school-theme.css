@@ -3827,13 +3827,14 @@ html.school-loading body {
   vertical-align: top !important;
 }
 .adm-a4-pdf-sheet .adm-a4-signs {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: flex-end !important;
-  gap: 10px !important;
+  display: grid !important;
+  grid-template-columns: 55mm 55mm !important;
+  justify-content: center !important;
+  align-items: end !important;
+  gap: 2mm 28mm !important;
 }
 .adm-a4-pdf-sheet .adm-a4-signs > div {
-  flex: 1 1 0 !important;
+  flex: none !important;
 }
 .adm-a4-sheet {
   width: min(210mm, 100%);
