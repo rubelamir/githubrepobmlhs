@@ -20,7 +20,7 @@ final class AttachmentStore
     public const DIRECTORY = 'acc_attachments';
     public const MAX_BYTES = 5 * 1024 * 1024;
     public const MAX_PER_OWNER = 10;
-    public const OWNER_TYPES = ['voucher', 'deposit'];
+    public const OWNER_TYPES = ['voucher', 'deposit', 'petty_cash'];
 
     private const MIME_EXTENSIONS = [
         'application/pdf' => 'pdf',

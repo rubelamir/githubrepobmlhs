@@ -14,6 +14,7 @@ $attachment = $attachmentId > 0 ? $store->attachment($attachmentId) : null;
 $allowed = $attachment !== null && match ((string) $attachment['owner_type']) {
     'voucher' => $access->can(Capability::VOUCHER_CREATE) || $access->can(Capability::REPORTS_VIEW_ALL),
     'deposit' => $access->can(Capability::BANK_RECONCILE) || $access->can(Capability::VOUCHER_APPROVE),
+    'petty_cash' => $access->can(Capability::VOUCHER_CREATE) || $access->can(Capability::REPORTS_VIEW_ALL),
     default => false,
 };
 $path = $allowed ? $store->path($attachment) : null;
