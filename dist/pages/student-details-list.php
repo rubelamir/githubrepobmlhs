@@ -112,7 +112,7 @@ if ($loadList) {
     if ($where !== []) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
-    $sql .= ' ORDER BY ' . studentsListOrderSql() . ' LIMIT 400';
+    $sql .= ' ORDER BY ' . studentsListOrderSql();
     $students = fetchRows($db, $sql, $params);
 }
 
@@ -344,7 +344,7 @@ include __DIR__ . '/../includes/layout-head.php';
                   <span>Session: <?= h($sessionYear) ?> · Class: <?= h($classLabel) ?> · Section: <?= h($sectionLabel) ?></span>
                 </div>
               <div class="card stat-card student-details-print-card">
-                <div class="card-header"><strong><?= count($students) ?></strong> records (maximum 400)</div>
+                <div class="card-header"><strong><?= count($students) ?></strong> records</div>
                 <div class="table-responsive">
                   <table class="table table-bordered table-sm align-middle mb-0 student-details-print-table">
                     <thead>
