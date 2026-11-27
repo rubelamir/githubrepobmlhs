@@ -1,5 +1,6 @@
 <?php
 $pageAssets = [];
+$pageMeta = ['title' => 'শিক্ষক ও কর্মচারী', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের শিক্ষক ও কর্মচারীদের তালিকা ও পরিচিতি।'];
 include 'header.php';
 include 'navbar&marqueetag.php';
 ?>

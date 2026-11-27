@@ -1,5 +1,6 @@
 <?php
 $pageAssets = [];
+$pageMeta = ['title' => 'ডাউনলোড', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের ফরম, সিলেবাস ও প্রয়োজনীয় ফাইল ডাউনলোড।'];
 include('header.php');
 include('navbar&marqueetag.php');
 ?>

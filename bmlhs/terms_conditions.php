@@ -1,5 +1,6 @@
 <?php
 $pageAssets = [];
+$pageMeta = ['title' => 'শর্তাবলি', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের ওয়েবসাইট ব্যবহারের শর্তাবলি ও গোপনীয়তা নীতি।'];
 include('header.php');
 include('navbar&marqueetag.php');
 ?>

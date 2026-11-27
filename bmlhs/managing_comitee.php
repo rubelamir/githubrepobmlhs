@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 $pageAssets = [];
+$pageMeta = ['title' => 'ব্যবস্থাপনা কমিটি', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের ব্যবস্থাপনা কমিটির সদস্যদের তালিকা ও পরিচিতি।'];
 include 'header.php';
 include 'navbar&marqueetag.php';
 

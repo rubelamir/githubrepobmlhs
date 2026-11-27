@@ -1,5 +1,6 @@
 <?php
 $pageAssets = [];
+$pageMeta = ['title' => 'বৃত্তি ও উপবৃত্তি', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের বৃত্তি ও উপবৃত্তিপ্রাপ্ত শিক্ষার্থীদের তালিকা।'];
 include('header.php');
 include('navbar&marqueetag.php');
 
