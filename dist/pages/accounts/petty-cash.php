@@ -50,7 +50,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $actorId = $access->teacherId();
         if ($action === 'create') {
             $type = (string) ($_POST['entry_type'] ?? '');
-            pettyCashInsert(
+            accAttachments()->assertValid($_FILES['receipt'] ?? []);
+            $newId = pettyCashInsert(
                 $db,
                 $type,
                 (string) ($_POST['entry_date'] ?? ''),
@@ -59,6 +60,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $actorId,
                 $postMonth['key']
             );
+            accAttachments()->storeUploads($access, accAudit(), 'petty_cash', $newId, $_FILES['receipt'] ?? []);
             redirectWithMessage(
                 'petty-cash.php?month=' . rawurlencode($postMonth['key']),
                 'success',
@@ -71,6 +73,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($existing === null) {
                 throw new RuntimeException('এন্ট্রিটি পাওয়া যায়নি।');
             }
+            accAttachments()->assertValid($_FILES['receipt'] ?? []);
             pettyCashUpdate(
                 $db,
                 $id,
@@ -80,6 +83,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $actorId,
                 $postMonth['key']
             );
+            accAttachments()->storeUploads($access, accAudit(), 'petty_cash', $id, $_FILES['receipt'] ?? []);
             $savedMonth = pettyCashParseMonth(substr((string) ($_POST['entry_date'] ?? ''), 0, 7), $today);
             redirectWithMessage(
                 'petty-cash.php?month=' . rawurlencode($savedMonth['key']),
@@ -140,6 +144,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 $income = pettyCashEntries($db, PETTY_CASH_INCOME, $month['from'], $month['to']);
 $expense = pettyCashEntries($db, PETTY_CASH_EXPENSE, $month['from'], $month['to']);
+$receiptsByEntry = [];
+foreach (array_merge($income, $expense) as $entryRow) {
+    $files = accAttachments()->forOwner('petty_cash', (int) $entryRow['id']);
+    if ($files !== []) {
+        $receiptsByEntry[(int) $entryRow['id']] = $files;
+    }
+}
 $incomeTotal = pettyCashTotalPaisa($income);
 $expenseTotal = pettyCashTotalPaisa($expense);
 $diff = $incomeTotal - $expenseTotal;
@@ -286,7 +297,7 @@ include __DIR__ . '/../../includes/layout-head.php';
               <div class="card mb-3 border-primary">
                 <div class="card-header"><h3 class="card-title mb-0">এন্ট্রি সম্পাদনা — <?= h($editRow['entry_type'] === PETTY_CASH_INCOME ? 'আয়' : 'ব্যয়') ?></h3></div>
                 <div class="card-body">
-                  <form method="post" class="row g-2 align-items-end js-petty-entry-form"
+                  <form method="post" enctype="multipart/form-data" class="row g-2 align-items-end js-petty-entry-form"
                         data-selected-month="<?= h($monthKey) ?>"
                         data-selected-label="<?= h($monthLabel) ?>"
                         data-confirm-msg="<?= h($updateConfirmMsg) ?>">
@@ -306,7 +317,14 @@ include __DIR__ . '/../../includes/layout-head.php';
                       <label class="form-label" for="edit-amount">টাকার অংক</label>
                       <input class="form-control" type="text" id="edit-amount" name="amount" inputmode="numeric" required value="<?= h((string) intdiv(Money::fromDb($editRow['amount']), 100)) ?>">
                     </div>
-                    <div class="col-md-3 d-flex flex-wrap gap-1">
+                    <div class="col-md-6">
+                      <label class="form-label" for="edit-receipt">নতুন রিসিট যুক্ত করুন (ঐচ্ছিক)</label>
+                      <input class="form-control" type="file" id="edit-receipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+                      <?php foreach (accAttachments()->forOwner('petty_cash', (int) $editRow['id']) as $file): ?>
+                        <a class="small me-2" href="<?= h(signedRecordUrl('attachment.php', (int) $file['id'], 'acc_attachment')) ?>" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> <?= h((string) $file['original_name']) ?></a>
+                      <?php endforeach; ?>
+                    </div>
+                    <div class="col-md-6 d-flex flex-wrap gap-1">
                       <button class="btn btn-primary" type="submit">আপডেট</button>
                       <a class="btn btn-outline-secondary" href="<?= h($redirectBase) ?>">বাতিল</a>
                     </div>
@@ -319,7 +337,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="card h-100">
                     <div class="card-header"><h3 class="card-title mb-0">আয় এন্ট্রি</h3></div>
                     <div class="card-body">
-                      <form method="post" class="row g-2 js-petty-entry-form"
+                      <form method="post" enctype="multipart/form-data" class="row g-2 js-petty-entry-form"
                             data-selected-month="<?= h($monthKey) ?>"
                             data-selected-label="<?= h($monthLabel) ?>"
                             data-confirm-msg="<?= h($createConfirmMsg) ?>">
@@ -339,7 +357,12 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <label class="form-label" for="income-amount">টাকার অংক</label>
                           <input class="form-control" type="text" id="income-amount" name="amount" inputmode="numeric" required placeholder="১২৫০">
                         </div>
-                        <div class="col-md-8 d-flex align-items-end">
+                        <div class="col-12">
+                          <label class="form-label" for="income-receipt">রিসিট (ঐচ্ছিক)</label>
+                          <input class="form-control" type="file" id="income-receipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+                          <div class="form-text">PDF, JPG, PNG বা WebP — সর্বোচ্চ ৫ MB</div>
+                        </div>
+                        <div class="col-12 d-flex align-items-end">
                           <button class="btn btn-success" type="submit">সাবমিট</button>
                         </div>
                       </form>
@@ -350,7 +373,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                   <div class="card h-100">
                     <div class="card-header"><h3 class="card-title mb-0">ব্যয় এন্ট্রি</h3></div>
                     <div class="card-body">
-                      <form method="post" class="row g-2 js-petty-entry-form"
+                      <form method="post" enctype="multipart/form-data" class="row g-2 js-petty-entry-form"
                             data-selected-month="<?= h($monthKey) ?>"
                             data-selected-label="<?= h($monthLabel) ?>"
                             data-confirm-msg="<?= h($createConfirmMsg) ?>">
@@ -370,7 +393,12 @@ include __DIR__ . '/../../includes/layout-head.php';
                           <label class="form-label" for="expense-amount">টাকার অংক</label>
                           <input class="form-control" type="text" id="expense-amount" name="amount" inputmode="numeric" required placeholder="১২৫০">
                         </div>
-                        <div class="col-md-8 d-flex align-items-end">
+                        <div class="col-12">
+                          <label class="form-label" for="expense-receipt">রিসিট (ঐচ্ছিক)</label>
+                          <input class="form-control" type="file" id="expense-receipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+                          <div class="form-text">PDF, JPG, PNG বা WebP — সর্বোচ্চ ৫ MB</div>
+                        </div>
+                        <div class="col-12 d-flex align-items-end">
                           <button class="btn btn-danger" type="submit">সাবমিট</button>
                         </div>
                       </form>
@@ -414,7 +442,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                                 <td class="acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
                               <td class="acc-petty-col-fit"><?= h(accFormatDate((string) $left['entry_date'])) ?></td>
-                              <td class="acc-petty-col-desc"><?= h((string) $left['description']) ?></td>
+                              <td class="acc-petty-col-desc"><?= h((string) $left['description']) ?><?php foreach ($receiptsByEntry[(int) $left['id']] ?? [] as $file): ?> <a href="<?= h(signedRecordUrl('attachment.php', (int) $file['id'], 'acc_attachment')) ?>" target="_blank" rel="noopener" title="<?= h((string) $file['original_name']) ?>"><i class="bi bi-paperclip"></i></a><?php endforeach; ?></td>
                               <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount(Money::fromDb($left['amount']))) ?></td>
                               <?php if ($canWrite): ?>
                                 <td class="acc-petty-col-fit acc-petty-col-actions">
@@ -473,7 +501,7 @@ include __DIR__ . '/../../includes/layout-head.php';
                                 <td class="acc-petty-drag-handle acc-petty-col-fit" title="টেনে সাজান"><i class="bi bi-grip-vertical" aria-hidden="true"></i></td>
                               <?php endif; ?>
                               <td class="acc-petty-col-fit"><?= h(accFormatDate((string) $right['entry_date'])) ?></td>
-                              <td class="acc-petty-col-desc"><?= h((string) $right['description']) ?></td>
+                              <td class="acc-petty-col-desc"><?= h((string) $right['description']) ?><?php foreach ($receiptsByEntry[(int) $right['id']] ?? [] as $file): ?> <a href="<?= h(signedRecordUrl('attachment.php', (int) $file['id'], 'acc_attachment')) ?>" target="_blank" rel="noopener" title="<?= h((string) $file['original_name']) ?>"><i class="bi bi-paperclip"></i></a><?php endforeach; ?></td>
                               <td class="acc-petty-col-fit acc-petty-col-amount"><?= h(pettyCashFormatAmount(Money::fromDb($right['amount']))) ?></td>
                               <?php if ($canWrite): ?>
                                 <td class="acc-petty-col-fit acc-petty-col-actions">
