@@ -11,6 +11,7 @@ if (in_array($method, ['GET', 'HEAD'], true) && preg_match('#/index\.php(?:\?|$)
 }
 
 $pageAssets = ['owl', 'fancybox'];
+$pageMeta = ['title' => '', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ের অফিসিয়াল ওয়েবসাইট — নোটিশ, অনলাইন ভর্তি, ফলাফল, শিক্ষক পরিচিতি, ইভেন্ট ও গ্যালারি।'];
 include('header.php');
 include('navbar&marqueetag.php');
 include('carousel&verticalnoticeboardpanel.php');

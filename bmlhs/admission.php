@@ -1,5 +1,6 @@
 <?php
 $pageAssets = ['jquery'];
+$pageMeta = ['title' => 'অনলাইন ভর্তি আবেদন', 'description' => 'ভবানীগঞ্জ বহুমুখী উচ্চ বিদ্যালয়ে অনলাইনে ভর্তির আবেদন করুন।'];
 include('header.php');
 if (!empty($_SESSION['admission_login_id'])) {
     header('Location: view_admission_form');
