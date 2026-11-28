@@ -21,6 +21,8 @@ if ($teacher === null) {
     exit('Teacher profile not found.');
 }
 
+// navbar.php reassigns $teacher to the logged-in user, so keep the edited teacher separately.
+$profileTeacher = $teacher;
 $viewer = getAuthenticatedTeacher();
 if ($viewer === null) {
     header('Location: ../examples/login-v2.php', true, 302);
@@ -575,7 +577,7 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
             <a class="btn btn-outline-secondary" href="change-password.php">
               <i class="bi bi-key me-1"></i> Change Password
             </a>
-            <a class="btn btn-outline-success" href="<?= h(signedRecordUrl('teacher-id-card.php', (int) ($teacher['id'] ?? 0), 'teacher')) ?>" target="_blank" rel="noopener">
+            <a class="btn btn-outline-success" href="<?= h(signedRecordUrl('teacher-id-card.php', (int) ($profileTeacher['id'] ?? 0), 'teacher')) ?>" target="_blank" rel="noopener">
               <i class="bi bi-credit-card-2-front me-1"></i> Print ID Card
             </a>
             <button class="btn btn-outline-secondary" type="button" onclick="window.print()">
@@ -793,8 +795,8 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
                 <?php endforeach; ?>
                 <?php if ($canAssignRoles): ?>
                   <?php
-                    $profileRole = currentPanelRole($teacher);
-                    $profileMods = decodedAdminModules($teacher);
+                    $profileRole = currentPanelRole($profileTeacher);
+                    $profileMods = decodedAdminModules($profileTeacher);
                     $profileFull = in_array('*', $profileMods, true);
                   ?>
                   <div class="col-12 mt-3">
