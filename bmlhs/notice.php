@@ -34,7 +34,7 @@ if ($noticeQuery instanceof mysqli_result) {
             <table class="table table-striped table-hover border-3 table-info table-bordered border-dark align-middle w-75 m-auto school-notice-table">
                 <thead class="table-dark text-center">
                     <tr>
-                        <th scope="col">#</th>
+                        <th scope="col" class="text-nowrap">#</th>
                         <th scope="col">নোটিশ</th>
                         <th scope="col">তারিখ</th>
                         <th scope="col">ডাউনলোড</th>
@@ -49,7 +49,7 @@ if ($noticeQuery instanceof mysqli_result) {
                     $noticeHref = publicNoticeUrl((int) $row['id']);
                 ?>
                     <tr>
-                        <th class="text-center" scope="row"><?= h(english_to_bengali((string) ($sl + 1))) ?></th>
+                        <th class="text-center text-nowrap" scope="row"><?= h(english_to_bengali((string) ($sl + 1))) ?></th>
                         <td><a href="<?= h($noticeHref) ?>"><?= h((string) $row['main_notice_text']) ?></a></td>
                         <td class="text-nowrap text-center"><?= h($date) ?></td>
                         <td class="text-center">
