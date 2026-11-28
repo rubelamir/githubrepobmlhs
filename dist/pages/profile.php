@@ -688,6 +688,9 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
               <div class="card-body"><div class="row g-3">
                 <div class="col-12">
                   <label class="form-label" for="teacherPicture">Teacher Picture</label>
+                  <?php if ($pictureDisplayUrl !== ''): ?>
+                    <div class="mb-2"><div class="small text-secondary mb-1">Current picture</div><img src="<?= h($pictureDisplayUrl) ?>" alt="Current teacher picture" class="rounded shadow-sm" style="width:108px;height:137px;object-fit:cover"></div>
+                  <?php endif; ?>
                   <input class="form-control" type="file" id="teacherPicture" accept="image/jpeg,image/png,image/webp">
                   <input type="hidden" name="teacher_pic_data" id="teacherPicData">
                   <small class="text-secondary">Output: 108×137px JPEG, maximum 100KB.</small>
@@ -695,6 +698,9 @@ $nidPictureDisplayUrl = $nidPicturePath !== ''
                 </div>
                 <div class="col-12">
                   <label class="form-label" for="teacherNidPicture">Teacher NID Picture</label>
+                  <?php if ($nidPictureDisplayUrl !== ''): ?>
+                    <div class="mb-2"><div class="small text-secondary mb-1">Current NID picture</div><img src="<?= h($nidPictureDisplayUrl) ?>" alt="Current teacher NID" class="nid-picture-display img-fluid rounded shadow-sm"></div>
+                  <?php endif; ?>
                   <input class="form-control" type="file" id="teacherNidPicture" accept="image/jpeg,image/png,image/webp">
                   <input type="hidden" name="teacher_nid_pic_data" id="teacherNidPicData">
                   <small class="text-secondary">Output is proportionally limited to 1200×1200px, JPEG, maximum 300KB.</small>
